@@ -183,7 +183,7 @@ wheel-smoke-one: build ## Install built wheel for one Python version; set PYTHON
 	"$$tmpdir/venv/bin/pdomain-ocr" --version
 
 check-release-deps: ## Fail release while runtime dependencies are path-sourced
-	@python3 -c 'import tomllib; p=tomllib.load(open("pyproject.toml","rb")); src=p.get("tool",{}).get("uv",{}).get("sources",{}).get("pdomain-ops",{}); raise SystemExit("pdomain-ops must not be path-sourced for release") if "path" in src else 0'
+	@python3 -c 'import sys, tomllib; p=tomllib.load(open("pyproject.toml","rb")); src=p.get("tool",{}).get("uv",{}).get("sources",{}).get("pdomain-ops",{}); sys.exit("pdomain-ops must not be path-sourced for release") if "path" in src else None'
 
 ci: ## Run fast CI pipeline (setup → pre-commit → format-check → typecheck → coverage → installer-test → wheel-smoke); enforces COV_FAIL_UNDER (default 100)
 	@echo "🚀 Running fast CI pipeline..."
