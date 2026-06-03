@@ -12,7 +12,7 @@
 set -euo pipefail
 
 # ─── Repo-specific config (edit per-repo during M3–M9 rollout) ───────────────
-PY_SIBLINGS=(pdomain-book-tools)
+PY_SIBLINGS=(pdomain-book-tools pdomain-ops)
 NPM_SIBLINGS=()        # no npm deps
 PD_INDEX_PIP="https://pdomain.github.io/pdomain-index-pip"
 PD_INDEX_NPM="https://pdomain.github.io/pdomain-index-npm"
