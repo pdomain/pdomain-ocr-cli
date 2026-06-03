@@ -147,8 +147,8 @@ annotated `vX.Y.Z` tag, pushes `main` and the tag, then dispatches
 `pdomain-ops` and `pdomain-book-tools` resolve from the self-hosted pdomain pip index
 for release builds. Do not commit path-based sibling sources for release.
 
-When the release workflow passes, it builds, attests, and publishes the wheel as
-a GitHub Release asset. `install.sh` / `install.ps1` resolve the latest
+When the release workflow passes, it builds and publishes release artifacts as
+GitHub Release assets. `install.sh` / `install.ps1` resolve the latest
 non-prerelease GitHub Release and download that wheel, so end users get the new
 release on their next `curl | sh`.
 
