@@ -24,7 +24,7 @@ reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 | `make build AI=1` | sdist + wheel into `dist/` |
 | `make ci AI=1` | setup → pre-commit → test → build |
 | `make upgrade-pdomain-book-tools` | bump pin to latest GitHub tag |
-| `make release-{patch,minor,major}` | tag locally; `git push --tags` triggers release workflow |
+| `make release-{patch,minor,major}` | run release preflight, create and push the tag, then dispatch `release.yml` with `gh workflow run` |
 | `make refresh-version` | re-derive `pdomain-ocr --version` after tag changes (hatch-vcs) |
 
 `AI=1` captures verbose output to `.ci-ai.log`; stdout shows `✅` on pass or
