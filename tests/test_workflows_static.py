@@ -11,10 +11,14 @@ def _workflow_uses_refs(path: Path) -> list[str]:
     return re.findall(r"uses:\s*([^\s]+)", path.read_text(encoding="utf-8"))
 
 
-def test_release_runs_ci_before_build() -> None:
-    text = (REPO / ".github/workflows/release.yml").read_text(encoding="utf-8")
-    assert "make ci-slow" in text
-    assert text.index("make ci-slow") < text.index("uv build")
+def test_release_workflow_is_publish_only_after_local_preflight() -> None:
+    release = (REPO / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    release_driver = (REPO / "scripts/release-common.sh").read_text(encoding="utf-8")
+    assert "release-ci:" not in release
+    assert "needs: [release-ci]" not in release
+    assert "run: make ci-slow" not in release
+    assert "RELEASE_PREFLIGHT=${RELEASE_PREFLIGHT:-make ci-slow}" in release_driver
+    assert release.index("make check-release-deps") < release.index("uv build")
 
 
 def test_release_uses_env_for_ref_name_in_shell() -> None:
