@@ -35,6 +35,12 @@ def test_ci_declares_supported_python_matrix() -> None:
     assert 'make ci PYTHON_VERSIONS="${{ matrix.python-version }}"' in text
 
 
+def test_ci_runs_on_pull_requests_only() -> None:
+    text = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert "  pull_request:" in text
+    assert "  push:" not in text
+
+
 def test_makefile_wheel_smoke_covers_supported_python_versions() -> None:
     text = (REPO / "Makefile").read_text(encoding="utf-8")
     assert "PYTHON_VERSIONS ?= 3.11 3.12 3.13" in text
