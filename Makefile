@@ -18,7 +18,8 @@ else
 
 .PHONY: setup refresh-version install uninstall reset remove-venv upgrade-deps lint format format-check pre-commit-check typecheck test test-slow test-integration test-layout-integration installer-test coverage coverage-slow build wheel-smoke wheel-smoke-one check-release-deps clean ci ci-slow upgrade-pdomain-book-tools update-pdomain-deps release-patch release-minor release-major _do-release help \
         local-setup local-dev local-check local-upgrade-deps local-install local-uninstall local-run local-test local-test-slow \
-        dev-local install-local uninstall-local check-local-editable upgrade-deps-local run-local
+        dev-local install-local uninstall-local check-local-editable upgrade-deps-local run-local \
+        ci-against-main
 
 # Coverage thresholds. The fast suite floor is duplicated in pyproject.toml's
 # [tool.coverage.report] fail_under so any direct `coverage report` run also
@@ -205,6 +206,9 @@ ci-slow: ## Run full CI pipeline including slow integration tests; enforces COV_
 	@$(MAKE) --no-print-directory build
 	@$(MAKE) --no-print-directory wheel-smoke
 	@echo "✅ Full CI pipeline complete!"
+
+ci-against-main: ## Validate against pd-* siblings' latest main, then revert (transient)
+	@./scripts/ci-against-main.sh
 
 clean: ## Clean up cache and build artifacts
 	@echo "🧹 Cleaning Python cache files..."
