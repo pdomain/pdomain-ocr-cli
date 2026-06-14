@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 from pathlib import Path
 
 import pytest
@@ -107,3 +108,29 @@ def test_update_uv_version_refs_updates_quoted_setup_uv_with_inline_comment(tmp_
 
     assert update_github_actions.update_uv_version_refs(workflow, version="0.11.16")
     assert 'version: "0.11.16"' in workflow.read_text(encoding="utf-8")
+
+
+# --- TDD: update_github_actions must NOT touch pyproject.toml ---
+
+
+def test_update_pyproject_uv_version_does_not_exist() -> None:
+    """The update_pyproject_uv_version function must be removed entirely.
+
+    It caused the dep-refresh self-poison: a bare version string written to
+    required-version is read by uv as an exact == pin, so the running uv
+    (already at an older version) fails the constraint it just wrote.
+    """
+    assert not hasattr(update_github_actions, "update_pyproject_uv_version"), (
+        "update_pyproject_uv_version must be removed from update_github_actions.py; "
+        "the function causes dep-refresh to self-poison by writing an exact uv pin "
+        "that the currently-running uv immediately violates"
+    )
+
+
+def test_update_github_actions_has_no_pyproject_param() -> None:
+    """update_github_actions must not accept a pyproject parameter."""
+    sig = inspect.signature(update_github_actions.update_github_actions)
+    assert "pyproject" not in sig.parameters, (
+        "update_github_actions must not accept a pyproject parameter; "
+        "pyproject.toml required-version must not be touched by dep-refresh"
+    )
