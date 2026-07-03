@@ -1390,7 +1390,7 @@ wheels = [
 
 [[package]]
 name = "pdomain-book-tools"
-version = "0.14.2"
+version = "0.16.0"
 source = { registry = "https://pdomain.github.io/pdomain-index-pip/simple/" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -1414,9 +1414,9 @@ dependencies = [
     { name = "torchvision" },
     { name = "transformers" },
 ]
-sdist = { url = "https://github.com/pdomain/pdomain-book-tools/releases/download/v0.14.2/pdomain_book_tools-0.14.2.tar.gz" }
+sdist = { url = "https://github.com/pdomain/pdomain-book-tools/releases/download/v0.16.0/pdomain_book_tools-0.16.0.tar.gz", hash = "sha256:fc4855951a5296ce6ed3ee3a66cc13ee9f055faa73cd14ac13615cb8620dc848" }
 wheels = [
-    { url = "https://github.com/pdomain/pdomain-book-tools/releases/download/v0.14.2/pdomain_book_tools-0.14.2-py3-none-any.whl" },
+    { url = "https://github.com/pdomain/pdomain-book-tools/releases/download/v0.16.0/pdomain_book_tools-0.16.0-py3-none-any.whl", hash = "sha256:7f62baa4d9f6c2c422eaa9b098e7f8219658ef2fe606c2edcd529bf1aacb6583" },
 ]
 
 [package.optional-dependencies]
@@ -1495,7 +1495,7 @@ requires-dist = [
     { name = "filelock", specifier = ">=3.13" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "modal", marker = "extra == 'modal'", specifier = ">=0.66" },
-    { name = "pdomain-book-tools", specifier = ">=0.14.1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pdomain-book-tools", specifier = ">=0.15.1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
     { name = "platformdirs", specifier = ">=4.2" },
     { name = "pydantic", specifier = ">=2.5" },
     { name = "tomli", specifier = ">=2.0" },
