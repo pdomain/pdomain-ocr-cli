@@ -19,7 +19,7 @@ else
 .PHONY: setup refresh-version install uninstall reset remove-venv upgrade-deps lint format format-check pre-commit-check typecheck test test-slow test-integration test-layout-integration installer-test coverage coverage-slow build wheel-smoke wheel-smoke-one check-release-deps clean ci ci-slow upgrade-pdomain-book-tools update-pdomain-deps release-patch release-minor release-major _do-release help \
         local-setup local-dev local-check local-upgrade-deps local-install local-uninstall local-run local-test local-test-slow \
         dev-local install-local uninstall-local check-local-editable upgrade-deps-local run-local \
-        ci-against-main
+        ci-against-master
 
 # Coverage thresholds. The fast suite floor is duplicated in pyproject.toml's
 # [tool.coverage.report] fail_under so any direct `coverage report` run also
@@ -207,8 +207,8 @@ ci-slow: ## Run full CI pipeline including slow integration tests; enforces COV_
 	@$(MAKE) --no-print-directory wheel-smoke
 	@echo "✅ Full CI pipeline complete!"
 
-ci-against-main: ## Validate against pd-* siblings' latest main, then revert (transient)
-	@./scripts/ci-against-main.sh
+ci-against-master: ## Validate against pd-* siblings' latest master, then revert (transient)
+	@./scripts/ci-against-master.sh
 
 clean: ## Clean up cache and build artifacts
 	@echo "🧹 Cleaning Python cache files..."
@@ -233,7 +233,7 @@ release-major: ## Release: bump major, run ci-slow, tag, push (fires GitHub Rele
 	@$(MAKE) --no-print-directory _do-release BUMP=major
 
 # scripts/do-release.sh handles repo-state guards, runs the ci-slow pre-flight,
-# creates the three-component tag, and pushes main + tag (which fires the
+# creates the three-component tag, and pushes master + tag (which fires the
 # GitHub Release workflow at .github/workflows/release.yml).
 # Pass FORCE=1 to skip the repo-state guards (pre-flight still runs).
 # Pass SKIP_PUSH=1 to create the tag locally without pushing.
