@@ -16,7 +16,7 @@ except PackageNotFoundError:  # pragma: no cover - only fires if package metadat
 VERSION: str = _detected_version
 
 _GITHUB_REPO = "pdomain/pdomain-ocr-cli"
-_INSTALL_URL = f"https://raw.githubusercontent.com/{_GITHUB_REPO}/main/install.sh"
+_INSTALL_URL = f"https://raw.githubusercontent.com/{_GITHUB_REPO}/master/install.sh"
 _STABLE_TAG_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 _RELEASE_PREFIX_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)")
 

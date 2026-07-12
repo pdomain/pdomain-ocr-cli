@@ -19,7 +19,7 @@ set -e
 # --extra-index-url to uv — no manual git-pin fetch needed.
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.sh | sh
+#   curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh | sh
 
 REPO="pdomain/pdomain-ocr-cli"
 PYTHON_VERSION="${PD_OCR_INSTALL_PYTHON:-3.13}"

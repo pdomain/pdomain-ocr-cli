@@ -1,15 +1,15 @@
 # Install pdomain-ocr as a standalone tool using uv.
 #
 # Usage (run in PowerShell):
-#   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 #
 # Manual CUDA override (if auto-detection fails):
 #   $env:CUDA_VERSION = "12.4"   # replace with your version
-#   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 #
 # Python override:
 #   $env:PD_OCR_INSTALL_PYTHON = "3.12"
-#   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
@@ -101,7 +101,7 @@ if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
         Write-Host ""
         Write-Host "         To install the GPU build instead, re-run with a manual override:"
         Write-Host "           `$env:CUDA_VERSION = `"12.4`"   # replace with your CUDA version"
-        Write-Host "           irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.ps1 | iex"
+        Write-Host "           irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex"
         Write-Host ""
         Write-Host "         Find your CUDA version by running:  nvidia-smi"
         Write-Host "         and looking for the 'CUDA Version' field in the output."

@@ -81,7 +81,7 @@ If you also want pdomain-book-tools' own venv (to run its tests):
 | `upgrade-deps` | Upgrade the lockfile and sync the venv. **Refuses when a dev-local venv is detected** — use `upgrade-deps-local` instead (or set `PDOMAIN_DEV_LOCAL=0` to intentionally clobber). |
 | `upgrade-deps-local` | Upgrade the lockfile, sync to canonical baseline, then restore the dev-local editable install — all in one shot. |
 | `upgrade-pdomain-book-tools` | Bump the `pdomain-book-tools` pin to the latest GitHub tag. |
-| `release-{patch,minor,major}` | Run release preflight, tag, push `main` and the tag, then dispatch the release workflow. |
+| `release-{patch,minor,major}` | Run release preflight, tag, push `master` and the tag, then dispatch the release workflow. |
 
 ### Local-dev (require `../pdomain-book-tools` sibling)
 
@@ -114,7 +114,7 @@ To revert to the published version:
 
 ```sh
 make uninstall-local
-curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh | sh
 ```
 
 ## Project layout
@@ -141,7 +141,7 @@ point is `pdomain_ocr_cli.ocr_to_txt:main` (wired via `[project.scripts]`).
 
 Releases are driven by `make release-patch`, `make release-minor`, or `make release-major`.
 The release script requires clean, up-to-date `main`, runs `make ci-slow`, creates an
-annotated `vX.Y.Z` tag, pushes `main` and the tag, then dispatches
+annotated `vX.Y.Z` tag, pushes `master` and the tag, then dispatches
 `.github/workflows/release.yml` with the tag input.
 
 `pdomain-ops` and `pdomain-book-tools` resolve from the self-hosted pdomain pip index

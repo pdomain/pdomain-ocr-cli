@@ -61,13 +61,13 @@ when a GPU is (or isn't) worth it.
 **Linux / macOS:**
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh | sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 ```
 
 Both scripts install the wheel from the latest GitHub Release, pass the
@@ -120,12 +120,12 @@ opts into the `pdomain-book-tools[gpu]` extra (CuPy + opencv-cuda).
 
 ```sh
 # Linux / macOS
-curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh | sh
 ```
 
 ```powershell
 # Windows
-irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 ```
 
 CUDA 11.x or 12.0–12.3 still gets the GPU PyTorch wheels, but the
