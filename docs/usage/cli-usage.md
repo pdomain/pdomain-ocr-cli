@@ -59,7 +59,7 @@ pdomain-ocr --em-dash-to-double-hyphen page.png   # also: -ed
 (`‘-‟`). Prime symbols (`′`, `″`) are intentionally left
 alone — they're meaningful in measurements and citations.
 
-### Planned: output normalization (post-OCR)
+### Future proposal: output normalization (not implemented)
 
 Not implemented yet — tracked here so users and contributors know it's
 on the roadmap.

@@ -28,7 +28,7 @@ def test_main_save_json_failure_cleans_up_tmp_and_increments_errors(
     img, out = single_image
 
     # Patch _SinglePageDoc so its to_json_file partially writes then raises.
-    _orig_single_page_doc = ocr_to_txt._SinglePageDoc  # type: ignore[attr-defined]
+    _orig_single_page_doc = ocr_to_txt._SinglePageDoc  # pyright: ignore[reportPrivateUsage]  # test replaces the private atomic-write seam
 
     class _BoomSinglePageDoc(_orig_single_page_doc):
         def to_json_file(self, file_path):
@@ -76,7 +76,7 @@ def test_main_save_json_failure_with_no_tmp_swallows_unlink_error(
     img, out = single_image
 
     # Patch _SinglePageDoc so to_json_file raises without touching disk.
-    _orig_single_page_doc = ocr_to_txt._SinglePageDoc  # type: ignore[attr-defined]
+    _orig_single_page_doc = ocr_to_txt._SinglePageDoc  # pyright: ignore[reportPrivateUsage]  # test replaces the private atomic-write seam
 
     class _ExplodeSinglePageDoc(_orig_single_page_doc):
         def to_json_file(self, file_path):

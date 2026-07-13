@@ -171,8 +171,8 @@ def mock_heavy_deps(monkeypatch, tmp_path):
             ocr_to_txt, "_create_runtime_session", lambda det, reco: runtime_session
         )
 
-        class _DocsProxy(list):
-            def __getitem__(self, idx):  # type: ignore[override]
+        class _DocsProxy:
+            def __getitem__(self, idx):
                 return SimpleNamespace(pages=[captured_pages[idx]])
 
             def __len__(self):

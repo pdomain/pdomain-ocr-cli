@@ -17,16 +17,16 @@ Kind: context
 
 ## Active bets
 
-- Keep the standing CLI roadmap current even when it has no open items.
+- Keep the standing CLI roadmap current, including explicit empty states when
+  it has no open items.
+- Add output normalization only after `pdomain-book-tools` provides the shared
+  normalization logic and glyph map.
 
 ## Deferred work
 
-- Promote the durable test-suite design from
-  [`docs/plans/2026-05-28-test-suite-reorganization.md`](../plans/2026-05-28-test-suite-reorganization.md)
-  and its implemented spec into architecture, then retire both.
-- Consolidate durable review-remediation behavior from
-  [`docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md`](../plans/2026-05-29-pdomain-ocr-cli-review-remediation.md),
-  then retire the plan.
+- Further split the large happy-path and error-path test modules when doing so
+  improves readability without duplicating fixtures or weakening behavior
+  oracles.
 - Remove the retired security review, remediation validation, and superseded
   local-upgrade runbook after their remaining provenance is captured in durable
   architecture or decisions.

@@ -163,3 +163,24 @@ it.
 - **Coverage churn during deletes.** Mitigated by the phase ordering: behavior
   tests added (Phase 3) before/with deletions (Phase 4) so the gate never goes
   red mid-stream.
+
+## Adversarial Review
+
+- **Stage:** Post-implementation review, 2026-05-29.
+- **Source:** The repository-wide deep review recorded in
+  `docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md`, after merge
+  commit `24c889f`, plus a 2026-07-13 implementation-drift review.
+- **Accepted findings:** Fast recomposition tests used `FakePage` and did not
+  provide real OCR coverage, while PowerShell tests exercised the extracted
+  helper instead of the top-level installer contract. Later remediation added
+  model-backed OCR coverage and direct installer-contract tests.
+- **Implementation deviations:** The work expanded beyond the stated test-only
+  scope with a production corrupt-image batch fix in `ocr_to_txt.py`.
+  PowerShell provisioning moved into `scripts/ensure-pwsh.sh` through
+  `make setup`, rather than separate CI and devcontainer changes. The original
+  large test file was split, but two successor files remained large, and the
+  slow integration harness retained its own invocation helper.
+- **Residual risks:** Real OCR and default-layout coverage still depend on slow
+  external model assets. Fast flag-to-output tests validate wiring through
+  fakes, not production reorganization. PowerShell remains a required test
+  dependency, and the file-size readability goal was only partly achieved.

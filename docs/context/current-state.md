@@ -17,15 +17,17 @@ Kind: context
 
 ## What matters now
 
-The CLI has no open roadmap items. Its current behavior is documented in
+The open roadmap item is output normalization, pending shared upstream logic.
+Current behavior is documented in
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
+[`docs/architecture/cli-orchestration.md`](../architecture/cli-orchestration.md),
+[`docs/architecture/test-suite.md`](../architecture/test-suite.md),
 [`docs/usage/cli-usage.md`](../usage/cli-usage.md), and `DEVELOPMENT.md`.
 
 ## In-flight work
 
-The `docs/docgraph-migration` branch is migrating legacy documentation into
-docgraph governance. Two implemented plans and one implemented spec still need
-promotion and formal retirement.
+The `docs/docgraph-conformance` branch is closing docgraph conformance debt and
+retiring implemented plans after promotion into architecture.
 
 ## Test state
 
@@ -34,6 +36,4 @@ PowerShell prerequisite through `scripts/ensure-pwsh.sh`.
 
 ## Risks
 
-The predictor batch-size spec remains parked without an owner decision. The
-type-suppression decision record also needs reconciliation with
-[`docs/conventions/lint-deviations.md`](../conventions/lint-deviations.md).
+The predictor batch-size spec remains parked without an owner decision.

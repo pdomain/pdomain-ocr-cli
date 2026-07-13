@@ -11,6 +11,31 @@ Disposition: Standing roadmap for CLI-owned work.
 
 # Roadmap
 
+## Goal
+
+Maintain the standing list of open priorities owned by `pdomain-ocr-cli`.
+Track CLI flags, defaults, help, documentation, orchestration, and caller-side
+glue here while routing reusable primitives upstream.
+
+## Architecture
+
+`pdomain-ocr` wraps `pdomain-book-tools` OCR and layout primitives and uses
+`pdomain-ops` for operational support. Shared processing logic belongs
+upstream; this repository owns the command and its integration behavior.
+
+## Tech Stack
+
+The CLI supports Python 3.11 through 3.13 and uses Hatchling and hatch-vcs. It
+depends on `pdomain-book-tools`, `pdomain-ops`, and `huggingface_hub`, with
+development and verification through `uv`, pytest, Ruff, and basedpyright.
+
+## Global Constraints
+
+Never silently drop OCR words. Output options may change roles or suppress
+placeholder blocks, but caption and OCR text must survive unless explicitly
+experimental drop behavior is enabled. Keep reusable primitives upstream, and
+run `make ci AI=1` before committing.
+
 Forward-looking work in `pdomain-ocr-cli` — items that belong in the CLI
 itself rather than in the upstream `pdomain-book-tools` library. Where a
 CLI feature is a thin pass-through to a library knob, the library
@@ -24,6 +49,13 @@ the bottom if useful).
 
 > Shipped items leave the live plan tree after durable behavior is captured in
 > architecture, decisions, usage, or process docs.
+
+## Open — output normalization
+
+- Add `--normalize-output {none|ascii|...}`, defaulting to `none`, after
+  `pdomain-book-tools` provides shared normalization logic and a glyph map. CLI
+  work covers the pass-through flag and applying normalization between
+  reorganization and text output.
 
 ## Open — developer workflow
 

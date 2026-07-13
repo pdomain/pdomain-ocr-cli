@@ -61,14 +61,14 @@ def collect_images(
             if is_image_file(path):
                 add(path)
             else:
-                print(f"WARNING: skipping non-image file: {path}", file=sys.stderr)  # noqa: T201
+                print(f"WARNING: skipping non-image file: {path}", file=sys.stderr)  # noqa: T201  # CLI output
         elif path.is_dir():
             pattern = "**/*" if recursive else "*"
             for child in sorted(path.glob(pattern)):
                 if child.is_file() and is_image_file(child):
                     add(child)
         else:
-            print(f"WARNING: skipping missing path: {path}", file=sys.stderr)  # noqa: T201
+            print(f"WARNING: skipping missing path: {path}", file=sys.stderr)  # noqa: T201  # CLI output
     return images
 
 
@@ -81,7 +81,7 @@ def compute_mirror_root(inputs: list[str], output_dir: Path | None) -> Path | No
     try:
         return Path(os.path.commonpath(input_dirs))
     except ValueError:
-        print(  # noqa: T201
+        print(  # noqa: T201  # CLI output
             "WARNING: input directories have no common ancestor; writing outputs flat under --output-dir instead of mirroring.",
             file=sys.stderr,
         )

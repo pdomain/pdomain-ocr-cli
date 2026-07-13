@@ -882,7 +882,7 @@ def main() -> None:
     except SystemExit:
         raise
     except Exception as exc:  # noqa: BLE001  # normalize all resolver failures to CLI stderr
-        print(f"ERROR resolving OCR model files: {exc}", file=sys.stderr)  # noqa: T201
+        print(f"ERROR resolving OCR model files: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
         sys.exit(1)
 
     layout_repo: str | None = None
@@ -896,7 +896,7 @@ def main() -> None:
         except SystemExit:
             raise
         except Exception as exc:  # noqa: BLE001  # normalize all resolver failures to CLI stderr
-            print(f"ERROR resolving layout model files: {exc}", file=sys.stderr)  # noqa: T201
+            print(f"ERROR resolving layout model files: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
             sys.exit(1)
 
     print("Importing deep-learning runtime (PyTorch + DocTR)...", flush=True)  # noqa: T201  # CLI output

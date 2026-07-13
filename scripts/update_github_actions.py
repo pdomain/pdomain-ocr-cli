@@ -45,7 +45,7 @@ def resolve_executable(name: str) -> str:
 
 def run_gh(command: list[str]) -> subprocess.CompletedProcess[str]:
     resolved = [resolve_executable(command[0]), *command[1:]]
-    return subprocess.run(  # noqa: S603
+    return subprocess.run(  # noqa: S603  # executable is resolved to an absolute path; argument list avoids shell parsing
         resolved, cwd=ROOT, check=True, capture_output=True, text=True
     )
 

@@ -8,9 +8,32 @@ Kind: decision
 
 # Type Suppressions
 
-All basedpyright warnings are resolved without suppressions (baseline.json is
-empty). The three remaining `pyright: ignore` comments and the one structural
-`noqa` are listed here so the rationale is auditable in one place.
+The basedpyright baseline is empty. This decision records the rationale for the
+three inline `pyright: ignore` comments and one notable structural `noqa`; the
+complete current inventory belongs in `docs/conventions/lint-deviations.md`.
+
+## Context
+
+The basedpyright baseline is empty, but intentional inline type and lint
+suppressions remain. `CONVENTIONS.md` requires every suppression to carry an
+inline rationale and appear in the consolidated catalogue at
+`docs/conventions/lint-deviations.md`.
+
+## Decision
+
+Fix the underlying issue when possible. Keep a suppression only when the
+deviation is correct, explain why it is safe inline, and catalogue it in
+`docs/conventions/lint-deviations.md`.
+
+## Consequences
+
+Each suppression remains visible at its source and auditable in one central
+catalogue. New suppressions require both an inline rationale and a catalogue
+entry.
+
+## Supersedes / Superseded-by
+
+No supersession relationship is recorded.
 
 ## `pyright: ignore` suppressions
 
@@ -29,7 +52,5 @@ one that warrants extra explanation:
 |------|------|------|-----------|
 | `pdomain_ocr_cli/ocr_to_txt.py` | 991 | `TRY301` | `raise ValueError(...)` is inside a `try` block. TRY301 suggests abstracting the raise to an inner function, but here it is intentional: the outer `except Exception` (line 994) unifies all per-image decode failures — both the explicit ValueError and any unexpected cv2 error — through a single error-reporting path. Abstracting would require duplicating that handler. |
 
-Other inline `noqa` suppressions (`T201` for CLI print statements, `BLE001`
-for broad-except decode handlers, `S310`/`S110`/`S607` for subprocess and
-URL-open patterns) are self-explanatory from their inline comments and are not
-catalogued here.
+Other inline and configured suppressions are outside this decision's historical
+inventory. `docs/conventions/lint-deviations.md` is the authoritative catalogue.

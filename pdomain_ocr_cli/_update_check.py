@@ -113,7 +113,7 @@ def check_for_update() -> None:
                 "User-Agent": f"pdomain-ocr-cli/{VERSION}",
             },
         )
-        response = cast("_UrlopenResponse", urllib.request.urlopen(req, timeout=3))  # noqa: S310
+        response = cast("_UrlopenResponse", urllib.request.urlopen(req, timeout=3))  # noqa: S310  # https:// URL only; no file:// risk
         with response as resp:
             payload = cast("object", json.loads(resp.read()))
         # GitHub error responses (rate-limit, auth required, repo unavailable)
