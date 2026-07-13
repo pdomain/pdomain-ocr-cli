@@ -49,3 +49,77 @@ Kind: context
 - **Removal commit:** This docgraph migration commit.
 - **Rationale kept:** Commit `4c175a8` and the current local-dev workflow preserve the durable behavior.
 - **Remaining work:** Remove the retired `docs/runbooks/dev-local-upgrade-flow.md` after preserving any unique provenance.
+
+### 2026-07-13 — Retired the 2026-05-22 code and security review
+
+- **Old path:** `docs/research/2026-05-22-pd-ocr-cli-code-security-review.md`
+- **Outcome:** Many of its 37 findings drove current orchestration, artifact,
+  model-warning, installer, workflow, and test architecture.
+- **Superseded by:** `docs/architecture/cli-orchestration.md`,
+  `docs/architecture/layout-aware-ocr.md`, `docs/architecture/test-suite.md`,
+  current usage documentation, code, tests, and workflows.
+- **Implementation direction:** Release verification moved to the pre-tag
+  local gate; model trust is warned rather than eliminated; image resource
+  limits and installer-side artifact verification remain deferred.
+- **Evidence:** Commits `87f066a`, `bcf8807`, `a0c2054`, `0287e2c`, `4733780`,
+  `1c3993c`, and `9e8b089`.
+- **Remaining work:** Safe checkpoint loading, untrusted-image resource limits,
+  and installer-side artifact verification remain in current intent.
+
+### 2026-07-13 — Removed historical validation and local-upgrade runbook
+
+- **Context:** Both files were retired but remained in live retrieval with
+  point-in-time or superseded instructions.
+- **Decision:** Delete the 2026-05-29 validation snapshot and the original
+  dev-local upgrade runbook after preserving current behavior and provenance.
+- **Rationale:** Current architecture, `DEVELOPMENT.md`, code, tests, and commit
+  history are more accurate than the historical documents.
+- **Evidence:** Validation commit `9e8b089`; local workflow commits `b84e0fe`
+  and `4c175a8`; `docs/architecture/cli-orchestration.md`; current `Makefile`
+  and `scripts/local-*.sh`.
+- **Remaining work:** none
+
+### 2026-07-13 — Retired: test-suite reorganization plan
+
+- **Old path:** `docs/plans/2026-05-28-test-suite-reorganization.md`
+- **Outcome:** implemented
+- **Superseded by:** `docs/architecture/test-suite.md`
+- **Removal commit:** This docgraph conformance migration commit.
+- **Rationale kept:** Current suite structure, deviations, and evidence live in
+  the replacement architecture.
+- **Remaining work:** Further split the large happy-path and error-path tests
+  without weakening their behavior oracles.
+
+### 2026-07-13 — Retired: test-suite reorganization spec
+
+- **Old path:** `docs/specs/2026-05-28-test-suite-reorganization-design.md`
+- **Outcome:** implemented
+- **Superseded by:** `docs/architecture/test-suite.md`
+- **Removal commit:** This docgraph conformance migration commit.
+- **Rationale kept:** The replacement records the post-implementation review,
+  five implementation deviations, current behavior, and evidence.
+- **Remaining work:** Further split the large happy-path and error-path tests.
+
+### 2026-07-13 — Retired: CLI review-remediation plan
+
+- **Old path:** `docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md`
+- **Outcome:** implemented
+- **Superseded by:** `docs/architecture/cli-orchestration.md`
+- **Removal commit:** This docgraph conformance migration commit.
+- **Rationale kept:** Current seam ownership, invariants, release direction,
+  and evidence live in the replacement architecture.
+- **Remaining work:** none
+
+### 2026-07-13 — Accepted bounded PATH and URL probes
+
+- **Context:** The retired security review flagged PATH-resolved
+  `nvidia-smi` and generic `urlopen` use.
+- **Decision:** Keep both probes with narrow boundaries and inline lint
+  rationale.
+- **Rationale:** NVIDIA tools are intentionally discovered through `PATH`; the
+  update check uses a hardcoded HTTPS endpoint and accepts no user-controlled
+  scheme.
+- **Evidence:** `pdomain_ocr_cli/_startup_notices.py`,
+  `pdomain_ocr_cli/_update_check.py`, and
+  `docs/conventions/lint-deviations.md`.
+- **Remaining work:** none

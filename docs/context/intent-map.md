@@ -24,12 +24,19 @@ Kind: context
 
 ## Deferred work
 
+- Constrain executable model checkpoints with immutable defaults and a safer
+  format or loading mode when upstream compatibility permits.
+- Add untrusted-image resource controls, including file-size and decoded-pixel
+  limits, and document the supported processing-time boundary.
+- Verify installer-downloaded release wheels with published checksums or
+  GitHub/Sigstore attestations.
+- Replace mutable pre-commit revision tags with immutable commit pins where the
+  update workflow can keep those pins maintainable.
+- Evaluate upper bounds or compatibility caps for build and runtime
+  dependencies, including `hatchling`, `hatch-vcs`, and pdomain packages.
 - Further split the large happy-path and error-path test modules when doing so
   improves readability without duplicating fixtures or weakening behavior
   oracles.
-- Remove the retired security review, remediation validation, and superseded
-  local-upgrade runbook after their remaining provenance is captured in durable
-  architecture or decisions.
 
 ## Rejected directions
 
@@ -54,8 +61,10 @@ Kind: context
 
 - **Still active:** layout-aware OCR architecture, writing style, roadmap, and
   type-suppression rationale.
-- **Implemented:** both live implementation plans and the test-suite design spec.
-- **Retired:** all three former archive plans, the two completed research
-  records, and the superseded local-upgrade runbook. The archive plans were
-  deleted; the research and runbook files remain pending provenance capture.
+- **Implemented and retired:** the two implementation plans and test-suite
+  design spec were promoted into architecture and deleted.
+- **Retired and removed:** all three former archive plans, both completed
+  research records, and the superseded local-upgrade runbook. Durable behavior,
+  provenance, and residual intent now live in architecture, decisions, and this
+  intent map.
 - **Needs owner review:** the parked predictor batch-size spec.

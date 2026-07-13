@@ -74,3 +74,17 @@ must land first, so any work here starts in `pdomain-book-tools`.
 
 Brainstorm the idea (is it worth it? where does it live?) before writing a plan
 or filing issues. If rejected, delete this stub and the patch.
+
+## Adversarial Review
+
+- **Stage:** Design-stub review, 2026-07-13.
+- **Source:** Docgraph migration red-team against current predictor calls,
+  tests, roadmap, and authored context.
+- **Accepted findings:** No detector or recognizer batch-size control has
+  shipped, and the proposal still depends on upstream predictor ownership. The
+  document remains a parked draft rather than implying that `--batch-pages`
+  provides equivalent model-level batching.
+- **Residual risks:** Device-specific defaults could cause GPU memory failures,
+  the configuration boundary is undecided, and no benchmark defines the
+  throughput or memory target. An owner must still choose whether to pursue or
+  abandon the proposal.

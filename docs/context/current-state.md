@@ -23,6 +23,10 @@ Current behavior is documented in
 [`docs/architecture/cli-orchestration.md`](../architecture/cli-orchestration.md),
 [`docs/architecture/test-suite.md`](../architecture/test-suite.md),
 [`docs/usage/cli-usage.md`](../usage/cli-usage.md), and `DEVELOPMENT.md`.
+Suppression rationale is recorded in
+[`docs/decisions/type-suppressions.md`](../decisions/type-suppressions.md), with
+the current inventory in
+[`docs/conventions/lint-deviations.md`](../conventions/lint-deviations.md).
 
 ## In-flight work
 

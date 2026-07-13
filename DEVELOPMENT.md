@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-03
+Last verified: 2026-07-13
+Kind: process
+---
+
 # Developing pdomain-ocr-cli
 
 This document covers the developer workflows for `pdomain-ocr-cli`. End-user
@@ -30,23 +38,22 @@ This syncs the dev deps from `pyproject.toml`, including `pdomain-book-tools`
 at the pinned git tag, and installs pre-commit hooks. You can now run
 `uv run pdomain-ocr ...` without installing globally.
 
-### B. Editing pdomain-ocr-cli **and** pdomain-book-tools side-by-side
+### B. Editing pdomain repositories side-by-side
 
 ```sh
 git clone https://github.com/pdomain/pdomain-ocr-cli.git
 cd pdomain-ocr-cli
 make local-setup
+make local-dev
 ```
 
-`local-setup` does:
+`local-setup` clones missing `pdomain-book-tools` and `pdomain-ops` sibling
+repositories. `local-dev` then:
 
-1. Clones `pdomain-book-tools` to `../pdomain-book-tools` (skipped if it already exists).
-2. Runs `make dev-local`, which:
-   - `uv sync --group dev` (installs deps from `pyproject.toml`)
-   - `uv pip install -e ../pdomain-book-tools` (replaces the pinned tag with
-     the local editable checkout)
-   - Verifies via `make check-local-editable` that imports resolve to
-     the sibling, not the cached tag.
+1. Installs both siblings editably into the canonical checkout's existing
+   environment without syncing dependencies.
+2. Writes the shared `.venv/.pdomain-local-mode` marker.
+3. Prompts you to verify sibling resolution with `make local-check`.
 
 If you also want pdomain-book-tools' own venv (to run its tests):
 
@@ -78,12 +85,12 @@ If you also want pdomain-book-tools' own venv (to run its tests):
 | `ci-slow` | Full release-grade CI including slow integration coverage, build, and wheel smoke. |
 | `clean` | Remove caches and `dist/`. |
 | `reset` | `clean` + remove `.venv` + `setup`. |
-| `upgrade-deps` | Upgrade the lockfile and sync the venv. **Refuses when a dev-local venv is detected** — use `upgrade-deps-local` instead (or set `PDOMAIN_DEV_LOCAL=0` to intentionally clobber). |
-| `upgrade-deps-local` | Upgrade the lockfile, sync to canonical baseline, then restore the dev-local editable install — all in one shot. |
+| `upgrade-deps` | Upgrade the lockfile and sync the venv. Refuses in local-dev mode; use `local-upgrade-deps` instead. |
+| `local-upgrade-deps` | Upgrade dependencies, sync to the canonical baseline, then restore editable siblings. |
 | `upgrade-pdomain-book-tools` | Bump the `pdomain-book-tools` pin to the latest GitHub tag. |
 | `release-{patch,minor,major}` | Run release preflight, tag, push `master` and the tag, then dispatch the release workflow. |
 
-### Local-dev (require `../pdomain-book-tools` sibling)
+### Local-dev
 
 These targets are guarded — if the sibling is missing they print a clear
 message and exit 1. None of them mutate `pyproject.toml`; they swap the
@@ -92,28 +99,30 @@ install).
 
 | Target | Purpose |
 | --- | --- |
-| `local-setup` | Clone the sibling if missing, then run `dev-local`. The one-stop entrypoint. |
-| `dev-local` | Install `pdomain-book-tools` from `../pdomain-book-tools` as editable into this venv. |
-| `install-local` | Install `pdomain-ocr` as a `uv tool` with **both** repos editable — `pdomain-ocr` on your PATH tracks live edits in either tree. |
-| `uninstall-local` | Remove the `uv tool` install. |
-| `check-local-editable` | Verify `pdomain_book_tools` imports resolve to `../pdomain-book-tools` (not the cached tag). |
-| `run-local` | Run `pdomain-ocr` against the editable workspace. Pass args via `ARGS="…"`. |
-| `python-local` | Run `python` against the editable workspace. Pass args via `ARGS="…"`. |
+| `local-setup` | Clone any missing sibling pd-* repositories. |
+| `local-dev` | Switch to local-dev mode with editable siblings and the shared marker. |
+| `local-check` | Print local-dev mode and per-sibling resolution. |
+| `local-upgrade-deps` | Upgrade dependencies, then restore editable siblings. |
+| `local-install` | Install `pdomain-ocr` as a `uv tool` with editable `pdomain-book-tools`; direct `pdomain-ops` resolves from the registry. |
+| `local-uninstall` | Remove the `uv tool` install. |
+| `local-run` | Run `pdomain-ocr` against the editable workspace. Pass args via `ARGS="…"`. |
+| `local-test` | Run the fast suite against editable siblings. |
+| `local-test-slow` | Run the full suite, including slow integration tests, against editable siblings. |
 
 Examples:
 
 ```sh
-make run-local ARGS='page.png --layout-debug'
-make python-local ARGS='-c "import pdomain_book_tools; print(pdomain_book_tools.__file__)"'
+make local-run ARGS='page.png --layout-debug'
+make local-check
 ```
 
-After `install-local`, just run `pdomain-ocr page.png` — the global tool
-points at both editable trees.
+After `local-install`, run `pdomain-ocr page.png`; the tool tracks this checkout
+and editable `pdomain-book-tools`, while direct `pdomain-ops` uses the registry.
 
 To revert to the published version:
 
 ```sh
-make uninstall-local
+make local-uninstall
 curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh | sh
 ```
 
