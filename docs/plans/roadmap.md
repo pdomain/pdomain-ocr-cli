@@ -1,3 +1,14 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-19
+Last verified: 2026-07-13
+Kind: plan
+Supersedes: N/A
+Promotes to: N/A
+Disposition: Standing roadmap for CLI-owned work.
+---
+
 # Roadmap
 
 Forward-looking work in `pdomain-ocr-cli` — items that belong in the CLI
@@ -11,12 +22,12 @@ This file is the standing list of open priorities. Items move out
 when they ship (link the PR / commit and drop a brief "Done" entry at
 the bottom if useful).
 
-> Shipped items are moved to `docs/archive/plans/` per the
-> workspace-standard docs layout.
+> Shipped items leave the live plan tree after durable behavior is captured in
+> architecture, decisions, usage, or process docs.
 
 ## Open — developer workflow
 
-_No open items._ (Shipped items moved to `docs/archive/plans/`.)
+_No open items._
 
 ## Done — 2026-05-29 review remediation
 

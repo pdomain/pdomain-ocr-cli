@@ -1,3 +1,11 @@
+---
+Status: retired
+Owner: CT
+Created: 2026-05-19
+Last verified: 2026-07-13
+Kind: runbook
+---
+
 # dev-local-aware `upgrade-deps` flow
 
 **Status:** Implemented in `Makefile` (`upgrade-deps` guard + `upgrade-deps-local` recipe).

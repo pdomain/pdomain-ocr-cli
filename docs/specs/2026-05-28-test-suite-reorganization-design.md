@@ -1,3 +1,14 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-28
+Last verified: 2026-07-13
+Kind: spec
+Supersedes: N/A
+Promotes to: docs/architecture/test-suite.md
+Disposition: Implemented; retirement blocked until adversarial review and promotion.
+---
+
 # Test-suite reorganization — pdomain-ocr-cli
 
 **Date:** 2026-05-28

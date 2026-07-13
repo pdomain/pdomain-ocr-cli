@@ -1,3 +1,14 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-29
+Last verified: 2026-07-13
+Kind: plan
+Supersedes: N/A
+Promotes to: docs/architecture/layout-aware-ocr.md
+Disposition: Implemented; retirement awaits consolidation of remaining durable behavior.
+---
+
 # pdomain-ocr-cli Review Remediation Implementation Plan
 
 <!-- markdownlint-disable MD010 MD032 -->

@@ -1,3 +1,11 @@
+---
+Status: retired
+Owner: CT
+Created: 2026-05-23
+Last verified: 2026-07-13
+Kind: research
+---
+
 # pdomain-ocr-cli Deep Code Review and Security Scan
 
 Date: 2026-05-22

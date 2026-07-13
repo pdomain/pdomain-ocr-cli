@@ -1,3 +1,14 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-28
+Last verified: 2026-07-13
+Kind: plan
+Supersedes: N/A
+Promotes to: docs/architecture/test-suite.md
+Disposition: Implemented; retirement awaits promotion of durable test architecture.
+---
+
 # Test-suite reorganization Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

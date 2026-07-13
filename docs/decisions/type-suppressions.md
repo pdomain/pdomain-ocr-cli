@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-31
+Last verified: 2026-07-13
+Kind: decision
+---
+
 # Type Suppressions
 
 All basedpyright warnings are resolved without suppressions (baseline.json is
@@ -9,8 +17,8 @@ empty). The three remaining `pyright: ignore` comments and the one structural
 | File | Line | Rule | Rationale |
 |------|------|------|-----------|
 | `pdomain_ocr_cli/_startup_notices.py` | 53 | `reportMissingImports` | `cupy` is an optional GPU dependency not declared in `pyproject.toml`. The import is a runtime probe; the ignore lets the type checker skip the missing stub. |
-| `pdomain_ocr_cli/ocr_to_txt.py` | 407 | `reportAttributeAccessIssue` | `module` is the result of `importlib.import_module("pdomain_ops.gpu.device")` cast to `object`. Basedpyright cannot resolve attributes on `object`; the `cast` on the same line completes the type for downstream callers. |
-| `pdomain_ocr_cli/ocr_to_txt.py` | 430 | `reportAttributeAccessIssue` | Same pattern — `importlib.import_module("pdomain_ops.gpu.doctr_batch")` cast to `object`. The outer `cast` resolves the callable type; the suppress covers the intermediate attribute access. |
+| `pdomain_ocr_cli/ocr_to_txt.py` | 413 | `reportAttributeAccessIssue` | `module` is the result of `importlib.import_module("pdomain_ops.gpu.device")` cast to `object`. Basedpyright cannot resolve attributes on `object`; the `cast` on the same line completes the type for downstream callers. |
+| `pdomain_ocr_cli/ocr_to_txt.py` | 436 | `reportAttributeAccessIssue` | Same pattern — `importlib.import_module("pdomain_ops.gpu.doctr_batch")` cast to `object`. The outer `cast` resolves the callable type; the suppress covers the intermediate attribute access. |
 
 ## `noqa` suppressions with structural rationale
 
@@ -19,7 +27,7 @@ one that warrants extra explanation:
 
 | File | Line | Rule | Rationale |
 |------|------|------|-----------|
-| `pdomain_ocr_cli/ocr_to_txt.py` | 981 | `TRY301` | `raise ValueError(...)` is inside a `try` block. TRY301 suggests abstracting the raise to an inner function, but here it is intentional: the outer `except Exception` (line 984) unifies all per-image decode failures — both the explicit ValueError and any unexpected cv2 error — through a single error-reporting path. Abstracting would require duplicating that handler. |
+| `pdomain_ocr_cli/ocr_to_txt.py` | 991 | `TRY301` | `raise ValueError(...)` is inside a `try` block. TRY301 suggests abstracting the raise to an inner function, but here it is intentional: the outer `except Exception` (line 994) unifies all per-image decode failures — both the explicit ValueError and any unexpected cv2 error — through a single error-reporting path. Abstracting would require duplicating that handler. |
 
 Other inline `noqa` suppressions (`T201` for CLI print statements, `BLE001`
 for broad-except decode handlers, `S310`/`S110`/`S607` for subprocess and

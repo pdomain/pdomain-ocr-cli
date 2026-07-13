@@ -1,10 +1,21 @@
+---
+Status: draft
+Owner: CT
+Created: 2026-05-30
+Last verified: 2026-07-13
+Kind: spec
+Supersedes: N/A
+Promotes to: N/A
+Disposition: Parked pending upstream design and owner review.
+---
+
 # Spec stub: tune DocTR predictor batch sizes for GPU throughput
 
 **Status:** Parked — needs brainstorming + review. Not yet groomed into a plan.
 **Date:** 2026-05-30
 **Origin:** Salvaged from uncommitted WIP on the (now-removed) `feat/batch-pages`
-worktree. Full WIP diff preserved at
-[`docs/research/2026-05-30-batch-pages-wip.patch`](../research/2026-05-30-batch-pages-wip.patch).
+worktree. The full WIP diff is preserved at
+`docs/research/2026-05-30-batch-pages-wip.patch`.
 
 ## Why this exists
 

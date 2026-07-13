@@ -1,3 +1,11 @@
+---
+Status: retired
+Owner: CT
+Created: 2026-05-29
+Last verified: 2026-07-13
+Kind: research
+---
+
 # pdomain-ocr-cli Review Remediation Validation
 
 Date: 2026-05-29

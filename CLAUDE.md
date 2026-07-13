@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-14
+Last verified: 2026-07-13
+Kind: process
+---
+
 # CLAUDE — pdomain-ocr-cli
 
 CLI tool that turns scanned book pages into clean `.txt` files. Wraps
@@ -31,7 +39,10 @@ reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 filtered failure sections on error. Remove `AI=1` only if you need full verbose
 output for debugging.
 
-See [workspace `docs/process/local-dev.md`](../docs/process/local-dev.md) for the canonical local-dev pattern (spec #362). Legacy `dev-local`, `install-local`, `uninstall-local`, `check-local-editable`, `run-local`, `upgrade-deps-local` are kept as deprecation aliases.
+See the workspace-level `docs/process/local-dev.md` for the canonical local-dev
+pattern (spec #362). Legacy `dev-local`, `install-local`, `uninstall-local`,
+`check-local-editable`, `run-local`, and `upgrade-deps-local` are kept as
+deprecation aliases.
 
 Full target list: `make help`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
