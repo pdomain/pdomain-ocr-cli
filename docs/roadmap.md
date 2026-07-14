@@ -1,9 +1,10 @@
 ---
-kind: roadmap
+kind: plan
 status: active
 owner: CT
 created: 2026-05-19
 last_verified: 2026-07-14
+disposition: Standing roadmap for CLI-owned work.
 ---
 
 <!-- markdownlint-configure-file { "MD024": { "siblings_only": true } } -->
@@ -12,25 +13,53 @@ last_verified: 2026-07-14
 
 ## Agent Index
 
-- **Kind:** roadmap
+- **Kind:** plan
 - **Status:** active
 - **Read when:** deciding what to work on next in `pdomain-ocr-cli`.
-- **Search terms:** roadmap, backlog, now next later, open priorities, hardening, release, supply chain, security.
+- **Search terms:** roadmap, backlog, now next later, open priorities, hardening, release, supply chain, security
 
 Standing list of open, CLI-owned work, ordered by priority within theme. This
 file is the source of truth for planned work; it absorbs the former
 `docs/plans/roadmap.md` and the repo's GitHub issue backlog (migrated
 2026-07-14, each item tagged with its originating `#NNN`).
 
-**Scope & durable constraints:** `pdomain-ocr-cli` wraps `pdomain-book-tools`
-OCR/layout primitives and uses `pdomain-ops` for operational support. Reusable
-logic belongs upstream; this repo owns the command and its integration
-behavior. Where a CLI feature is a thin pass-through to a library knob, the
-library work is tracked in `pdomain-book-tools/docs/plans/roadmap.md` and the
-CLI item here covers only the surfacing (flag, help, defaults, docs) and
-caller-side glue. **Never silently drop OCR words** — output options may change
-roles or suppress placeholders, but caption and OCR text must survive unless an
-explicitly experimental drop is enabled. Run `make ci AI=1` before committing.
+## Goal
+
+Maintain the standing list of open priorities owned by `pdomain-ocr-cli`. Track
+CLI flags, defaults, help, documentation, orchestration, and caller-side glue
+here while routing reusable primitives upstream.
+
+## Architecture
+
+`pdomain-ocr` wraps `pdomain-book-tools` OCR and layout primitives and uses
+`pdomain-ops` for operational support. Shared processing logic belongs
+upstream; this repository owns the command and its integration behavior.
+
+## Tech Stack
+
+The CLI supports Python 3.11 through 3.13 and uses Hatchling and hatch-vcs. It
+depends on `pdomain-book-tools`, `pdomain-ops`, and `huggingface_hub`, with
+development and verification through `uv`, pytest, Ruff, and basedpyright.
+
+## Global Constraints
+
+**Never silently drop OCR words** — output options may change roles or suppress
+placeholder blocks, but caption and OCR text must survive unless an explicitly
+experimental drop is enabled. Keep reusable primitives upstream, and run
+`make ci AI=1` before committing. Where a CLI feature is a thin pass-through to
+a library knob, the library work is tracked in
+`pdomain-book-tools/docs/plans/roadmap.md` and the CLI item here covers only the
+surfacing (flag name, help text, defaults, docs) and any caller-side glue.
+
+## Work clusters
+
+Several open items are one piece of work split across issues. Do them together:
+
+- **`install.ps1` parity:** [#23](https://github.com/pdomain/pdomain-ocr-cli/issues/23) (Now), [#49](https://github.com/pdomain/pdomain-ocr-cli/issues/49), [#24](https://github.com/pdomain/pdomain-ocr-cli/issues/24) — one rewrite of the PowerShell installer to mirror `install.sh` (release-wheel path, pd-index-pip, dependency-confusion guard, installer-arg tests).
+- **Workflow supply-chain hardening:** [#37](https://github.com/pdomain/pdomain-ocr-cli/issues/37), [#26](https://github.com/pdomain/pdomain-ocr-cli/issues/26), [#27](https://github.com/pdomain/pdomain-ocr-cli/issues/27), [#28](https://github.com/pdomain/pdomain-ocr-cli/issues/28), [#29](https://github.com/pdomain/pdomain-ocr-cli/issues/29) — one hardening pass over `ci.yml` / `release.yml` (pin actions + uv by SHA, drop persisted creds, remove template injection, cache). Note #37 (ci.yml) is `high` and #26 (release.yml) is `medium` per their labels, but the edit is the same.
+- **Durable artifact transaction:** [#17](https://github.com/pdomain/pdomain-ocr-cli/issues/17) → [#21](https://github.com/pdomain/pdomain-ocr-cli/issues/21) → [#22](https://github.com/pdomain/pdomain-ocr-cli/issues/22) — one design: exclusive non-symlink temp files, route all writes through the atomic helper, all-or-nothing promotion with rollback.
+- **Release wheel-smoke:** shared sub-task of [#25](https://github.com/pdomain/pdomain-ocr-cli/issues/25), [#30](https://github.com/pdomain/pdomain-ocr-cli/issues/30), [#31](https://github.com/pdomain/pdomain-ocr-cli/issues/31), [#50](https://github.com/pdomain/pdomain-ocr-cli/issues/50) — smoke-install from the built wheel once, referenced by all four.
+- **Startup sequencing (`ocr_to_txt`):** [#18](https://github.com/pdomain/pdomain-ocr-cli/issues/18), [#20](https://github.com/pdomain/pdomain-ocr-cli/issues/20), [#39](https://github.com/pdomain/pdomain-ocr-cli/issues/39), [#40](https://github.com/pdomain/pdomain-ocr-cli/issues/40) — adjacent edits to the same input-validation / model-load / layout path; sequence to avoid rework.
 
 ---
 
@@ -41,11 +70,7 @@ explicitly experimental drop is enabled. Run `make ci AI=1` before committing.
 - [chore/high] Run server-side tests before publishing tag-triggered releases ([#25](https://github.com/pdomain/pdomain-ocr-cli/issues/25))
 - [chore/high] Remove template-injection risk from the release-dispatch shell block ([#27](https://github.com/pdomain/pdomain-ocr-cli/issues/27))
 - [chore/high] Pin CI workflow actions and uv to immutable versions ([#37](https://github.com/pdomain/pdomain-ocr-cli/issues/37))
-- [bug/high] Make the PowerShell installer resolve pd-book-tools from pd-index ([#23](https://github.com/pdomain/pdomain-ocr-cli/issues/23))
-
-### Runtime security
-
-- [bug/high] Pin default OCR model revisions and avoid unsafe `torch.load` ([#15](https://github.com/pdomain/pdomain-ocr-cli/issues/15))
+- [bug/high] Rewrite `install.ps1` to resolve pd-book-tools from pd-index-pip ([#23](https://github.com/pdomain/pdomain-ocr-cli/issues/23))
 
 ### Correctness
 
@@ -78,14 +103,14 @@ explicitly experimental drop is enabled. Run `make ci AI=1` before committing.
 - [bug/medium] Use exclusive, non-symlink temp files for atomic writes ([#17](https://github.com/pdomain/pdomain-ocr-cli/issues/17))
 - [chore/medium] Constrain the update-check URL opener to HTTPS-only ([#34](https://github.com/pdomain/pdomain-ocr-cli/issues/34))
 - [chore/medium] Add resource limits for untrusted image inputs ([#38](https://github.com/pdomain/pdomain-ocr-cli/issues/38))
-- [bug/medium] Validate inputs before resolving and loading models ([#39](https://github.com/pdomain/pdomain-ocr-cli/issues/39))
-- [bug/medium] Turn startup model and layout failures into clean CLI errors ([#40](https://github.com/pdomain/pdomain-ocr-cli/issues/40))
 
 ### Correctness bugs
 
 - [bug/medium] Skip layout loading and inference for plain `--no-reorg` runs ([#20](https://github.com/pdomain/pdomain-ocr-cli/issues/20))
 - [bug/medium] Make JSON and crop writes use the durable atomic-write path ([#21](https://github.com/pdomain/pdomain-ocr-cli/issues/21))
 - [bug/medium] Roll back sidecars and crops when the final `.txt` write fails ([#22](https://github.com/pdomain/pdomain-ocr-cli/issues/22))
+- [bug/medium] Validate inputs before resolving and loading models ([#39](https://github.com/pdomain/pdomain-ocr-cli/issues/39))
+- [bug/medium] Turn startup model and layout failures into clean CLI errors ([#40](https://github.com/pdomain/pdomain-ocr-cli/issues/40))
 
 ### Tests
 
@@ -117,6 +142,10 @@ explicitly experimental drop is enabled. Run `make ci AI=1` before committing.
   `pdomain-book-tools` provides shared normalization logic and a glyph map. CLI
   work covers the pass-through flag and applying normalization between
   reorganization and text output.
+
+## Blocked
+
+- [bug/high, blocked] Pin default OCR model revisions and avoid unsafe `torch.load` ([#15](https://github.com/pdomain/pdomain-ocr-cli/issues/15)) — **two parts.** Part 1 (pin default model revisions to `v0.6`) is implemented on the local branch `fix/security-15-torch-load-pinning`. Part 2 (`weights_only=True` / safe load) is **blocked upstream on `pd-book-tools#205`**; a tripwire test flips red once that ships. Issue stays open until then. Related trust-boundary work: [#16](https://github.com/pdomain/pdomain-ocr-cli/issues/16) (user-supplied `.pt`).
 
 ## Ideas
 
