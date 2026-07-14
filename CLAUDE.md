@@ -64,7 +64,7 @@ Full target list: `make help`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md
 ## Docs
 
 - [`DEVELOPMENT.md`](DEVELOPMENT.md) — dev setup, Make targets, release steps.
-- [`docs/plans/roadmap.md`](docs/plans/roadmap.md) — open priorities.
+- [`docs/roadmap.md`](docs/roadmap.md) — open priorities, now/next/later.
 - [`docs/architecture/layout-aware-ocr.md`](docs/architecture/layout-aware-ocr.md) — layout-aware OCR behavior.
 - [`docs/usage/cli-usage.md`](docs/usage/cli-usage.md) — end-user usage reference.
 
