@@ -8,7 +8,7 @@ Kind: process
 
 # docs/
 
-How documentation is organized in this repo.
+This repo organizes documentation by its purpose and when contributors use it.
 
 | Folder | Purpose | Use when |
 | --- | --- | --- |
@@ -23,9 +23,9 @@ How documentation is organized in this repo.
 | `usage/` | Downstream reference — how to consume this app/tool/library. | A user or integrator needs to know how to use it. |
 
 Empty active folders are intentional and tracked via `.gitkeep`. Completed
-plans and specs are promoted into architecture and retired through docgraph.
-Deletion with a decision tombstone is the default; Git preserves history.
+plans and specs move into architecture and are retired through docgraph. By
+default, they are deleted with a decision tombstone; Git preserves history.
 
-Active docs map to GitHub issues — see this repo's issue tracker for status.
-This layout follows the workspace documentation taxonomy and this repository's
-[docgraph rules](../DOCGRAPH.md).
+Active docs map to GitHub issues. See this repo's issue tracker for their
+status. The layout follows the workspace documentation taxonomy and this
+repository's [docgraph rules](../DOCGRAPH.md).
