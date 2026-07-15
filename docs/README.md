@@ -22,10 +22,14 @@ This repo organizes documentation by its purpose and when contributors use it.
 | `templates/` | Issue, spec, plan, ADR boilerplate. | Adding a starter template for a new doc type. |
 | `usage/` | Downstream reference — how to consume this app/tool/library. | A user or integrator needs to know how to use it. |
 
-Empty active folders are intentional and tracked via `.gitkeep`. Completed
-plans and specs move into architecture and are retired through docgraph. By
-default, they are deleted with a decision tombstone; Git preserves history.
+Empty active folders are intentional and tracked via `.gitkeep`.
 
-Active docs map to GitHub issues. See this repo's issue tracker for their
-status. The layout follows the workspace documentation taxonomy and this
-repository's [docgraph rules](../DOCGRAPH.md).
+Completed plans and specs move into architecture and are retired through
+docgraph. By default, they are deleted with a decision tombstone; Git
+preserves history.
+
+Active docs map to GitHub issues — see this repo's issue tracker for their
+status.
+
+The layout follows the workspace documentation taxonomy and this repository's
+[docgraph rules](../DOCGRAPH.md).
