@@ -70,7 +70,7 @@ Kind: context
   provenance, and residual intent now live in architecture, decisions, and this
   intent map.
 - **Retired and removed:** the local writing-style process doc and parked
-  predictor batch-size spec. The writing-docs plugin owns readability;
-  repository-specific link and command rules remain in `CONVENTIONS.md`.
+  predictor batch-size spec. The writing-docs plugin owns readability.
+  Repository-specific link and command rules remain in `CONVENTIONS.md`.
   Upstream predictor defaults and current architecture preserve shipped
-  behavior, while deferred intent preserves every unresolved tuning question.
+  behavior. Deferred intent preserves every unresolved tuning question.
