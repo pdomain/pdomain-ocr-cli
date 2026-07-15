@@ -118,7 +118,7 @@ pre-commit-check: ## Run pre-commit on all files
 	@echo "🪝 Running pre-commit on all files..."
 	uv run pre-commit run --all-files
 
-typecheck: ## Run basedpyright at recommended mode (workspace canonical)
+typecheck: ## Run basedpyright at all mode (workspace canonical)
 	uv run basedpyright pdomain_ocr_cli --level error
 
 test: ## Run the pytest suite (skips @pytest.mark.slow integration tests)

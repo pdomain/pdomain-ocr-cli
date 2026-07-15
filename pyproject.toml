@@ -169,10 +169,10 @@ known-first-party = ["pdomain_ocr_cli"]
 include = ["pdomain_ocr_cli", "tests"]
 exclude = ["**/__pycache__", "**/.venv", "**/node_modules"]
 
-# "recommended" is the workspace-canonical strict mode per 2026-05-17 decisions.
-# Catches unannotated functions, inferred-Any propagation, untyped decorators,
-# and missing return types that "standard" mode skips.
-typeCheckingMode = "recommended"
+# "all" is basedpyright's strictest mode (stricter than "strict" and
+# "recommended"). It catches unannotated functions, inferred-Any propagation,
+# untyped decorators, missing return types, and unused call results.
+typeCheckingMode = "all"
 # Warnings are gated via a baseline file (.basedpyright/baseline.json) that grandfathers
 # the existing warnings from CuPy/cv2/DocTR stub gaps. New warnings beyond the
 # baseline will fail CI. Regenerate the baseline with: uv run basedpyright pdomain_ocr_cli --writebaseline
