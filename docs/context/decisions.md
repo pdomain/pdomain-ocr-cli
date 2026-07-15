@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-15
 Kind: context
 ---
 
@@ -123,3 +123,36 @@ Kind: context
   `pdomain_ocr_cli/_update_check.py`, and
   `docs/conventions/lint-deviations.md`.
 - **Remaining work:** none
+
+### 2026-07-15 — Remove repository-local archives and writing rules
+
+- **Context:** The archive tree contained only nine empty `.gitkeep` files. The
+  local writing-style document's general readability guidance duplicated the
+  installed writing-docs plugin, while its repository-specific rules belonged
+  in `CONVENTIONS.md`.
+- **Decision:** Remove `docs/archive/` and
+  `docs/process/writing-style.md`. Route writing through
+  `writing-docs:write-readably` and `writing-docs:edit-for-readability`.
+- **Rationale:** Current architecture, decisions, authored context, and Git
+  history preserve durable truth. One plugin-owned standard avoids competing
+  copies.
+- **Evidence:** Commits `e1a5f44`, `72c8ee2`, and `915189d`; `AGENTS.md`;
+  `CONVENTIONS.md`.
+- **Remaining work:** none
+
+### 2026-07-15 — Retired predictor batch-size tuning stub
+
+- **Old path:** `docs/specs/2026-05-30-predictor-batch-size-tuning.md`
+- **Outcome:** retired as a standalone spec after its upstream API dependency
+  shipped; tuning remains deferred intent.
+- **Current behavior:** `docs/architecture/cli-orchestration.md` and
+  `pdomain-book-tools` commit `5585d27`
+- **Removal commit:** This docgraph migration commit.
+- **Rationale kept:** The stub came from the discarded `feat/batch-pages` WIP,
+  whose full diff remains at
+  `docs/research/2026-05-30-batch-pages-wip.patch`, after page batching shipped
+  through a different design. Upstream now owns predictor-internal defaults.
+  The intent map preserves throughput overlap, default sizing, VRAM limits,
+  API ownership, and CLI exposure as separate unresolved questions.
+- **Remaining work:** Benchmark and choose ownership only if the roadmap
+  prioritizes explicit tuning.

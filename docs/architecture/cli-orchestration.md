@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-15
 Kind: architecture
 Supersedes:
   - docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md
@@ -32,6 +32,11 @@ reports errors, and selects artifacts. Detailed rules live behind those seams.
 4. `main()` processes validated results and prepares requested artifacts.
 5. Atomic helpers replace completed artifacts; `PageOutputTransaction` writes
    the final text file last.
+
+The CLI builds the fine-tuned DocTR predictor through the two-checkpoint-path
+`get_finetuned_torch_doctr_predictor` call. `pdomain-book-tools` owns the
+predictor's internal detection and recognition batch sizes. Its defaults are
+`det_bs=2` and `reco_bs=128`; the CLI does not expose overrides.
 
 ## Execution invariants
 
@@ -66,7 +71,7 @@ slow CI inside the publish workflow.
 
 ## Evidence
 
-Verified against the repository on 2026-07-13.
+Verified against the repository and `pdomain-book-tools` on 2026-07-15.
 
 - Sources: `pdomain_ocr_cli/ocr_to_txt.py`, `_policy.py`, `_batch_plan.py`,
   `_runtime.py`, `_artifacts.py`, `_model_security.py`, `_startup_notices.py`,
@@ -77,4 +82,5 @@ Verified against the repository on 2026-07-13.
   `tests/test_install_sh.py`, `tests/test_install_ps1.py`, and
   `tests/test_workflows_static.py`.
 - History: commits `87f066a`, `bcf8807`, `a0c2054`, `0287e2c`, `1c3993c`,
-  and `9e8b089`.
+  and `9e8b089`; upstream predictor defaults landed in `pdomain-book-tools`
+  commit `5585d27`.

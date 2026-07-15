@@ -86,8 +86,7 @@ When shipping a plan task:
 
 This repo follows the workspace docs/ template — see [`docs/README.md`](docs/README.md). Active
 folders: `architecture/`, `decisions/`, `plans/`, `process/`, `research/`,
-`runbooks/`, `specs/`, `templates/`, `usage/`, plus parallel `archive/`
-subfolders.
+`runbooks/`, `specs/`, `templates/`, and `usage/`.
 
 **Superpowers redirect.** When a superpowers skill (e.g. `brainstorming`,
 `writing-plans`) instructs you to save to `docs/superpowers/specs/<file>.md`
@@ -110,9 +109,9 @@ change any step below.
   process skills first (`brainstorming`, `systematic-debugging`,
   `writing-plans`, `test-driven-development`), then implementation skills.
   If a skill applies, using it is not optional.
-- **Write clearly.** Follow `docs/process/writing-style.md` for direct user
-  updates, handoffs, final summaries, docs, reports, issue text, PR text, and
-  user-facing copy. Keep agent communication short, clear, and easy to scan.
+- **Write clearly.** Route new reader-facing documents through
+  `writing-docs:write-readably` and existing prose through
+  `writing-docs:edit-for-readability`.
 - **Delegate by default.** Dispatch subagents for non-trivial work: per-repo
   agents for repo changes, `Explore` for code searches. This keeps large tool
   output out of the parent context.

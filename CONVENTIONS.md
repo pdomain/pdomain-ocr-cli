@@ -12,11 +12,18 @@ Kind: process
 
 ## Rule: Write docs clearly
 
-**The rule.** Follow [Writing Style](docs/process/writing-style.md) for docs,
-reports, issue text, PR text, and user-facing copy.
+**The rule.** Route new reader-facing documents through
+`writing-docs:write-readably`. Route edits of existing prose through
+`writing-docs:edit-for-readability`.
 
-**Why.** Detailed style guidance belongs in a process doc. CONVENTIONS.md
-should stay short.
+**Why.** The writing-docs plugin owns the shared standard and keeps the
+repository from carrying a stale duplicate.
+
+**Repository-specific documentation rules.** Prefer official references and
+link local implementation claims to source lines when useful. Avoid deep links
+into external source unless readers need them. Link to the canonical setup,
+test, release, or dependency instructions instead of copying them. Combine
+commands that readers must run together.
 
 ## Rule: No comments explaining what code does
 
