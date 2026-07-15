@@ -8,7 +8,7 @@ Kind: usage
 
 # Full usage options
 
-This page covers every `pdomain-ocr` flag, grouped by what you'd use it for.
+This page lists every `pdomain-ocr` flag, grouped by purpose.
 For the friendly walkthrough, see the [README](../../README.md). For
 layout-detector specifics (the bulk of the layout flags below), see
 [layout-aware-ocr.md](../architecture/layout-aware-ocr.md). `pdomain-ocr --help` is always
@@ -61,16 +61,16 @@ alone — they're meaningful in measurements and citations.
 
 ### Future proposal: output normalization (not implemented)
 
-Not implemented yet — tracked here so users and contributors know it's
-on the roadmap.
+This proposal is not implemented yet. It is tracked here so users and
+contributors know it's on the roadmap.
 
 **Motivation.** OCR on old-typesetting books (Cló Gaelach, Fraktur,
 early-modern English with long-s) may emit Unicode glyphs that faithfully
-reflect the page: `ſ` (long s), `ﬁ`/`ﬂ`/`ﬀ`/`ﬃ`/`ﬄ` (f-ligatures),
-`ſt` (long-s+t ligature), and similar. Faithful Unicode is the right
-default for archival OCR fidelity. But downstream consumers — most
-notably PGDP-style proofreading flows — want ASCII-equivalent text
-(`s`, `fi`, `fl`, `st`, …) so volunteers see the same characters they'd
+reflect the page. These include `ſ` (long s), `ﬁ`/`ﬂ`/`ﬀ`/`ﬃ`/`ﬄ`
+(f-ligatures), `ſt` (long-s+t ligature), and similar glyphs. Faithful Unicode
+is the right default for archival OCR fidelity. However, downstream consumers,
+most notably PGDP-style proofreading flows, want ASCII-equivalent text (`s`,
+`fi`, `fl`, `st`, …). This lets volunteers see the same characters they'd
 type. The user picks per run.
 
 **Proposed flag.**
@@ -126,18 +126,17 @@ files exist next to them, they're picked up automatically.
 
 ### Model trust boundary
 
-OCR and layout model checkpoints are trusted inputs. The default model
-source is maintained by this project, but mutable latest revisions can
-change. For reproducible runs, pass `--model-version` pinned to a tag
-or commit. Custom `--hf-repo`, local `--detection` / `--recognition`,
-and `--layout-checkpoint` values should only come from sources you
-trust.
+Treat OCR and layout model checkpoints as trusted inputs. This project
+maintains the default model source, but mutable latest revisions can change.
+For reproducible runs, pass `--model-version` pinned to a tag or commit. Use
+custom `--hf-repo`, local `--detection` / `--recognition`, and
+`--layout-checkpoint` values only from sources you trust.
 
 ## Layout detection
 
-Layout detection runs by default when reorganize runs, and feeds the
-reorganize step. Plain `--no-reorg` skips layout too; if you also pass
-`--extract-illustrations`, layout still runs so the crops can be found.
+Layout detection runs by default with reorganize and feeds that step. Plain
+`--no-reorg` also skips layout. If you also pass `--extract-illustrations`,
+layout still runs so it can find the crops.
 See [layout-aware-ocr.md](../architecture/layout-aware-ocr.md) for the full picture.
 
 ```sh
@@ -210,9 +209,9 @@ crops; in that case layout detection still runs for crop discovery.
 
 ### Always-on noise-drop warning
 
-When reorganize removes any words it considered figure-internal noise
-(via Step Layout-2b or Step B2 inside `pdomain-book-tools`), the CLI emits a
-warning to stderr — independent of any flag. The warning includes:
+When reorganize removes words it considered figure-internal noise, the CLI
+always emits a warning to stderr. Removal happens via Step Layout-2b or Step B2
+inside `pdomain-book-tools`. The warning includes:
 
 - the page filename and the count of dropped words;
 - a quoted sample of the first few dropped tokens;
@@ -220,8 +219,8 @@ warning to stderr — independent of any flag. The warning includes:
   can re-run and inspect the full pure-OCR / post-noise / post-reorg
   bundle.
 
-This is intentionally always-on so quiet figure-noise drops don't slip
-past unnoticed. There is no quiet flag — file an issue if you need one.
+This warning is intentionally always on so figure-noise drops don't pass
+unnoticed. There is no quiet flag. File an issue if you need one.
 
 ## JSON Contract
 
@@ -250,7 +249,7 @@ pdomain-ocr --help
 ## Installer behavior
 
 The `install.sh` and `install.ps1` bootstrap scripts install the wheel
-asset from the latest GitHub Release, not a git ref. Both always pass
+asset from the latest GitHub Release, not a git ref. Both scripts always pass
 `--extra-index-url https://pdomain.github.io/pdomain-index-pip/simple/`
 so `pdomain-book-tools` resolves from the pdomain package index. They
 default the uv tool environment to Python 3.13; set
@@ -268,16 +267,15 @@ supported Python version.
 | `PD_OCR_REORGANIZE_STRICT=1` | Read by `pdomain-book-tools`'s `reorganize_page()`. When set, words dropped during reorganize raise `ReorganizeDroppedWordsError` instead of being re-added with a warning. Useful in CI to fail loudly on pipeline regressions. |
 | `HF_HOME`, `HF_HUB_CACHE` | Override the Hugging Face model cache location (default `~/.cache/huggingface/hub`). Honored by the upstream `huggingface_hub` library — pdomain-ocr-cli does not read these directly. |
 
-`PD_OCR_LAYOUT_DEBUG` and `PD_OCR_LAYOUT_DEBUG_FILE` are set automatically
-by the CLI as an internal IPC channel to the layout backend (controlled
-via `--layout-debug` / `--layout-debug-dir`) and shouldn't be overridden
-manually.
+The CLI sets `PD_OCR_LAYOUT_DEBUG` and `PD_OCR_LAYOUT_DEBUG_FILE`
+automatically as an internal IPC channel to the layout backend. Control them
+through `--layout-debug` / `--layout-debug-dir`; do not override them manually.
 
 ### Conflicting flags / no-op combinations
 
 When you pass a flag combination that can't take effect, `pdomain-ocr` emits a
-`warning:` to stderr and proceeds (the redundant flag is ignored, not
-fatal). The current set:
+`warning:` to stderr and proceeds. It ignores the redundant flag rather than
+treating it as fatal. The current set:
 
 - `--no-reorg` + `--save-reorganize-diagnostics` — diagnostics are produced
   only when reorganize runs.
