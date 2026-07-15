@@ -11,21 +11,20 @@ Kind: architecture
 `pdomain-ocr` runs document-layout detection on every page by default. The
 detected regions feed `Page.reorganize_page()` as a hint, which:
 
-- Detects high-confidence running titles and page numbers, role-labels
-  them as page headers / footers, and weaves them back into the page
-  at the boundaries (header band at the front, footer band at the
-  back) so they don't bleed into body paragraphs. Words are preserved,
-  not dropped.
+- Detects high-confidence running titles and page numbers and role-labels
+  them as page headers / footers. It weaves them back into the page at
+  the boundaries (header band at the front, footer band at the back) so
+  they don't bleed into body paragraphs. Words are preserved, not dropped.
 - Tags tables and figures so downstream consumers can route them
   separately.
 - Routes marginalia (sidenotes, abandoned regions) so they don't fold
   into the main reading flow — left-margin notes sort before the body,
   right-margin notes after. The words remain on the page.
 
-The default detector is
+By default, `pdomain-ocr` uses
 [`PaddlePaddle/PP-DocLayout_plus-L`](https://huggingface.co/CT2534/PP-DocLayout_plus-L)
-(via `pdomain-book-tools`), Apache-2.0 licensed, ~132 MB downloaded on first
-run.
+via `pdomain-book-tools`. It is Apache-2.0 licensed and downloads ~132 MB on
+the first run.
 
 Plain `--no-reorg` skips both `Page.reorganize_page()` and layout
 detection. The only exception is `--extract-illustrations`, which still
@@ -66,11 +65,10 @@ pdomain-ocr --layout-debug page.png
 
 ## Page rotation
 
-Page rotation is handled automatically by the underlying OCR layer: if
-upright recognition confidence is low, the image is re-OCR'd at
-90° / 180° / 270° and the best orientation wins. Detected layout
-regions are reported in the rotated frame, so figure crops and
-caption tagging still line up.
+The underlying OCR layer handles page rotation automatically. If upright
+recognition confidence is low, it re-OCRs the image at 90° / 180° / 270° and
+uses the best orientation. It reports detected layout regions in the rotated
+frame, so figure crops and caption tagging still line up.
 
 ## Performance notes
 
@@ -85,11 +83,11 @@ caption tagging still line up.
 
 ## Artifact lifecycle
 
-Page artifacts are written transactionally. JSON sidecars, diagnostic
-snapshots, layout-debug reports, and illustration crops are written through
-unique temporary files and atomically replaced into place. The final `.txt`
-file is written last, so the presence of `<image>.txt` means that page's
-artifact set completed.
+Page artifacts are written transactionally. The CLI writes JSON sidecars,
+diagnostic snapshots, layout-debug reports, and illustration crops through
+unique temporary files. It then atomically replaces them into place. The CLI
+writes the final `.txt` file last, so the presence of `<image>.txt` means that
+page's artifact set completed.
 
 ## Test coverage
 
