@@ -19,22 +19,24 @@ Kind: process
 **Why.** The writing-docs plugin owns the shared standard and keeps the
 repository from carrying a stale duplicate.
 
-**Repository-specific documentation rules.** Prefer official references and
-link local implementation claims to source lines when useful. Avoid deep links
-into external source unless readers need them. Link to the canonical setup,
-test, release, or dependency instructions instead of copying them. Combine
-commands that readers must run together.
+**Repository-specific documentation rules.**
+
+- Prefer official references, and link local implementation claims to source lines when useful.
+- Avoid deep links into external source unless readers need them.
+- Link to the canonical setup, test, release, or dependency instructions instead of copying them.
+- Combine commands that readers must run together.
 
 ## Rule: No comments explaining what code does
 
 **The rule.** Don't add comments that restate what the code does;
-well-named identifiers already do that. Only add a comment when the
-WHY is non-obvious: a hidden constraint, a subtle invariant, or a
+well-named identifiers already do that. Add a comment only when the
+WHY is non-obvious. Examples: a hidden constraint, a subtle invariant, or a
 workaround for a specific bug.
 
-**Why.** Comments rot when code changes and become misleading. The rule
-also applies to docstrings — one short line max; no multi-paragraph
-docstrings and no multi-line comment blocks.
+**Why.** Comments rot when code changes and become misleading.
+
+The rule also applies to docstrings. Keep them to one short line at
+most — no multi-paragraph docstrings and no multi-line comment blocks.
 
 **Common high-confidence violations** (bot auto-fix candidates)
 
@@ -49,22 +51,22 @@ docstrings and no multi-line comment blocks.
 
 **Common judgment-call violations** (bot flags, CT decides)
 
-- Comments that reference the PR, issue, or task that introduced the code — belongs in commit message, not source.
+- Comments that reference the PR, issue, or task that introduced the code. This context belongs in the commit message, not the source.
 - Multi-line preamble that mixes WHY (worth keeping) with WHAT (worth removing).
 
 ## Rule: Unicode escape sequences for ruff-flagged ambiguous characters
 
 **The rule.** Characters ruff flags under RUF001/002/003 (ambiguous Unicode —
 curly quotes, en-dashes, em-dashes, multiplication signs, non-breaking spaces,
-etc.) must be written as `\uXXXX` escape sequences in string and docstring
-literals. In comments, replace with the plain ASCII equivalent. In every case
+etc.) must use `\uXXXX` escape sequences in string and docstring
+literals. In comments, replace them with the plain ASCII equivalent. Always
 include a short inline comment naming the character, e.g.
 `"""  # LEFT DOUBLE QUOTATION MARK`.
 
-**Why.** Literal curly quotes and dashes are visually indistinguishable from
-ASCII equivalents in most editors and diff views, making string comparisons and
-grep silently fragile. Escape sequences make intent explicit and are safe across
-all encodings. `# noqa: RUF00x` masks the problem instead of fixing it.
+**Why.** Most editors and diff views make literal curly quotes and dashes look
+like their ASCII equivalents. This similarity makes string comparisons and
+grep silently fragile. Escape sequences make intent explicit and work safely
+across all encodings. `# noqa: RUF00x` masks the problem instead of fixing it.
 
 **Common high-confidence violations** (bot auto-fix candidates)
 
@@ -78,9 +80,9 @@ all encodings. `# noqa: RUF00x` masks the problem instead of fixing it.
 **Common judgment-call violations** (bot flags, CT decides)
 
 - Test strings that intentionally exercise curly-quote round-trip through the
-  OCR pipeline and must contain the literal character — keep the literal with an
+  OCR pipeline and must contain the literal character. Keep the literal with an
   explicit `# noqa: RUF001  # intentional: testing curly-quote round-trip`
-  comment that names the character and states the reason.
+  comment. The comment must name the character and state the reason.
 
 ## Rule: Use `uv run` for all Python and tool invocation
 
@@ -89,8 +91,8 @@ CLI through `uv run`. Never call bare `python`, `python3`, `pytest`, or
 `pre-commit` from a Makefile target, CI step, or hook.
 
 **Why.** Direct invocation skips the project's `.venv` and the lockfile-pinned
-toolchain; tests pass locally and fail in CI (or vice versa) because the bare
-interpreter sees different installed package versions. `uv run` is uniformly
+toolchain. The bare interpreter sees different installed package versions, so
+tests can pass locally and fail in CI, or vice versa. `uv run` is uniformly
 fast (<200 ms warm) and always selects the project venv.
 
 **Common high-confidence violations** (bot auto-fix candidates)
@@ -118,7 +120,7 @@ git commit -m "docs: promote <topic> spec to architecture/ (milestone shipped)"
 
 Update any `Spec: docs/specs/...` pointers in still-open issues after the move.
 
-**Why.** `docs/specs/` is the active working area — implementing agents follow `Spec:`
+**Why.** `docs/specs/` is the active working area. Implementing agents follow `Spec:`
 pointers to find their instructions. `docs/architecture/` is the permanent design record
 for shipped features. Mixing shipped and in-progress specs in one directory makes it
 unclear which specs are still authoritative for ongoing work.
@@ -138,21 +140,23 @@ unclear which specs are still authoritative for ongoing work.
 when the deviation is genuinely correct (e.g. an optional dependency import
 guarded by `try`/`except`). When a suppression *is* warranted —
 `# pyright: ignore[...]`, `# type: ignore[...]`, `# noqa: ...`, or a
-`[tool.ruff.lint]` `ignore` / `per-file-ignores` entry — it must (1) carry a
-short inline rationale at the point of deviation explaining *why* the
-suppression is safe, and (2) be catalogued in the repo's
-`docs/conventions/lint-deviations.md`, which records the rule, the tool, the
-file locations, and the justification. Use basedpyright's native
-`# pyright: ignore[reportRuleName]` form — mypy-style `# type: ignore[code]`
-codes are not honored by basedpyright.
+`[tool.ruff.lint]` `ignore` / `per-file-ignores` entry — it must meet two
+conditions:
+
+1. Carry a short inline rationale at the point of deviation, explaining *why*
+   the suppression is safe.
+2. Be catalogued in the repo's `docs/conventions/lint-deviations.md`, which
+   records the rule, the tool, the file locations, and the justification.
+
+Use basedpyright's native `# pyright: ignore[reportRuleName]` form — mypy-style
+`# type: ignore[code]` codes are not honored by basedpyright.
 
 **Why.** A bare suppression hides whether the deviation was a deliberate,
-reviewed decision or a shortcut, and rots silently when the surrounding code
-changes. The inline comment makes intent visible where the code is read; the
-central doc makes the whole suppression set auditable in one place so it can't
-quietly grow. This rule is the escape valve for the
-"Unicode escape sequences" rule above — when a `# noqa` genuinely must stay,
-this is how it gets justified.
+reviewed decision or a shortcut. It also rots silently when the surrounding
+code changes. The inline comment shows intent where the code is read. The
+central doc keeps the whole suppression set auditable in one place, so it
+can't quietly grow. This rule is the escape valve for the "Unicode escape
+sequences" rule above. Use it to justify a `# noqa` that genuinely must stay.
 
 **Common high-confidence violations** (bot auto-fix candidates)
 
