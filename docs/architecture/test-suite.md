@@ -20,11 +20,11 @@ Supersedes:
 
 ## Suite structure
 
-The test suite separates fast deterministic checks from slow model-backed
+The test suite separates fast, deterministic checks from slow, model-backed
 integration tests. The fast suite covers CLI behavior, policy, output planning,
 artifact safety, warnings, model resolution, installers, and workflow contracts.
-It replaces heavy OCR and layout dependencies with controlled fakes while
-exercising real CLI orchestration and output-writing paths.
+It uses controlled fakes in place of heavy OCR and layout dependencies. It still
+exercises real CLI orchestration and output-writing paths.
 
 Tests marked `slow` use real OCR and layout models, download pinned model assets
 when necessary, and validate recognized text and default-layout behavior. The
@@ -40,11 +40,11 @@ lifecycle differs from the mocked fast path.
 and repeatable image inputs. `tests/_fakes.py` provides shared document, page,
 word, snapshot, array, and argument stand-ins.
 
-`FakePage` records `reorganize_page` calls and deterministically recomposes
-output from seeded body text, layout words, illustration placeholders, and
-captions. Fast tests therefore assert written text instead of relying only on
-mock call arguments. These fakes validate CLI wiring and output contracts; they
-do not replace slow tests of production OCR and reorganization.
+`FakePage` records `reorganize_page` calls. It deterministically recomposes output
+from seeded body text, layout words, illustration placeholders, and captions.
+Fast tests therefore assert written text instead of relying only on mock call
+arguments. These fakes validate CLI wiring and output contracts. They do not
+replace slow tests of production OCR and reorganization.
 
 ## Fast and slow gates
 
