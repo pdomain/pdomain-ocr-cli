@@ -20,7 +20,7 @@ Supersedes:
 ## Ownership and data flow
 
 `pdomain_ocr_cli.ocr_to_txt.main()` owns user-facing orchestration. It parses
-arguments, invokes focused policy and planning seams, coordinates runtime work,
+arguments, calls focused policy and planning seams, coordinates runtime work,
 reports errors, and selects artifacts. Detailed rules live behind those seams.
 
 1. `RunPolicy` converts arguments into effective layout, reorganization,
@@ -66,7 +66,7 @@ workflow.
 The dispatch-only `.github/workflows/release.yml` does not rerun `make ci-slow`.
 It checks dependency sources, builds the tagged revision, publishes artifacts,
 and notifies the package index. Static workflow tests enforce this division.
-This shipped direction supersedes the implementation plan's proposal to run
+This shipped design supersedes the implementation plan's proposal to run
 slow CI inside the publish workflow.
 
 ## Evidence
