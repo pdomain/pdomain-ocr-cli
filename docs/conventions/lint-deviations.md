@@ -8,9 +8,9 @@ Kind: process
 
 # Lint-rule Deviations — pdomain-ocr-cli
 
-Standing suppressions and per-file rule overrides in this repo.
-Each entry records: the rule, the tool, the file(s) affected, and
-the justification. Update this file whenever a new suppression is added.
+This file catalogs the standing suppressions and per-file rule overrides in
+this repo. Each entry records the rule, tool, affected file(s), and
+justification. Update this file whenever a new suppression is added.
 
 This catalogue covers the project-wide `[tool.ruff.lint]` `ignore` list and
 `per-file-ignores`, plus every inline `# noqa`, `# pyright: ignore`, and
@@ -27,21 +27,21 @@ These rules are disabled repo-wide in `pyproject.toml` → `[tool.ruff.lint]`
 
 ### 1. `E501` — line-too-long
 
-Many long docstrings, error messages, and URLs. Enforcing 88/100-char
+Many docstrings, error messages, and URLs are long. Enforcing 88/100-char
 wrapping everywhere adds noise without improving readability. The ruff
 formatter still wraps code; this only relaxes the lint check.
 
 ### 2. `D203` / `D212` — pydocstyle pair conflicts
 
 `D203` (1-blank-before-class-docstring) conflicts with `D211`
-(no-blank-before-class-docstring); `D212` (multi-line-summary-first-line)
+(no-blank-before-class-docstring). `D212` (multi-line-summary-first-line)
 conflicts with `D213` (multi-line-summary-second-line). One of each pair
-must be disabled — this repo keeps `D211` + `D213`.
+must be disabled; this repo keeps `D211` + `D213`.
 
 ### 3. `D100` / `D104` / `D107` — missing docstrings
 
-Missing docstrings on public modules / packages / `__init__` methods.
-Tracked as an incremental backlog rather than a hard gate.
+Public modules, packages, and `__init__` methods may lack docstrings.
+This work is an incremental backlog rather than a hard gate.
 
 ### 4. `D105` — missing docstring in magic method
 
@@ -68,8 +68,8 @@ sequential pipeline logic without improving clarity.
 
 ### 9. `PLC0415` — import-not-at-top-level
 
-Deferred imports are an intentional pattern: they break circular deps and
-avoid loading optional-heavy modules (torch, cv2, cupy) until needed.
+Deferred imports are intentional. They break circular deps and avoid loading
+optional-heavy modules (torch, cv2, cupy) until needed.
 Several are also monkeypatch seams for tests.
 
 ### 10. `TRY003` — long-message-outside-exception-class
@@ -96,15 +96,15 @@ From `[tool.ruff.lint.per-file-ignores]` in `pyproject.toml`.
 Ignored: `S101`, `S105`, `S106`, `S311`, `T201`, `ANN`, `D`, `PLR2004`,
 `PT011`, `S108`, `PLR0133`, `PLW2901`, `PERF401`, `S603`, `S607`.
 
-`assert` is the test idiom (`S101`); hardcoded passwords / random are test
-fixtures (`S105`/`S106`/`S311`); `print()` is fine in tests (`T201`); tests
-need no annotations or docstrings (`ANN`/`D`); magic numbers are common
-(`PLR2004`); `pytest.raises(match=)` is not required on every test
-(`PT011`); `/tmp` paths are fine (`S108`); trivial self-comparisons can be
-intentional (`PLR0133`); loop-var reassignment is an accepted test pattern
-(`PLW2901`); list-building loops in tests are fine (`PERF401`); test
-subprocesses use fixed fixture commands and intentionally resolve tools from
-`PATH` (`S603`/`S607`).
+`assert` is the test idiom (`S101`). Hardcoded passwords and random values are
+test fixtures (`S105`/`S106`/`S311`). `print()` is fine in tests (`T201`), and
+tests need no annotations or docstrings (`ANN`/`D`). Magic numbers are common
+(`PLR2004`). `pytest.raises(match=)` is not required on every test (`PT011`),
+and `/tmp` paths are fine (`S108`). Trivial self-comparisons can be intentional
+(`PLR0133`). Loop-var reassignment is an accepted test pattern (`PLW2901`),
+and list-building loops in tests are fine (`PERF401`). Test subprocesses use
+fixed fixture commands and intentionally resolve tools from `PATH`
+(`S603`/`S607`).
 
 ### 14. `scripts/*.py`
 
@@ -118,8 +118,8 @@ Ignored: `T201`, `D`, `S607`.
 
 Ignored: `D104`, `F401`, `TC`.
 
-Re-export modules with no docstrings; `F401` unused-import is the public
-API-surface pattern; `TC` type-checking import moves do not apply.
+Re-export modules need no docstrings. `F401` unused-import is the public
+API-surface pattern. `TC` type-checking import moves do not apply.
 
 ### 16. `**/_*.py`
 
@@ -139,11 +139,11 @@ Private modules follow internal convention and need no docstrings.
 
 **Suppression form:** `# noqa: T201  # CLI output` inline.
 
-**Justification.** `pdomain-ocr-cli` is a user-facing CLI; `print()` to stdout
+**Justification.** `pdomain-ocr-cli` is a user-facing CLI. `print()` to stdout
 and `print(..., file=sys.stderr)` are the intended output mechanism.
 `T201` is relaxed repo-wide for `tests/**` and `scripts/**`, but library
-modules under `pdomain_ocr_cli/` keep the rule on and suppress per-call so any
-*accidental* debug `print` still gets flagged in review.
+modules under `pdomain_ocr_cli/` keep the rule on. Per-call suppressions ensure
+that review still flags any *accidental* debug `print`.
 
 ### 18. `BLE001` — blind-except (ruff)
 
@@ -180,7 +180,7 @@ subprocess, network request, or response parse fails.
 **Suppression form:** `# noqa: S310` inline.
 
 **Justification.** `urllib.request.Request` / `urlopen` are called only
-with a hardcoded `https://` PyPI URL — there is no `file://` or
+with a hardcoded `https://` PyPI URL. There is no `file://` or
 attacker-controlled scheme risk.
 
 ### 21. `S607` — start-process-with-partial-path (ruff)
@@ -189,8 +189,8 @@ attacker-controlled scheme risk.
 
 **Suppression form:** `# noqa: S607` inline.
 
-**Justification.** `nvidia-smi` is invoked by bare name; when an NVIDIA
-driver is present the binary is always on `PATH`. Hardcoding an absolute
+**Justification.** `nvidia-smi` is invoked by bare name. When an NVIDIA
+driver is present, the binary is always on `PATH`. Hardcoding an absolute
 path would be wrong across distros. (`scripts/*.py` get this via
 per-file-ignores; this one site is in a library module so it is suppressed
 inline.)
@@ -246,7 +246,7 @@ available.
 **Suppression form:** `# pyright: ignore[reportAttributeAccessIssue]` inline.
 
 **Justification.** Both modules are loaded dynamically with
-`importlib.import_module`, so basedpyright cannot resolve their attributes.
+`importlib.import_module`. As a result, basedpyright cannot resolve their attributes.
 The surrounding casts establish the callable types used downstream.
 
 ### 27. `reportPrivateUsage` — basedpyright
