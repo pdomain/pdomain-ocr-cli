@@ -148,10 +148,10 @@ Kind: context
 - **Current behavior:** `docs/architecture/cli-orchestration.md` and
   `pdomain-book-tools` commit `5585d27`
 - **Removal commit:** This docgraph migration commit.
-- **Rationale kept:** The stub came from the discarded `feat/batch-pages` WIP,
-  whose full diff remains at
-  `docs/research/2026-05-30-batch-pages-wip.patch`, after page batching shipped
-  through a different design. Upstream now owns predictor-internal defaults.
+- **Rationale kept:** The stub came from the discarded `feat/batch-pages` WIP.
+  Its full diff remains at
+  `docs/research/2026-05-30-batch-pages-wip.patch`, although page batching
+  shipped through a different design. Upstream now owns predictor-internal defaults.
   The intent map preserves throughput overlap, default sizing, VRAM limits,
   API ownership, and CLI exposure as separate unresolved questions.
 - **Remaining work:** Benchmark and choose ownership only if the roadmap
