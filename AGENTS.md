@@ -8,7 +8,7 @@ Kind: process
 
 # CLAUDE — pdomain-ocr-cli
 
-CLI tool that turns scanned book pages into clean `.txt` files. Wraps
+This CLI tool turns scanned book pages into clean `.txt` files. It wraps
 `pdomain-book-tools` OCR/layout primitives with auto-rotation, layout-aware
 reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 
@@ -35,14 +35,16 @@ reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 | `make release-{patch,minor,major}` | run release preflight, create and push the tag, then dispatch `release.yml` with `gh workflow run` |
 | `make refresh-version` | re-derive `pdomain-ocr --version` after tag changes (hatch-vcs) |
 
-`AI=1` captures verbose output to `.ci-ai.log`; stdout shows `✅` on pass or
-filtered failure sections on error. Remove `AI=1` only if you need full verbose
-output for debugging.
+`AI=1` captures verbose output to `.ci-ai.log`. Stdout then shows `✅` on pass,
+or filtered failure sections on error. Remove `AI=1` only if you need full
+verbose output for debugging.
 
-See the workspace-level `docs/process/local-dev.md` for the canonical local-dev
-pattern (spec #362). Legacy `dev-local`, `install-local`, `uninstall-local`,
-`check-local-editable`, `run-local`, and `upgrade-deps-local` are kept as
-deprecation aliases.
+See the workspace-level `docs/process/local-dev.md` for the canonical
+local-dev pattern (spec #362).
+
+Legacy targets `dev-local`, `install-local`, `uninstall-local`,
+`check-local-editable`, `run-local`, and `upgrade-deps-local` still work; the
+repo keeps them as deprecation aliases.
 
 Full target list: `make help`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
@@ -53,9 +55,9 @@ Full target list: `make help`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md
 - Never `python -m pytest`. Always `uv run pytest -n auto` or `make test`. Bare `python`/`python3`/`.venv/bin/python` miss the venv.
 - Never silently drop OCR words. Reorg, caption suppression, and all output paths must preserve every word — roles may change, words may not disappear.
 - `--no-illustration-placeholders` suppresses the placeholder block, not caption text. Caption words must survive in the output.
-- `pdomain-book-tools` is upstream for OCR/layout/image primitives; coordinate with that agent before adding logic that belongs in the library.
-- `pdomain-book-tools` is pinned in `pyproject.toml`; upgrade with `make upgrade-pdomain-book-tools`.
-- Version is derived from git tags via `hatch-vcs` — no hardcoded version in `pyproject.toml`.
+- `pdomain-book-tools` is upstream for OCR/layout/image primitives. Coordinate with that agent before adding logic that belongs in the library.
+- `pdomain-book-tools` is pinned in `pyproject.toml`. Upgrade it with `make upgrade-pdomain-book-tools`.
+- `hatch-vcs` derives the version from git tags, so `pyproject.toml` carries no hardcoded version.
 
 ## Sibling repos
 
@@ -70,10 +72,12 @@ Full target list: `make help`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md
 
 ## GH issues
 
-Cross-cut work tasks are tracked as GH issues in
-**`ConcaveTrillion/ocr-container-meta`** (not in this repo's own tracker).
-Plans under `docs/plans/` in the workspace root are synced there
-via `/decompose-spec --sync`. Milestone naming: `spec: <plan-basename> (#N)`.
+GH issues in **`ConcaveTrillion/ocr-container-meta`** track cross-cut work
+tasks — not this repo's own tracker.
+
+`/decompose-spec --sync` syncs plans under `docs/plans/` in the workspace
+root to those issues. Milestone naming follows the pattern
+`spec: <plan-basename> (#N)`.
 
 When shipping a plan task:
 
@@ -88,11 +92,11 @@ This repo follows the workspace docs/ template — see [`docs/README.md`](docs/R
 folders: `architecture/`, `context/`, `conventions/`, `decisions/`, `process/`,
 `research/`, `specs/`, `templates/`, and `usage/`.
 
-**Superpowers redirect.** When a superpowers skill (e.g. `brainstorming`,
-`writing-plans`) instructs you to save to `docs/superpowers/specs/<file>.md`
-or `docs/superpowers/plans/<file>.md`, save to `docs/specs/<file>.md` or
-`docs/plans/<file>.md` instead. There is no `docs/superpowers/` subdirectory
-in this repo.
+**Superpowers redirect.** This repo has no `docs/superpowers/` subdirectory.
+So when a superpowers skill (e.g. `brainstorming`, `writing-plans`) tells you
+to save to `docs/superpowers/specs/<file>.md` or
+`docs/superpowers/plans/<file>.md`, save instead to `docs/specs/<file>.md` or
+`docs/plans/<file>.md`.
 
 <!-- workspace-process:start -->
 
