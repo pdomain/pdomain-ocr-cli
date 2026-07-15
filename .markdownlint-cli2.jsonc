@@ -12,5 +12,9 @@
     // longer than others). The "compact" / "aligned" enforcement adds a
     // lot of churn for no reader benefit.
     "MD060": false
-  }
+  },
+
+  // These are copyable templates with deliberate placeholders and a
+  // docgraph-ignore marker before their example frontmatter.
+  "ignores": ["docs-issues/template/**"]
 }
