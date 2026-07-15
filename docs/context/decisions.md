@@ -59,7 +59,7 @@ Kind: context
   `docs/architecture/layout-aware-ocr.md`, `docs/architecture/test-suite.md`,
   current usage documentation, code, tests, and workflows.
 - **Implementation direction:** Release verification moved to the pre-tag
-  local gate; model trust is warned rather than eliminated; image resource
+  local gate. Model trust is warned rather than eliminated. Image resource
   limits and installer-side artifact verification remain deferred.
 - **Evidence:** Commits `87f066a`, `bcf8807`, `a0c2054`, `0287e2c`, `4733780`,
   `1c3993c`, and `9e8b089`.
@@ -116,7 +116,7 @@ Kind: context
   `nvidia-smi` and generic `urlopen` use.
 - **Decision:** Keep both probes with narrow boundaries and inline lint
   rationale.
-- **Rationale:** NVIDIA tools are intentionally discovered through `PATH`; the
+- **Rationale:** NVIDIA tools are intentionally discovered through `PATH`. The
   update check uses a hardcoded HTTPS endpoint and accepts no user-controlled
   scheme.
 - **Evidence:** `pdomain_ocr_cli/_startup_notices.py`,
@@ -128,8 +128,8 @@ Kind: context
 
 - **Context:** The archive tree contained only nine empty `.gitkeep` files. The
   local writing-style document's general readability guidance duplicated the
-  installed writing-docs plugin, while its repository-specific rules belonged
-  in `CONVENTIONS.md`.
+  installed writing-docs plugin. Its repository-specific rules belonged
+  in `CONVENTIONS.md` instead.
 - **Decision:** Remove `docs/archive/` and
   `docs/process/writing-style.md`. Route writing through
   `writing-docs:write-readably` and `writing-docs:edit-for-readability`.
