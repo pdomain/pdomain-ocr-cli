@@ -45,8 +45,8 @@ No supersession relationship is recorded.
 
 ## `noqa` suppressions with structural rationale
 
-Most `noqa` suppressions have an inline comment explaining the context. The
-one that warrants extra explanation:
+Most `noqa` suppressions have an inline comment explaining the context. One
+suppression needs extra explanation:
 
 | File | Line | Rule | Rationale |
 |------|------|------|-----------|
