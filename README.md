@@ -1,7 +1,15 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-03
+Last verified: 2026-07-15
+Kind: process
+---
+
 # pdomain-ocr-cli
 
 Turn scanned book pages into clean `.txt` files. No setup required —
-just install and point it at an image.
+install it and point it at an image.
 
 ## What pdomain-ocr does
 
@@ -10,16 +18,16 @@ file next to each image. Two things make the output more useful than
 plain OCR:
 
 - **Layout-aware reorganization.** Before reading the words, `pdomain-ocr`
-  looks at the whole page and figures out what each part is — the body
+  looks at the whole page and figures out what each part is: the body
   text, the figures, the captions underneath them, the running title at
-  the top, the page number at the bottom, any sidenotes in the margin.
-  It uses that map to put the text together in the right order:
-  captions stay with their figures, running titles and page numbers are
-  kept at the top, and sidenotes don't get mashed into the paragraphs
-  they sit next to. By default no OCR words are dropped; opt-in
-  `--experimental-drop-layout-words` (`--edl`) allows for
-  noise inside of figures to be dropped, and a warning is always emitted
-  if this happens. More in
+  the top, the page number at the bottom, and any sidenotes in the
+  margin. It uses that map to put the text together in the right order.
+  Captions stay with their figures, running titles and page numbers stay
+  at the top, and sidenotes stay separate from the paragraphs they sit
+  next to. By default, `pdomain-ocr` drops no OCR words. The opt-in flag
+  `--experimental-drop-layout-words` (`--edl`) lets it drop noise found
+  inside figures, and it always prints a warning when that happens. More
+  in
   [docs/architecture/layout-aware-ocr.md](docs/architecture/layout-aware-ocr.md).
 - **Auto-rotation.** If a page was scanned sideways or upside down,
   `pdomain-ocr` re-runs the OCR at 90° / 180° / 270° and keeps the
@@ -49,7 +57,7 @@ it when you're running through a whole book rather than one page.
 - **Apple Silicon Mac** — kicks in automatically, nothing to install. *(Unverified — feedback welcome.)*
 - **No GPU** — nothing to do; CPU is the default.
 
-Already installed without a GPU? Just re-run the install script — it
+Already installed without a GPU? Re-run the install script — it
 swaps the install in place. See the [FAQ](#faq) for switching to GPU,
 the "GPU detected but installed CPU-only" nudge, troubleshooting, and
 when a GPU is (or isn't) worth it.
@@ -70,9 +78,9 @@ curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/insta
 irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 ```
 
-Both scripts install the wheel from the latest GitHub Release, pass the
-self-hosted `pdomain-index-pip` package index, and detect NVIDIA CUDA
-automatically to select the matching PyTorch build. Set
+Both scripts install the wheel from the latest GitHub Release and pass
+the self-hosted `pdomain-index-pip` package index. They also detect
+NVIDIA CUDA automatically and select the matching PyTorch build. Set
 `PD_OCR_INSTALL_PYTHON` before running the script to override the
 installer Python version; the default is `3.13`. The PowerShell script is
 self-contained for piped `irm ... | iex` installs; a checked-out helper
@@ -102,8 +110,8 @@ pdomain-ocr --save-json page.png
 pdomain-ocr --version
 ```
 
-Full flag reference — quote / em-dash normalization, model pinning,
-layout-detector options, illustration extraction, debug output — in
+The full flag reference (quote and em-dash normalization, model pinning,
+layout-detector options, illustration extraction, debug output) lives in
 [docs/usage/cli-usage.md](docs/usage/cli-usage.md). `pdomain-ocr --help` lists everything
 authoritatively.
 
@@ -133,11 +141,11 @@ heavier CuPy stack is skipped (CuPy itself requires CUDA ≥ 12.4).
 
 ### Why am I seeing a "GPU detected but installed CPU-only" message?
 
-On startup, `pdomain-ocr` does a cheap check: if your host has an NVIDIA GPU
+On startup, `pdomain-ocr` runs a cheap check. If your host has an NVIDIA GPU
 (`nvidia-smi` on `PATH`, exits 0) but pdomain-ocr was installed without the
 `[gpu]` extra (CuPy isn't importable), it prints a one-line nudge to
-stderr suggesting the reinstall command. The probe is fail-soft — any
-error is swallowed and the OCR run proceeds normally.
+stderr. The nudge suggests the reinstall command. The probe is
+fail-soft: it swallows any error and lets the OCR run proceed normally.
 
 To silence it persistently (e.g. you've decided CPU-only is right for
 this host):
@@ -165,8 +173,8 @@ A few things to check:
 - **GPU still not used after that** — re-run the install script; it
   re-detects on each run.
 
-For the deep mechanics — `cuXXX` wheel selection, what the install
-script does, disk / VRAM budgets — see
+For the deep mechanics (`cuXXX` wheel selection, what the install
+script does, disk / VRAM budgets), see
 [Technical details](#technical-details).
 
 ### Why is the first run so slow?
@@ -247,14 +255,14 @@ makes exactly these outbound requests:
    - `GET https://api.github.com/repos/pdomain/pdomain-ocr-cli/tags`
    - 3-second timeout; if a newer release tag exists, prints a one-line
      upgrade notice to stderr.
-   - Best-effort — silently suppressed on any network or parse error,
-     and never blocks startup.
+   - Best-effort: it silently suppresses any network or parse error, and
+     never blocks startup.
    - Bypass entirely with `--no-update-check`, or persistently via
      the `PD_OCR_NO_UPDATE_CHECK=1` env var (e.g. offline runs or
      locked-down networks).
 
 If you need to run fully offline after the first install, both of
-these are cache-friendly: once models are cached and the update check
+these are cache-friendly. Once models are cached and the update check
 is suppressed (`--no-update-check` or `PD_OCR_NO_UPDATE_CHECK=1`), no
 further network access is required.
 
@@ -269,7 +277,7 @@ time to upgrade or to switch between CPU and GPU. They:
 - Use Python 3.13 by default for the uv tool environment. Override with
   `PD_OCR_INSTALL_PYTHON` if you need another supported Python version.
 - Detect NVIDIA CUDA via `nvidia-smi`, pick the matching `cuXXX` PyTorch
-  wheel index, and — when CUDA ≥ 12.4 — add `--with 'pdomain-book-tools[gpu]'`
+  wheel index, and (when CUDA ≥ 12.4) add `--with 'pdomain-book-tools[gpu]'`
   for CuPy + opencv-cuda.
 - Run `uv tool install --reinstall <wheel>` with `--extra-index-url`
   pointing at the self-hosted `pdomain-index-pip` (for `pdomain-book-tools`) and at
@@ -281,7 +289,7 @@ listed above.
 ### Manual install
 
 If you'd rather not pipe `curl | sh`, you can run the install yourself
-with [uv](https://docs.astral.sh/uv/). The install script just wraps
+with [uv](https://docs.astral.sh/uv/). The install script wraps
 `uv tool install` against the wheel asset on the latest GitHub Release —
 nothing here uses `pip`.
 
@@ -322,7 +330,7 @@ The `[gpu]` extra on `pdomain-book-tools` opts into `cupy-cuda12x` and
 Disk / VRAM budgets are below in
 [GPU acceleration mechanics](#gpu-acceleration-mechanics).
 
-In practice, just re-running the install script is simpler — it does
+In practice, re-running the install script is simpler — it does
 the detection and assembles these flags for you.
 
 ### GPU acceleration mechanics
@@ -357,7 +365,7 @@ Rough disk + memory budget for the NVIDIA path:
 ## Development
 
 Working on `pdomain-ocr-cli` itself? See [`DEVELOPMENT.md`](DEVELOPMENT.md) for the full
-developer guide — covers `make setup`, the editable side-by-side workflow with
+developer guide. It covers `make setup`, the editable side-by-side workflow with
 `pdomain-book-tools` / `pdomain-ops` (`make local-setup`,
 `make run-local ARGS="…"`), the project layout, and the release process.
 Releases are blocked until all runtime dependencies, including
