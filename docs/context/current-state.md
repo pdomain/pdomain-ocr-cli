@@ -18,12 +18,16 @@ Kind: context
 ## What matters now
 
 The standing roadmap contains open release, correctness, security, dependency,
-test, and documentation work. Output normalization remains a deferred feature
-pending shared upstream logic. Current behavior is documented in
+test, and documentation work.
+
+Output normalization remains a deferred feature pending shared upstream logic.
+
+Current behavior is documented in
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
 [`docs/architecture/cli-orchestration.md`](../architecture/cli-orchestration.md),
 [`docs/architecture/test-suite.md`](../architecture/test-suite.md),
 [`docs/usage/cli-usage.md`](../usage/cli-usage.md), and `DEVELOPMENT.md`.
+
 Suppression rationale is recorded in
 [`docs/decisions/type-suppressions.md`](../decisions/type-suppressions.md), with
 the current inventory in
@@ -42,6 +46,9 @@ PowerShell prerequisite through `scripts/ensure-pwsh.sh`.
 
 ## Risks
 
-The roadmap includes high-priority release, correctness, and test work. Model
-checkpoint safety remains partly blocked upstream. Predictor batch-size
-defaults now live upstream; only benchmarking or CLI exposure remains deferred.
+The roadmap includes high-priority release, correctness, and test work.
+
+Model checkpoint safety remains partly blocked upstream.
+
+Predictor batch-size defaults now live upstream; only benchmarking or CLI
+exposure remains deferred.
