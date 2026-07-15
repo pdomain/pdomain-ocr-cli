@@ -32,7 +32,7 @@ def atomic_write_bytes(path: Path, data: bytes) -> None:
         finally:
             os.close(fd)
         tmp.chmod(0o644)
-        os.replace(tmp, path)
+        tmp.replace(path)
         _fsync_parent_dir(path)
     except BaseException:
         with contextlib.suppress(FileNotFoundError):
@@ -58,7 +58,7 @@ def atomic_write_json_document(path: Path, doc: JsonDocumentLike) -> None:
         with tmp.open("rb") as fh:
             os.fsync(fh.fileno())
         tmp.chmod(0o644)
-        os.replace(tmp, path)
+        tmp.replace(path)
         _fsync_parent_dir(path)
     except BaseException:
         with contextlib.suppress(FileNotFoundError):

@@ -285,7 +285,7 @@ class _SinglePageDoc:
             "source_path": str(self._source_path) if self._source_path is not None else None,
             "pages": [page_dict],
         }
-        with open(file_path, "w", encoding="utf-8") as f:
+        with Path(file_path).open("w", encoding="utf-8") as f:
             _json.dump(envelope, f, ensure_ascii=False, indent=2)
 
 
