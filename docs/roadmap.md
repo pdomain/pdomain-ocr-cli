@@ -18,7 +18,7 @@ disposition: Standing roadmap for CLI-owned work.
 - **Read when:** deciding what to work on next in `pdomain-ocr-cli`.
 - **Search terms:** roadmap, backlog, now next later, open priorities, hardening, release, supply chain, security
 
-Standing list of open, CLI-owned work, ordered by priority within theme. This
+This roadmap lists open, CLI-owned work by priority within each theme. This
 file is the source of truth for planned work; it absorbs the former
 `docs/plans/roadmap.md` and the repo's GitHub issue backlog (migrated
 2026-07-14, each item tagged with its originating `#NNN`).
@@ -53,7 +53,7 @@ surfacing (flag name, help text, defaults, docs) and any caller-side glue.
 
 ## Work clusters
 
-Several open items are one piece of work split across issues. Do them together:
+Several open items belong to one piece of work split across issues. Do them together:
 
 - **`install.ps1` parity:** [#23](https://github.com/pdomain/pdomain-ocr-cli/issues/23) (Now), [#49](https://github.com/pdomain/pdomain-ocr-cli/issues/49), [#24](https://github.com/pdomain/pdomain-ocr-cli/issues/24) — one rewrite of the PowerShell installer to mirror `install.sh` (release-wheel path, pd-index-pip, dependency-confusion guard, installer-arg tests).
 - **Workflow supply-chain hardening:** [#37](https://github.com/pdomain/pdomain-ocr-cli/issues/37), [#26](https://github.com/pdomain/pdomain-ocr-cli/issues/26), [#27](https://github.com/pdomain/pdomain-ocr-cli/issues/27), [#28](https://github.com/pdomain/pdomain-ocr-cli/issues/28), [#29](https://github.com/pdomain/pdomain-ocr-cli/issues/29) — one hardening pass over `ci.yml` / `release.yml` (pin actions + uv by SHA, drop persisted creds, remove template injection, cache). Note #37 (ci.yml) is `high` and #26 (release.yml) is `medium` per their labels, but the edit is the same.
@@ -164,7 +164,7 @@ in architecture, decisions, usage, and process docs.
   correcting `rotated_page` fixture without any fixture modification.
 - Bumped `pdomain-ops` floor to `>=0.7.2`; both resolve from `pdomain-index-pip`.
 - Pinned integration-test HF model to `v0.7` (post-pdomain rename, `pdomain-`-prefixed files).
-- All 15 slow integration tests pass, including `rotated_page` legitimately.
+- All 15 slow integration tests pass. The `rotated_page` test passes legitimately.
 
 ### 2026-06-01 — book-tools 0.17 / pdomain-ops 0.7 compatibility
 
