@@ -92,9 +92,11 @@ If you also want pdomain-book-tools' own venv (to run its tests):
 
 ### Local-dev
 
-These targets are guarded — if the sibling is missing they print a clear
-message and exit 1. None of them mutate `pyproject.toml`; they swap the
-pinned dep with an editable install in the venv (or in the `uv tool`
+These targets are guarded: if the sibling is missing, they print a clear
+message and exit 1.
+
+None of them mutate `pyproject.toml`. Instead, they swap the pinned
+dependency for an editable install in the venv (or in the `uv tool`
 install).
 
 | Target | Purpose |
@@ -116,8 +118,8 @@ make local-run ARGS='page.png --layout-debug'
 make local-check
 ```
 
-After `local-install`, run `pdomain-ocr page.png`; the tool tracks this checkout
-and editable `pdomain-book-tools`, while direct `pdomain-ops` uses the registry.
+After `local-install`, run `pdomain-ocr page.png`. The tool tracks this checkout
+and editable `pdomain-book-tools`. Direct `pdomain-ops` uses the registry instead.
 
 To revert to the published version:
 
@@ -149,32 +151,32 @@ point is `pdomain_ocr_cli.ocr_to_txt:main` (wired via `[project.scripts]`).
 ## Release
 
 Releases are driven by `make release-patch`, `make release-minor`, or `make release-major`.
-The release script requires clean, up-to-date `main`, runs `make ci-slow`, creates an
-annotated `vX.Y.Z` tag, pushes `master` and the tag, then dispatches
-`.github/workflows/release.yml` with the tag input.
+The release script requires a clean, up-to-date `main`. It then runs `make ci-slow`,
+creates an annotated `vX.Y.Z` tag, and pushes `master` and the tag. Finally, it
+dispatches `.github/workflows/release.yml` with the tag input.
 
 `pdomain-ops` and `pdomain-book-tools` resolve from the self-hosted pdomain pip index
 for release builds. Do not commit path-based sibling sources for release.
 
 When the release workflow passes, it builds and publishes release artifacts as
 GitHub Release assets. `install.sh` / `install.ps1` resolve the latest
-non-prerelease GitHub Release and download that wheel, so end users get the new
+non-prerelease GitHub Release and download that wheel. End users get the new
 release on their next `curl | sh`.
 
-Versioning is managed by `hatch-vcs` from git tags — `pyproject.toml`
+Versioning is managed by `hatch-vcs` from git tags. `pyproject.toml`
 has no hardcoded version.
 
-## Notes
+## Known quirks
 
-- `Makefile.local` is gitignored. The earlier separate-file pattern has
-  been merged into the main `Makefile` (with peer-existence guards on
-  the `*-local` targets), but `-include Makefile.local` is still
-  available for personal additions if you want them.
+- `Makefile.local` is gitignored. The earlier separate-file pattern is now
+  merged into the main `Makefile`, with peer-existence guards on the
+  `*-local` targets. You can still add `-include Makefile.local` for
+  personal additions if you want them.
 - Pylance / Pyright may flag `pdomain_book_tools.layout.adapters.pp_doclayout`
   and `transformers.utils` as unresolved. Those are intentional lazy
-  imports (heavy deps loaded only when needed). Point your IDE at
+  imports (heavy dependencies loaded only when needed). Point your IDE at
   `.venv/bin/python` to silence them.
 - `pytest` prints a `DeprecationWarning: defusedxml.cElementTree is deprecated`
   originating from `defusedxml/__init__.py`. This is a bug in `defusedxml`
-  itself — its own `__init__.py` imports the deprecated submodule. Watch for
+  itself: its own `__init__.py` imports the deprecated submodule. Watch for
   a `defusedxml` release that fixes it and bump the pin when one appears.
