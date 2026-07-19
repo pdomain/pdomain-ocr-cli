@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-15
+Last verified: 2026-07-19
 Kind: context
 ---
 
@@ -14,6 +14,21 @@ Kind: context
 - **Status:** active
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
+
+### 2026-07-19 — GitHub Issues cutover closeout
+
+- **Context:** The July 2026 cutover moved open work into the roadmap and
+  deleted GitHub issues, but left Issues enabled and omitted runbook artifacts
+  (digests, deletion journal, `docs/issues/` templates).
+- **Decision:** Disable GitHub Issues; install `docs/issues/`; document residual
+  gaps; keep the roadmap as standing backlog; recover closed bodies from git
+  tombstone `9498407`.
+- **Rationale:** Product planning belongs in governed docs. Re-enabling Issues
+  risks confusion and residual platform metadata.
+- **Evidence:**
+  [`docs/decisions/2026-07-19-github-issues-cutover.md`](../decisions/2026-07-19-github-issues-cutover.md),
+  commits `1c5046f` / `b2cfd49`, `9498407`, `165013d`.
+- **Remaining work:** none for cutover; product items stay on the roadmap.
 
 ### 2026-07-13 — Adopt docgraph governance
 

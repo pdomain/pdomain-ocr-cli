@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-15
+Last verified: 2026-07-19
 Kind: context
 ---
 
@@ -18,7 +18,8 @@ Kind: context
 ## What matters now
 
 The standing roadmap contains open release, correctness, security, dependency,
-test, and documentation work.
+test, and documentation work:
+[`docs/roadmap.md`](../roadmap.md).
 
 Output normalization remains a deferred feature pending shared upstream logic.
 
@@ -33,11 +34,17 @@ records suppression rationale;
 [`docs/conventions/lint-deviations.md`](../conventions/lint-deviations.md)
 lists the current inventory.
 
+GitHub Issues on this repository are disabled. Former issue numbers are
+provenance tags only; see
+[`docs/decisions/2026-07-19-github-issues-cutover.md`](../decisions/2026-07-19-github-issues-cutover.md).
+
 ## In-flight work
 
-The `docs/docgraph-migration` branch is removing obsolete documentation
-scaffolding, consolidating writing guidance under the writing-docs plugin, and
-correcting authored context against current upstream behavior.
+No documentation-migration branch is in flight. Cutover closeout lands the
+issues templates, cutover decision, and tracker disablement on the branch that
+carries this update.
+
+Product work follows the roadmap Now / Next / Blocked sections.
 
 ## Test state
 
@@ -52,3 +59,6 @@ Model checkpoint safety remains partly blocked upstream.
 
 Predictor batch-size defaults now live upstream. Only benchmarking or CLI
 exposure remains deferred.
+
+Governed defect reports (when filed) live under
+[`docs/issues/`](../issues/README.md); none are open at closeout.

@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-15
+Last verified: 2026-07-19
 Kind: context
 ---
 
@@ -18,9 +18,13 @@ Kind: context
 ## Active bets
 
 - Keep the standing CLI roadmap current, including explicit empty states when
-  it has no open items.
+  it has no open items:
+  [`docs/roadmap.md`](../roadmap.md).
 - Add output normalization only after `pdomain-book-tools` provides the shared
   normalization logic and glyph map.
+- Keep GitHub Issues disabled; plan in-repo via roadmap and
+  [`docs/issues/`](../issues/README.md). See
+  [`docs/decisions/2026-07-19-github-issues-cutover.md`](../decisions/2026-07-19-github-issues-cutover.md).
 
 ## Deferred work
 
@@ -48,10 +52,21 @@ Kind: context
 
 - Do not keep completed execution plans in `docs/archive/` when current code,
   tests, architecture, usage, or decisions already preserve their durable truth.
+- Do not recreate one `docs/issues/` file per former GitHub chore number; the
+  roadmap is the backlog for that class of work.
 
 ## Blocked (waiting on)
 
-- Safe checkpoint loading remains blocked on upstream compatibility work.
+- Safe checkpoint loading remains blocked on upstream compatibility work
+  (roadmap Blocked section; former GH #15).
+
+## Open issues
+
+Governed evidence-bearing reports under [`docs/issues/`](../issues/README.md):
+
+- *None yet.*
+
+Standing backlog items are listed only in [`docs/roadmap.md`](../roadmap.md).
 
 ## Needs owner decision
 

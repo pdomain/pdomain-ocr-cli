@@ -14,7 +14,8 @@
     "MD060": false
   },
 
-  // These are copyable templates with deliberate placeholders and a
-  // docgraph-ignore marker before their example frontmatter.
-  "ignores": ["docs-issues/template/**"]
+  // Copyable templates with deliberate placeholders and a docgraph-ignore
+  // marker before example frontmatter. Real issue reports under docs/issues/
+  // remain linted; only TEMPLATE.md is ignored (same pattern as pdomain-ops).
+  "ignores": ["docs-issues/template/**", "docs/issues/TEMPLATE.md"]
 }
