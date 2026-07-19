@@ -162,7 +162,7 @@ Kind: context
 - **Superseded by:** `writing-docs:write-readably` /
   `writing-docs:edit-for-readability`; repository-specific link and command
   rules in `CONVENTIONS.md`
-- **Removal commit:** (this governance pass commit)
+- **Removal commit:** `ac05397`
 - **Rationale kept:** Decision “2026-07-15 — Remove repository-local archives
   and writing rules” already authorized removal; the file had been re-scaffolded
   as `status: active` and was still indexed. Intent-map already listed it as
