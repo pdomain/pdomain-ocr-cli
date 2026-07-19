@@ -18,16 +18,16 @@ Kind: context
 ### 2026-07-19 — GitHub Issues cutover closeout
 
 - **Context:** The July 2026 cutover moved open work into the roadmap and
-  deleted GitHub issues, but left Issues enabled and omitted runbook artifacts
-  (digests, deletion journal, `docs/issues/` templates).
-- **Decision:** Disable GitHub Issues; install `docs/issues/`; document residual
-  gaps; keep the roadmap as standing backlog; recover closed bodies from git
-  tombstone `9498407`.
-- **Rationale:** Product planning belongs in governed docs. Re-enabling Issues
-  risks confusion and residual platform metadata.
+  deleted GitHub issues, but omitted runbook artifacts (digests, deletion
+  journal, `docs/issues/` templates) and needed a clear empty-tracker policy.
+- **Decision:** Install `docs/issues/`; keep the roadmap as standing backlog;
+  permanently delete all remote issues; keep the Issues **feature enabled** with
+  a **zero** issue count; recover closed bodies from git tombstone `9498407`.
+- **Rationale:** Product planning belongs in governed docs. An empty enabled
+  tracker avoids hiding the Issues UI while preventing a second backlog.
 - **Evidence:**
   [`docs/decisions/2026-07-19-github-issues-cutover.md`](../decisions/2026-07-19-github-issues-cutover.md),
-  commits `1c5046f` / `b2cfd49`, `9498407`, `165013d`.
+  commits `1c5046f` / `b2cfd49`, `9498407`, `165013d`, `a9169ca`.
 - **Remaining work:** none for cutover; product items stay on the roadmap.
 
 ### 2026-07-13 — Adopt docgraph governance

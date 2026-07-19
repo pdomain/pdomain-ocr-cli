@@ -33,8 +33,8 @@ preserves history.
 
 **Backlog and issues.** Standing CLI work lives in
 [`roadmap.md`](roadmap.md). Evidence-bearing defects use
-[`issues/`](issues/README.md). GitHub Issues on this repository are **disabled**;
-see the cutover decision
+[`issues/`](issues/README.md). The GitHub Issues feature is **enabled** but the
+remote tracker is kept **empty** (planning is in-repo); see
 [`decisions/2026-07-19-github-issues-cutover.md`](decisions/2026-07-19-github-issues-cutover.md).
 Cross-repo work may still use `ConcaveTrillion/ocr-container-meta`.
 

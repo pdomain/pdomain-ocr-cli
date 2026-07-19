@@ -62,8 +62,8 @@ than in per-machine harness memory.
 
 Standing CLI backlog (release, supply-chain, correctness chores) lives in
 [`docs/roadmap.md`](../roadmap.md), not as one file per former GitHub number.
-Use this folder for evidence-bearing bugs and investigations only. GitHub Issues
-on this repository are disabled; see
+Use this folder for evidence-bearing bugs and investigations only. The GitHub
+Issues feature is enabled but the remote tracker is kept empty; see
 [`docs/decisions/2026-07-19-github-issues-cutover.md`](../decisions/2026-07-19-github-issues-cutover.md).
 
 ## Recommended structure

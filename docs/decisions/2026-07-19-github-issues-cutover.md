@@ -12,15 +12,17 @@ Kind: decision
 
 - **Kind:** decision
 - **Status:** active
-- **Read when:** tracing a former GitHub issue number, confirming Issues are
-  disabled, or checking what the cutover preserved and what it skipped.
+- **Read when:** tracing a former GitHub issue number, confirming the tracker is
+  empty, or checking what the cutover preserved and what it skipped.
 - **Search terms:** GitHub issues cutover, migration, delete issues, tombstone,
   completed-issue ledger, former GH, issue archive, hasIssuesEnabled.
 
-This repository no longer uses GitHub Issues. Open work lives in
+This repository does not use GitHub Issues for planning. Open work lives in
 [`docs/roadmap.md`](../roadmap.md). Evidence-bearing defects use
-[`docs/issues/`](../issues/README.md). Former issue text for closed work is
-recoverable from Git history.
+[`docs/issues/`](../issues/README.md). The GitHub Issues **feature is enabled**
+so the repo can accept issues later if needed, but the remote tracker holds
+**zero** issues (open or closed). Former issue text is recoverable from Git
+history only.
 
 ## Context
 
@@ -41,23 +43,32 @@ numbers #1–#3 and #5–#51 (#4 was a pull request, not an issue).
 The shared runbook at
 `shared-devtools/docs/runbooks/github-issues-to-docgraph-migration-prompt.md`
 asks for raw SHA digests, per-issue architecture ledgers, an append-only
-deletion journal, `docs/issues/` templates, and `hasIssuesEnabled: false`. The
-July cutover shipped a shorter path: roadmap for open work, git tombstone for
-closed bodies, and GitHub deletion without those extra artifacts.
+deletion journal, `docs/issues/` templates, and optionally disabling Issues.
+The July cutover shipped a shorter path: roadmap for open work, git tombstone
+for closed bodies, and permanent GitHub deletion without those extra artifacts.
+
+Closeout first disabled Issues, then re-enabled the feature with an empty
+tracker so the UI stays available while planning remains in-repo.
 
 ## Decision
 
-1. **Keep GitHub Issues disabled** on `pdomain/pdomain-ocr-cli`. Do not re-enable
-   the feature to “look up” old issues; use the recovery command below.
+1. **Keep the GitHub Issues feature enabled** on `pdomain/pdomain-ocr-cli`, and
+   keep the remote issue count at **zero** (no open and no closed issues). Do
+   not restore deleted historical issues.
 2. **Treat `docs/roadmap.md` as the standing backlog** for CLI-owned open work.
    Tags like `former GH #25` are provenance only; they are not live tracker
    links.
 3. **Use `docs/issues/`** only for governed, evidence-bearing bug and
    investigation reports (template: `docs/issues/TEMPLATE.md`). Do not recreate
    one file per former GitHub chore.
-4. **Accept residual runbook gaps as known risk**, documented in the ledger
+4. **Do not file routine backlog items on GitHub Issues** for this repo. If an
+   issue is filed on GitHub by mistake, either move it into the roadmap or a
+   governed `docs/issues/` report and delete the GitHub issue so the count
+   returns to zero—or deliberately keep it only after an owner decision to
+   resume GitHub tracking.
+5. **Accept residual runbook gaps as known risk**, documented in the ledger
    below, rather than re-deriving digests that GitHub can no longer supply.
-5. **Recover closed-issue text** with:
+6. **Recover closed-issue text** with:
 
    ```bash
    git show 9498407:docs/decisions/2026-07-16-closed-issues-archive.md
@@ -65,19 +76,20 @@ closed bodies, and GitHub deletion without those extra artifacts.
 
 ## Consequences
 
-- Issue URLs under `github.com/pdomain/pdomain-ocr-cli/issues/N` no longer
-  resolve.
+- Former issue URLs under `github.com/pdomain/pdomain-ocr-cli/issues/N` no longer
+  resolve (issues were deleted, not merely closed).
 - Agents and humans plan from the roadmap, intent map, and architecture docs.
 - Cross-cut work still uses `ConcaveTrillion/ocr-container-meta` when a milestone
   points there.
-- Re-enabling GitHub Issues could expose residual platform metadata; avoid it.
+- The Issues tab can appear empty; that is intentional until an owner chooses
+  otherwise.
 - Strict runbook auditors must read the residual-gap section; this decision is
   the durable statement that digests and a pre-delete journal were not produced.
 
 ## Supersedes / Superseded-by
 
-Supersedes the live GitHub Issues tracker for this repository. Does not
-supersede `docs/roadmap.md` or architecture docs.
+Supersedes the former populated GitHub Issues backlog for this repository. Does
+not supersede `docs/roadmap.md` or architecture docs.
 
 ## Completed-issue ledger (compact)
 
@@ -100,7 +112,7 @@ Open-item numbers still referenced from the roadmap include at least former GH
 | Per-closed-issue architecture coverage + adversarial review | Not produced; product behavior remains in architecture, usage, code, and tests |
 | Append-only deletion journal before each delete batch | Not produced; this decision is the post-hoc record |
 | `docs/issues/` README + template | Installed in this closeout |
-| `hasIssuesEnabled: false` | Disabled in this closeout |
+| Empty remote tracker | Zero open + zero closed issues verified after re-enable |
 | One governed issue file per open GH item | Rejected; roadmap is the backlog |
 
 ## Migration manifest (closeout)
@@ -108,11 +120,12 @@ Open-item numbers still referenced from the roadmap include at least former GH
 ```text
 GITHUB ISSUE MIGRATION MANIFEST
   Repository: pdomain/pdomain-ocr-cli
-  Worktree / branch: docs/github-issues-cutover-closeout
+  Worktree / branch: docs/github-issues-cutover-closeout (merged to master a9169ca)
   Merged default-branch commits (prior cutover):
     1c5046f / b2cfd49  open issues → docs/roadmap.md
     9498407            closed-issue archive added
     165013d            archive removed (git tombstone)
+    a9169ca            cutover closeout docs
   Open issues discovered at consolidation: 35
   Closed issues archived: 50
   Active issue documents created from GH: 0 (roadmap used instead)
@@ -121,6 +134,6 @@ GITHUB ISSUE MIGRATION MANIFEST
   Decisions and intent updated: this decision; current-state; intent-map; docs README
   Owner decisions remaining: none for cutover itself
   Residual risk: no raw digests or pre-delete journal
-  GitHub issues remaining: 0
-  GitHub Issues disabled: yes (closeout)
+  GitHub issues remaining: 0 open, 0 closed
+  GitHub Issues feature enabled: yes (empty tracker)
 ```

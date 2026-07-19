@@ -22,7 +22,7 @@ This roadmap lists open, CLI-owned work by priority within each theme. This
 file is the source of truth for planned work; it absorbs the former
 `docs/plans/roadmap.md` and the repo's former GitHub issue backlog (migrated
 2026-07-14). Each item keeps a `former GH #NNN` provenance tag. Those numbers
-are not live tracker links. GitHub Issues are disabled; see
+are not live tracker links. The GitHub Issues tracker is kept empty; see
 [`docs/decisions/2026-07-19-github-issues-cutover.md`](decisions/2026-07-19-github-issues-cutover.md).
 
 ## Goal

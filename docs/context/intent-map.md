@@ -22,7 +22,7 @@ Kind: context
   [`docs/roadmap.md`](../roadmap.md).
 - Add output normalization only after `pdomain-book-tools` provides the shared
   normalization logic and glyph map.
-- Keep GitHub Issues disabled; plan in-repo via roadmap and
+- Keep the GitHub Issues tracker empty; plan in-repo via roadmap and
   [`docs/issues/`](../issues/README.md). See
   [`docs/decisions/2026-07-19-github-issues-cutover.md`](../decisions/2026-07-19-github-issues-cutover.md).
 

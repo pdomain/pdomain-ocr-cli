@@ -34,8 +34,8 @@ records suppression rationale;
 [`docs/conventions/lint-deviations.md`](../conventions/lint-deviations.md)
 lists the current inventory.
 
-GitHub Issues on this repository are disabled. Former issue numbers are
-provenance tags only; see
+GitHub Issues on this repository are enabled but the tracker is empty.
+Former issue numbers are provenance tags only; see
 [`docs/decisions/2026-07-19-github-issues-cutover.md`](../decisions/2026-07-19-github-issues-cutover.md).
 
 ## In-flight work
