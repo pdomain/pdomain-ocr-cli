@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-15
+Last verified: 2026-07-19
 Kind: architecture
 Supersedes:
   - docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md
@@ -40,11 +40,16 @@ predictor's internal detection and recognition batch sizes. Its defaults are
 
 ## Execution invariants
 
-`BatchPlan` rejects output collisions before OCR starts. A backend exception
-becomes `BatchRuntimeError`, and a batch must return exactly one result per
-submitted image. Artifact helpers use unique temporary files and atomic
-replacement. The final text file is written last, so its presence signals a
-complete requested artifact set.
+`BatchPlan` expands inputs and rejects output collisions **before** model
+resolution or load. Invalid inputs and plan failures exit with a clear
+`ERROR:` line and never start OCR. Model or layout resolve/load failures also
+exit as clean CLI errors (not raw stack traces for expected resolve paths).
+
+A backend exception becomes `BatchRuntimeError`, and a batch must return
+exactly one result per submitted image. Artifact helpers use unique temporary
+files and atomic replacement. The final text file is written last, so its
+presence signals a complete requested artifact set. Sidecar rollback after a
+failed final text write is not implemented.
 
 ## Trust and network boundaries
 

@@ -54,6 +54,8 @@ Kind: context
   tests, architecture, usage, or decisions already preserve their durable truth.
 - Do not recreate one `docs/issues/` file per former GitHub chore number; the
   roadmap is the backlog for that class of work.
+- Do not re-open the PATH-based `nvidia-smi` GPU probe as a defect (former GH
+  #36); the accepted bounded PATH probe stands in decisions and lint-deviations.
 
 ## Blocked (waiting on)
 

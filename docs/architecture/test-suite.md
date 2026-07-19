@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: architecture
 Supersedes:
   - docs/specs/2026-05-28-test-suite-reorganization-design.md
@@ -67,11 +67,16 @@ including piped invocation and package-index behavior.
 
 ## Word preservation
 
-Tests enforce the no-silent-word-drop invariant. Layout reorganization, caption
-handling, illustration-placeholder suppression, and output paths preserve OCR
-words. A word may move or receive a role label, but it must not disappear
-silently. `--no-illustration-placeholders` suppresses only the placeholder;
-caption text remains.
+Tests enforce the no-silent-word-drop invariant for CLI wiring paths. Caption
+handling, illustration-placeholder suppression, and reorganization with
+controlled fakes preserve OCR words. A word may move or receive a role label,
+but it must not disappear silently. `--no-illustration-placeholders` suppresses
+only the placeholder; caption text remains.
+
+**Coverage gap (roadmap former GH #41):** fast word-preservation cases often
+force `--layout-model none` or use `FakePage`. Slow default-layout tests prove
+the path runs, but do not yet assert a multiset “every OCR word preserved”
+oracle under default layout reorganization.
 
 ## Implementation deviations
 

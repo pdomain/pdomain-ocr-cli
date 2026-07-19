@@ -18,11 +18,10 @@ disposition: Standing roadmap for CLI-owned work.
 - **Read when:** deciding what to work on next in `pdomain-ocr-cli`.
 - **Search terms:** roadmap, backlog, now next later, open priorities, hardening, release, supply chain, security
 
-This roadmap lists open, CLI-owned work by priority within each theme. This
-file is the source of truth for planned work; it absorbs the former
-`docs/plans/roadmap.md` and the repo's former GitHub issue backlog (migrated
-2026-07-14). Each item keeps a `former GH #NNN` provenance tag. Those numbers
-are not live tracker links. The GitHub Issues tracker is kept empty; see
+This roadmap lists **open** CLI-owned work only. Implemented former GitHub items
+live under **Shipped** and in architecture, usage, and tests. Provenance tags
+use `former GH #NNN` (not live tracker links). The GitHub Issues tracker stays
+empty; see
 [`docs/decisions/2026-07-19-github-issues-cutover.md`](decisions/2026-07-19-github-issues-cutover.md).
 
 ## Goal
@@ -53,90 +52,59 @@ a library knob, the library work is tracked in
 `pdomain-book-tools/docs/plans/roadmap.md` and the CLI item here covers only the
 surfacing (flag name, help text, defaults, docs) and any caller-side glue.
 
-## Work clusters
+## Work clusters (remaining open legs only)
 
-Several open items belong to one piece of work split across issues. Do them together:
-
-- **`install.ps1` parity:** former GH #23 (Now), former GH #49, former GH #24 — one rewrite of the PowerShell installer to mirror `install.sh` (release-wheel path, pd-index-pip, dependency-confusion guard, installer-arg tests).
-- **Workflow supply-chain hardening:** former GH #37, former GH #26, former GH #27, former GH #28, former GH #29 — one hardening pass over `ci.yml` / `release.yml` (pin actions + uv by SHA, drop persisted creds, remove template injection, cache). Note #37 (ci.yml) is `high` and #26 (release.yml) is `medium` per their labels, but the edit is the same.
-- **Durable artifact transaction:** former GH #17 → former GH #21 → former GH #22 — one design: exclusive non-symlink temp files, route all writes through the atomic helper, all-or-nothing promotion with rollback.
-- **Release wheel-smoke:** shared sub-task of former GH #25, former GH #30, former GH #31, former GH #50 — smoke-install from the built wheel once, referenced by all four.
-- **Startup sequencing (`ocr_to_txt`):** former GH #18, former GH #20, former GH #39, former GH #40 — adjacent edits to the same input-validation / model-load / layout path; sequence to avoid rework.
+- **Installer residual:** former GH #24 — dependency-confusion guard on the
+  installer `uv tool install` path (wheel + index path already shipped).
+- **Rotation + layout alignment:** former GH #18 — layout detect and illustration
+  crops must use the rotated page image; default-layout word-preservation
+  multiset coverage is former GH #41.
+- **Release residual:** former GH #30 (installer artifact verification), #31
+  upper bounds (wheel-smoke already shipped), #50 build-backend pins, #45
+  immutable pre-commit revs (tag revs + `pre-commit-update` already present).
 
 ---
 
 ## Now — highest priority
 
-### Release & CI supply-chain
-
-- [chore/high] Run server-side tests before publishing tag-triggered releases (former GH #25)
-- [chore/high] Remove template-injection risk from the release-dispatch shell block (former GH #27)
-- [chore/high] Pin CI workflow actions and uv to immutable versions (former GH #37)
-- [bug/high] Rewrite `install.ps1` to resolve pd-book-tools from pd-index-pip (former GH #23)
-
 ### Correctness
 
-- [bug/high] Run layout detection and illustration crops on the rotated page image (former GH #18)
+- [bug/high] Run layout detection and illustration crops on the rotated page
+  image (former GH #18). Today layout/crops read the on-disk original and the
+  single-image OCR path discards the rotation angle.
 
 ### Tests
 
-- [chore/high] Assert default layout reorganization preserves every OCR word (former GH #41)
+- [chore/high] Assert default layout reorganization preserves every OCR word
+  (former GH #41). Existing word-preservation tests force `--layout-model none`
+  or use fakes; slow default-layout tests do not yet assert a multiset oracle.
 
 ## Next — medium priority
 
-### Release & CI supply-chain
+### Release & install residual
 
-- [chore/medium] Pin release workflow actions and uv to immutable versions (former GH #26)
 - [chore/medium] Verify downloaded release artifacts in installers (former GH #30)
-- [bug/medium] Prevent dependency confusion for pd-book-tools installs (former GH #24)
-- [bug/medium] Make the PowerShell installer use the release wheel path (former GH #49)
-- [chore/medium] Test all supported Python versions in CI (former GH #47)
-
-### Dependency hygiene
-
-- [chore/medium] Bound runtime dependency ranges and smoke-test released installs (former GH #31)
-- [chore/medium] Add integrity hashes for pd-book-tools lock entries (former GH #46)
+- [bug/medium] Prevent dependency confusion for pd-book-tools on the **installer**
+  tool-install path (former GH #24)
+- [chore/medium] Bound runtime dependency ranges (upper caps); wheel-smoke for
+  3.11–3.13 already ships (former GH #31)
 - [chore/medium] Pin build backend versions used for releases (former GH #50)
-- [chore/medium] Upgrade the vulnerable idna lock entry (former GH #51)
 
-### Runtime security & safety
+### Runtime residual
 
-- [bug/medium] Warn or guard when users supply arbitrary `.pt` model checkpoints (former GH #16)
-- [bug/medium] Use exclusive, non-symlink temp files for atomic writes (former GH #17)
-- [chore/medium] Constrain the update-check URL opener to HTTPS-only (former GH #34)
 - [chore/medium] Add resource limits for untrusted image inputs (former GH #38)
+- [chore/medium] Make best-effort update-check failures diagnosable (former GH #35)
+- [bug/medium] Optional: roll back already-promoted sidecars/crops if the final
+  `.txt` write fails (former GH #22 residual). Shipped design is exclusive temps +
+  atomic replace + write-last completeness signal; full rollback is not
+  implemented.
 
-### Correctness bugs
+### Tests / tooling
 
-- [bug/medium] Skip layout loading and inference for plain `--no-reorg` runs (former GH #20)
-- [bug/medium] Make JSON and crop writes use the durable atomic-write path (former GH #21)
-- [bug/medium] Roll back sidecars and crops when the final `.txt` write fails (former GH #22)
-- [bug/medium] Validate inputs before resolving and loading models (former GH #39)
-- [bug/medium] Turn startup model and layout failures into clean CLI errors (former GH #40)
-
-### Tests
-
-- [chore/medium] Assert `--no-illustration-placeholders` preserves caption text (former GH #42)
-- [chore/medium] Cover the default layout-enabled end-to-end path (former GH #43)
+- [chore/medium] Pin pre-commit hook revisions to immutable commit SHAs, or
+  formally accept version tags plus `pre-commit-update` (former GH #45)
 
 ## Later — low priority
-
-### Release & CI
-
-- [chore/low] Disable persisted checkout credentials where not needed (former GH #28)
-- [chore/low] Disable or harden the setup-uv cache in the release workflow (former GH #29)
-- [chore/low] Pin pre-commit hooks or enforce reviewed hook updates (former GH #45)
-
-### Runtime security & observability
-
-- [chore/low] Avoid shell-interpolated `ARGS` passthrough in local Make targets (former GH #33)
-- [chore/low] Make best-effort update-check failures diagnosable (former GH #35)
-- [chore/low] Execute the resolved `nvidia-smi` path for the GPU-nudge probe (former GH #36)
-
-### Docs
-
-- [bug/low] Document all accepted image suffixes, including JPEG 2000 (former GH #44)
-- [bug/low] Align release instructions with `do-release` push behavior (former GH #48)
 
 ### Deferred features
 
@@ -147,7 +115,11 @@ Several open items belong to one piece of work split across issues. Do them toge
 
 ## Blocked
 
-- [bug/high, blocked] Pin default OCR model revisions and avoid unsafe `torch.load` (former GH #15) — **two parts.** Part 1 (pin default model revisions to `v0.6`) is implemented on the local branch `fix/security-15-torch-load-pinning`. Part 2 (`weights_only=True` / safe load) is **blocked upstream on `pd-book-tools#205`**; a tripwire test flips red once that ships. Item stays on the roadmap until then. Related trust-boundary work: former GH #16 (user-supplied `.pt`).
+- [bug/high, blocked] Pin default OCR model revisions and avoid unsafe
+  `torch.load` (former GH #15) — **two parts.** Part 1 (pin default model
+  revisions) is not on `master` (branch `fix/security-15-torch-load-pinning`
+  may hold it). Part 2 (`weights_only=True` / safe load) is **blocked upstream**.
+  Warn-side trust boundary for user `.pt` paths shipped as former GH #16.
 
 ## Ideas
 
@@ -157,8 +129,31 @@ _No untriaged requests._
 
 ## Shipped
 
-Preserved from the former `docs/plans/roadmap.md`. Durable behavior also lives
-in architecture, decisions, usage, and process docs.
+Durable behavior also lives in architecture, decisions, usage, and tests.
+Items below were removed from the open backlog after evidence review
+(2026-07-19).
+
+### 2026-07-19 — backlog reconcile (code already on master)
+
+| Former GH | Outcome | Evidence anchor |
+| --- | --- | --- |
+| #25 | Local `make ci-slow` preflight + dispatch-only publish (supersedes server-side slow CI in publish workflow) | `scripts/release-common.sh`, `release.yml`, `cli-orchestration.md` Release boundary, `test_workflows_static.py` |
+| #27 | Release shell uses env for tag (no template injection) | `release.yml`, static workflow tests |
+| #37 / #26 | CI and release actions + uv pinned to full SHAs / version | `ci.yml`, `release.yml`, static tests |
+| #28 / #29 | `persist-credentials: false`; release setup-uv does not enable cache | workflows |
+| #47 | Python 3.11–3.13 CI matrix | `ci.yml` |
+| #46 / #51 | Lock hashes for book-tools; `idna` at safe pin | `uv.lock` |
+| #23 / #49 | `install.ps1` pd-index-pip + release-wheel path | `install.ps1`, `test_install_ps1.py` |
+| #16 | Warn on arbitrary / mutable model inputs | `_model_security.py`, `test_model_security.py` |
+| #17 / #21 | Exclusive temps + atomic JSON/crop/text writes | `_artifacts.py`, artifact tests |
+| #34 | HTTPS-only update check URL | `_update_check.py`, decisions log |
+| #33 | No shell-interpolated Make `ARGS` passthrough | `Makefile` / `local-run.sh` |
+| #20 | Plain `--no-reorg` skips layout load | `_policy.py`, main/layout tests |
+| #39 / #40 | Plan/validate before model load; clean startup errors | `ocr_to_txt.py`, `test_main_errors.py` |
+| #42 / #43 | Caption preservation with flag; default-layout slow path | tests + `test-suite.md` |
+| #44 | Document full accepted image suffixes (incl. JPEG 2000 family) | `docs/usage/cli-usage.md` (this pass) |
+| #48 | Release docs say `master` (match `do-release`) | `DEVELOPMENT.md` (this pass) |
+| #36 | **Won't fix** — ADR keeps PATH-based `nvidia-smi` probe | `decisions.md`, lint-deviations |
 
 ### 2026-06-01 — book-tools 0.18 / pdomain-ops 0.7.2 + HF model v0.7
 

@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: usage
 ---
 
@@ -41,9 +41,12 @@ pdomain-ocr -r images/ -o output/      # output/ mirrors images/'s tree
 pdomain-ocr --save-json page.png
 ```
 
-Recognized image suffixes: `.png`, `.jpg`, `.jpeg`, `.tif`, `.tiff`,
-`.bmp`, `.webp`. Other files in a directory are skipped with a
-warning.
+Recognized image suffixes come from `pdomain-book-tools`
+`SUPPORTED_IMAGE_SUFFIXES` (currently): `.avif`, `.bmp`, `.gif`, `.heic`,
+`.heif`, `.j2k`, `.jp2`, `.jpeg`, `.jpf`, `.jpg`, `.jpx`, `.pbm`, `.pgm`,
+`.png`, `.pnm`, `.ppm`, `.tif`, `.tiff`, `.webp` — including the JPEG 2000
+family (`.jp2`, `.j2k`, `.jpf`, `.jpx`). Matching is case-insensitive. Other
+files in a directory are skipped with a warning.
 
 ## Text normalization
 

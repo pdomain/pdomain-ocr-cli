@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-03
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: process
 ---
 
@@ -151,8 +151,9 @@ point is `pdomain_ocr_cli.ocr_to_txt:main` (wired via `[project.scripts]`).
 ## Release
 
 Releases are driven by `make release-patch`, `make release-minor`, or `make release-major`.
-The release script requires a clean, up-to-date `main`. It then runs `make ci-slow`,
-creates an annotated `vX.Y.Z` tag, and pushes `master` and the tag. Finally, it
+The release script requires a clean, up-to-date `master`. It then runs
+`make ci-slow`, creates an annotated `vX.Y.Z` tag, and pushes `master` and the
+tag. Finally, it
 dispatches `.github/workflows/release.yml` with the tag input.
 
 `pdomain-ops` and `pdomain-book-tools` resolve from the self-hosted pdomain pip index

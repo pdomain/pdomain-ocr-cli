@@ -15,6 +15,23 @@ Kind: context
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
 
+### 2026-07-19 — Roadmap completed-item reconcile
+
+- **Context:** After GitHub issue deletion, `docs/roadmap.md` still listed many
+  former issues as open though code, tests, and architecture already shipped
+  them (or accepted a superseding design).
+- **Decision:** Re-evidence every open checkbox against the tree; move
+  implemented items to Shipped; correct architecture overclaims (rotation /
+  layout, write-last vs full rollback, word-preservation coverage gap); fix
+  usage image suffixes and DEVELOPMENT release branch; close former GH #36 as
+  won't-fix per the PATH-probe ADR.
+- **Rationale:** A standing roadmap must not re-open finished work. Present-tense
+  architecture must match code, including known gaps.
+- **Evidence:** Analyzer classification of former GH #15–#51 vs workflows,
+  installers, `_artifacts.py`, `_policy.py`, tests, and arch docs; commits on
+  this pass.
+- **Remaining work:** True open set on the roadmap (Now/Next/Blocked) only.
+
 ### 2026-07-19 — GitHub Issues cutover closeout
 
 - **Context:** The July 2026 cutover moved open work into the roadmap and

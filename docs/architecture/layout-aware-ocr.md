@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: architecture
 ---
 
@@ -65,10 +65,14 @@ pdomain-ocr --layout-debug page.png
 
 ## Page rotation
 
-The underlying OCR layer handles page rotation automatically. If upright
-recognition confidence is low, it re-OCRs the image at 90° / 180° / 270° and
-uses the best orientation. It reports detected layout regions in the rotated
-frame, so figure crops and caption tagging still line up.
+The underlying OCR layer can re-OCR a page at 90° / 180° / 270° when upright
+recognition confidence is low and keep the best orientation for **text**.
+
+**Current CLI gap (roadmap former GH #18):** layout detection and illustration
+crops still run on the original on-disk image path. The single-image OCR path
+does not pass the chosen rotation into layout or crop steps. On rotated pages,
+regions and crops can disagree with the upright text stream until that wiring
+lands.
 
 ## Performance notes
 
@@ -83,11 +87,12 @@ frame, so figure crops and caption tagging still line up.
 
 ## Artifact lifecycle
 
-Page artifacts are written transactionally. The CLI writes JSON sidecars,
-diagnostic snapshots, layout-debug reports, and illustration crops through
-unique temporary files. It then atomically replaces them into place. The CLI
-writes the final `.txt` file last, so the presence of `<image>.txt` means that
-page's artifact set completed.
+The CLI writes JSON sidecars, diagnostic snapshots, layout-debug reports, and
+illustration crops through exclusive temporary files and atomic replacement.
+It writes the final `.txt` file last. Presence of `<image>.txt` is the
+completeness signal for that page's requested artifacts. The CLI does **not**
+today roll back already-promoted sidecars if the final `.txt` write fails
+(optional residual: roadmap former GH #22).
 
 ## Test coverage
 

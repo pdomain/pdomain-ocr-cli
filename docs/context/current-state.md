@@ -17,11 +17,13 @@ Kind: context
 
 ## What matters now
 
-The standing roadmap contains open release, correctness, security, dependency,
-test, and documentation work:
-[`docs/roadmap.md`](../roadmap.md).
+Highest open product work is on the roadmap Now section:
 
-Output normalization remains a deferred feature pending shared upstream logic.
+- Layout/crop alignment with OCR page rotation (former GH #18)
+- Default-layout word-preservation multiset coverage (former GH #41)
+
+See [`docs/roadmap.md`](../roadmap.md). Output normalization remains deferred
+pending shared upstream logic.
 
 These docs describe current behavior:
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
@@ -40,11 +42,9 @@ Former issue numbers are provenance tags only; see
 
 ## In-flight work
 
-No documentation-migration branch is in flight. Cutover closeout lands the
-issues templates, cutover decision, and tracker disablement on the branch that
-carries this update.
-
-Product work follows the roadmap Now / Next / Blocked sections.
+No feature branch is required for docs hygiene. Product work follows the
+roadmap Now / Next / Blocked sections after the 2026-07-19 completed-item
+reconcile.
 
 ## Test state
 
@@ -53,12 +53,13 @@ PowerShell prerequisite through `scripts/ensure-pwsh.sh`.
 
 ## Risks
 
-The roadmap includes high-priority release, correctness, and test work.
-
-Model checkpoint safety remains partly blocked upstream.
+- Rotation vs layout misalignment on rotated pages until #18 lands.
+- Model checkpoint safety remains partly blocked upstream (#15).
+- Installer dependency-confusion residual (#24) and missing wheel integrity
+  checks (#30).
 
 Predictor batch-size defaults now live upstream. Only benchmarking or CLI
 exposure remains deferred.
 
 Governed defect reports (when filed) live under
-[`docs/issues/`](../issues/README.md); none are open at closeout.
+[`docs/issues/`](../issues/README.md); none are open.
