@@ -155,6 +155,20 @@ Kind: context
   `CONVENTIONS.md`.
 - **Remaining work:** none
 
+### 2026-07-19 — Retired: repository-local writing-style process doc
+
+- **Old path:** `docs/process/writing-style.md`
+- **Outcome:** deleted (superseded by writing-docs plugin + `CONVENTIONS.md`)
+- **Superseded by:** `writing-docs:write-readably` /
+  `writing-docs:edit-for-readability`; repository-specific link and command
+  rules in `CONVENTIONS.md`
+- **Removal commit:** (this governance pass commit)
+- **Rationale kept:** Decision “2026-07-15 — Remove repository-local archives
+  and writing rules” already authorized removal; the file had been re-scaffolded
+  as `status: active` and was still indexed. Intent-map already listed it as
+  retired and removed.
+- **Remaining work:** none
+
 ### 2026-07-15 — Retired predictor batch-size tuning stub
 
 - **Old path:** `docs/specs/2026-05-30-predictor-batch-size-tuning.md`
