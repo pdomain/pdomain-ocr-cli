@@ -70,56 +70,58 @@ surfacing (flag name, help text, defaults, docs) and any caller-side glue.
 ### Correctness
 
 - [bug/high] Run layout detection and illustration crops on the rotated page
-  image (former GH #18). Today layout/crops read the on-disk original and the
-  single-image OCR path discards the rotation angle.
+  image (former GH #18). Report:
+  [`docs/issues/2026-07-19-gh-18-layout-crops-ignore-rotation.md`](issues/2026-07-19-gh-18-layout-crops-ignore-rotation.md).
 
 ### Tests
 
 - [chore/high] Assert default layout reorganization preserves every OCR word
-  (former GH #41). Existing word-preservation tests force `--layout-model none`
-  or use fakes; slow default-layout tests do not yet assert a multiset oracle.
+  (former GH #41). Report:
+  [`docs/issues/2026-07-19-gh-41-default-layout-word-preservation-test.md`](issues/2026-07-19-gh-41-default-layout-word-preservation-test.md).
 
 ## Next — medium priority
 
 ### Release & install residual
 
-- [chore/medium] Verify downloaded release artifacts in installers (former GH #30)
+- [chore/medium] Verify downloaded release artifacts in installers (former GH #30).
+  Report: [`docs/issues/2026-07-19-gh-30-installer-artifact-verification.md`](issues/2026-07-19-gh-30-installer-artifact-verification.md)
 - [bug/medium] Prevent dependency confusion for pd-book-tools on the **installer**
-  tool-install path (former GH #24)
+  tool-install path (former GH #24). Report:
+  [`docs/issues/2026-07-19-gh-24-installer-dependency-confusion.md`](issues/2026-07-19-gh-24-installer-dependency-confusion.md)
 - [chore/medium] Bound runtime dependency ranges (upper caps); wheel-smoke for
-  3.11–3.13 already ships (former GH #31)
-- [chore/medium] Pin build backend versions used for releases (former GH #50)
+  3.11–3.13 already ships (former GH #31). Report:
+  [`docs/issues/2026-07-19-gh-31-runtime-dep-upper-bounds.md`](issues/2026-07-19-gh-31-runtime-dep-upper-bounds.md)
+- [chore/medium] Pin build backend versions used for releases (former GH #50).
+  Report: [`docs/issues/2026-07-19-gh-50-pin-build-backends.md`](issues/2026-07-19-gh-50-pin-build-backends.md)
 
 ### Runtime residual
 
-- [chore/medium] Add resource limits for untrusted image inputs (former GH #38)
-- [chore/medium] Make best-effort update-check failures diagnosable (former GH #35)
-- [bug/medium] Optional: roll back already-promoted sidecars/crops if the final
-  `.txt` write fails (former GH #22 residual). Shipped design is exclusive temps +
-  atomic replace + write-last completeness signal; full rollback is not
-  implemented.
+- [chore/medium] Add resource limits for untrusted image inputs (former GH #38).
+  Report: [`docs/issues/2026-07-19-gh-38-untrusted-image-resource-limits.md`](issues/2026-07-19-gh-38-untrusted-image-resource-limits.md)
+- [chore/medium] Make best-effort update-check failures diagnosable (former GH #35).
+  Report: [`docs/issues/2026-07-19-gh-35-update-check-diagnostics.md`](issues/2026-07-19-gh-35-update-check-diagnostics.md)
+- [bug/medium] Optional sidecar rollback if final `.txt` write fails (former GH #22).
+  Report: [`docs/issues/2026-07-19-gh-22-sidecar-rollback-on-txt-failure.md`](issues/2026-07-19-gh-22-sidecar-rollback-on-txt-failure.md)
 
 ### Tests / tooling
 
 - [chore/medium] Pin pre-commit hook revisions to immutable commit SHAs, or
-  formally accept version tags plus `pre-commit-update` (former GH #45)
+  formally accept version tags plus `pre-commit-update` (former GH #45). Report:
+  [`docs/issues/2026-07-19-gh-45-pre-commit-immutable-pins.md`](issues/2026-07-19-gh-45-pre-commit-immutable-pins.md)
 
 ## Later — low priority
 
 ### Deferred features
 
 - Add `--normalize-output {none|ascii|...}` (default `none`) after
-  `pdomain-book-tools` provides shared normalization logic and a glyph map. CLI
-  work covers the pass-through flag and applying normalization between
-  reorganization and text output.
+  `pdomain-book-tools` provides shared normalization logic and a glyph map.
+  Report: [`docs/issues/2026-07-19-normalize-output-flag-deferred.md`](issues/2026-07-19-normalize-output-flag-deferred.md)
 
 ## Blocked
 
 - [bug/high, blocked] Pin default OCR model revisions and avoid unsafe
-  `torch.load` (former GH #15) — **two parts.** Part 1 (pin default model
-  revisions) is not on `master` (branch `fix/security-15-torch-load-pinning`
-  may hold it). Part 2 (`weights_only=True` / safe load) is **blocked upstream**.
-  Warn-side trust boundary for user `.pt` paths shipped as former GH #16.
+  `torch.load` (former GH #15). Report:
+  [`docs/issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md`](issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md)
 
 ## Ideas
 

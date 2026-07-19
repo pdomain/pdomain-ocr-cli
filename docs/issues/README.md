@@ -77,7 +77,18 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 
 ## Open issues
 
-- *None yet.*
+- [Layout detection and illustration crops use the unrotated page image](2026-07-19-gh-18-layout-crops-ignore-rotation.md) (former GH #18; Now)
+- [No multiset test that default layout reorganization preserves every OCR word](2026-07-19-gh-41-default-layout-word-preservation-test.md) (former GH #41; Now)
+- [Installers do not pin pdomain packages against dependency confusion](2026-07-19-gh-24-installer-dependency-confusion.md) (former GH #24; Next)
+- [Installers do not verify downloaded release wheel integrity](2026-07-19-gh-30-installer-artifact-verification.md) (former GH #30; Next)
+- [Runtime dependency ranges have no upper bounds](2026-07-19-gh-31-runtime-dep-upper-bounds.md) (former GH #31; Next)
+- [Build backend requirements are unpinned](2026-07-19-gh-50-pin-build-backends.md) (former GH #50; Next)
+- [No resource limits for untrusted image inputs](2026-07-19-gh-38-untrusted-image-resource-limits.md) (former GH #38; Next)
+- [Update-check failures are swallowed without diagnostics](2026-07-19-gh-35-update-check-diagnostics.md) (former GH #35; Next)
+- [No rollback of sidecars if final .txt write fails](2026-07-19-gh-22-sidecar-rollback-on-txt-failure.md) (former GH #22; Next)
+- [Pre-commit hook revisions use mutable version tags](2026-07-19-gh-45-pre-commit-immutable-pins.md) (former GH #45; Next)
+- [Default OCR model revisions unpinned; safe torch.load blocked upstream](2026-07-19-gh-15-model-revision-pin-and-safe-load.md) (former GH #15; Blocked)
+- [Deferred: --normalize-output flag after upstream glyph map](2026-07-19-normalize-output-flag-deferred.md) (deferred; Later)
 
 ## Resolved issues
 

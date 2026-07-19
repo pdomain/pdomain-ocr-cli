@@ -61,5 +61,5 @@ PowerShell prerequisite through `scripts/ensure-pwsh.sh`.
 Predictor batch-size defaults now live upstream. Only benchmarking or CLI
 exposure remains deferred.
 
-Governed defect reports (when filed) live under
-[`docs/issues/`](../issues/README.md); none are open.
+Open governed defect and residual reports live under
+[`docs/issues/`](../issues/README.md) (12 active); see intent-map Open issues.

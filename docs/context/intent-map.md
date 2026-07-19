@@ -64,11 +64,22 @@ Kind: context
 
 ## Open issues
 
-Governed evidence-bearing reports under [`docs/issues/`](../issues/README.md):
+Governed reports under [`docs/issues/`](../issues/README.md) (GitHub tracker empty):
 
-- *None yet.*
+- [Layout/crops ignore rotation](../issues/2026-07-19-gh-18-layout-crops-ignore-rotation.md) (former GH #18, Now)
+- [Default-layout word-preservation test](../issues/2026-07-19-gh-41-default-layout-word-preservation-test.md) (former GH #41, Now)
+- [Installer dependency confusion](../issues/2026-07-19-gh-24-installer-dependency-confusion.md) (former GH #24)
+- [Installer artifact verification](../issues/2026-07-19-gh-30-installer-artifact-verification.md) (former GH #30)
+- [Runtime dep upper bounds](../issues/2026-07-19-gh-31-runtime-dep-upper-bounds.md) (former GH #31)
+- [Pin build backends](../issues/2026-07-19-gh-50-pin-build-backends.md) (former GH #50)
+- [Untrusted image resource limits](../issues/2026-07-19-gh-38-untrusted-image-resource-limits.md) (former GH #38)
+- [Update-check diagnostics](../issues/2026-07-19-gh-35-update-check-diagnostics.md) (former GH #35)
+- [Sidecar rollback residual](../issues/2026-07-19-gh-22-sidecar-rollback-on-txt-failure.md) (former GH #22)
+- [Pre-commit immutable pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md) (former GH #45)
+- [Model revision pin + safe load](../issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md) (former GH #15, Blocked)
+- [Deferred normalize-output](../issues/2026-07-19-normalize-output-flag-deferred.md) (Later)
 
-Standing backlog items are listed only in [`docs/roadmap.md`](../roadmap.md).
+Standing priority order remains in [`docs/roadmap.md`](../roadmap.md).
 
 ## Needs owner decision
 
