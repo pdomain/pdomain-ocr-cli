@@ -20,9 +20,10 @@ Kind: plan
 
 ---
 
-### Task 1: Lock index resolution
+## Task 1: Lock index resolution
 
 **Files:**
+
 - Modify: `install.sh`
 - Modify: `install.ps1`
 - Modify: `tests/test_install_sh.py`
@@ -35,6 +36,7 @@ def test_install_sh_uses_first_index_strategy() -> None:
     script = Path("install.sh").read_text()
     assert 'UV_INDEX_STRATEGY="first-index"' in script
     assert '--index-strategy "$UV_INDEX_STRATEGY"' in script
+
 
 def test_install_ps1_uses_first_index_strategy() -> None:
     script = Path("install.ps1").read_text()
@@ -60,9 +62,10 @@ git add install.sh install.ps1 tests/test_install_sh.py tests/test_install_ps1.p
 git commit -m "fix: enforce first-index installer resolution"
 ```
 
-### Task 2: Verify GitHub asset digests
+## Task 2: Verify GitHub asset digests
 
 **Files:**
+
 - Modify: `install.sh`
 - Modify: `install.ps1`
 - Modify: `tests/test_install_sh.py`

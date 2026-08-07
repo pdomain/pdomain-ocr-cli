@@ -20,9 +20,10 @@ Kind: plan
 
 ---
 
-### Task 1: Verify the upstream gate
+## Task 1: Verify the upstream gate
 
 **Files:**
+
 - Inspect: `../pdomain-book-tools/pdomain_book_tools/text_normalize.py`
 - Inspect: `pyproject.toml`
 
@@ -36,9 +37,10 @@ Expected: one public `normalize_text` definition. Stop without changing CLI code
 Run from `../pdomain-book-tools`: `make test-k K='normalize_text and idempotent' AI=1`
 Expected: `✅`. Stop if idempotence is not covered.
 
-### Task 2: Add the mode with TDD
+## Task 2: Add the mode with TDD
 
 **Files:**
+
 - Modify: `pdomain_ocr_cli/ocr_to_txt.py`
 - Modify: `pdomain_ocr_cli/_pipeline.py`
 - Modify: `tests/test_parse_args.py`
@@ -52,8 +54,11 @@ def test_normalize_output_defaults_to_none(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["pdomain-ocr", "page.png"])
     assert parse_args().normalize_output == "none"
 
+
 def test_normalize_output_accepts_typographic(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["pdomain-ocr", "--normalize-output", "typographic", "page.png"])
+    monkeypatch.setattr(
+        sys, "argv", ["pdomain-ocr", "--normalize-output", "typographic", "page.png"]
+    )
     assert parse_args().normalize_output == "typographic"
 ```
 

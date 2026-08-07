@@ -106,7 +106,7 @@ def check_for_update() -> None:
         # Identify ourselves explicitly. urllib's default ``Python-urllib/3.x``
         # User-Agent is generic and GitHub may rate-limit it more aggressively;
         # a clear application UA also helps GitHub diagnose abuse if it occurs.
-        req = urllib.request.Request(  # noqa: S310  # https:// URL only; no file:// risk
+        req = urllib.request.Request(  # https:// URL only; no file:// risk
             url,
             headers={
                 "Accept": "application/vnd.github+json",

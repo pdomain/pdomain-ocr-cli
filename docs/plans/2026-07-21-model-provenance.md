@@ -20,9 +20,10 @@ Kind: plan
 
 ---
 
-### Task 1: Pin the default revision
+## Task 1: Pin the default revision
 
 **Files:**
+
 - Modify: `pdomain_ocr_cli/ocr_to_txt.py`
 - Modify: `tests/test_parse_args.py`
 - Modify: `tests/test_model_security.py`
@@ -33,6 +34,7 @@ Kind: plan
 def test_default_model_revision_is_immutable(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["pdomain-ocr", "page.png"])
     assert parse_args().model_version == "v0.7"
+
 
 def test_default_revision_has_no_mutable_warning() -> None:
     warnings = model_security_warnings(_args(model_version="v0.7"))
@@ -60,9 +62,10 @@ git add pdomain_ocr_cli/ocr_to_txt.py pdomain_ocr_cli/_model_security.py tests/t
 git commit -m "fix: pin default OCR model revision"
 ```
 
-### Task 2: Guard safe upstream loading
+## Task 2: Guard safe upstream loading
 
 **Files:**
+
 - Create: `tests/test_upstream_safe_load.py`
 
 - [ ] **Step 1: Add the contract test**

@@ -20,9 +20,10 @@ Kind: plan
 
 ---
 
-### Task 1: Add opt-in diagnostics
+## Task 1: Add opt-in diagnostics
 
 **Files:**
+
 - Modify: `pdomain_ocr_cli/_update_check.py`
 - Modify: `tests/test_update_check_network.py`
 

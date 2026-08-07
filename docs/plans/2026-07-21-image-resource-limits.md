@@ -20,9 +20,10 @@ Kind: plan
 
 ---
 
-### Task 1: Add and enforce admission limits
+## Task 1: Add and enforce admission limits
 
 **Files:**
+
 - Create: `pdomain_ocr_cli/_image_limits.py`
 - Create: `tests/test_image_limits.py`
 - Modify: `pdomain_ocr_cli/_pipeline.py`
@@ -33,8 +34,11 @@ Kind: plan
 def test_accepts_exact_limits(tmp_path, monkeypatch):
     path = tmp_path / "page.png"
     path.write_bytes(b"x")
-    monkeypatch.setattr(pathlib.Path, "stat", lambda self: SimpleNamespace(st_size=100 * 1024 * 1024))
+    monkeypatch.setattr(
+        pathlib.Path, "stat", lambda self: SimpleNamespace(st_size=100 * 1024 * 1024)
+    )
     assert validate_image_limits(path, dimensions=(10_000, 10_000)) is None
+
 
 def test_rejects_one_pixel_over_limit(tmp_path):
     with pytest.raises(ImageLimitError, match="100000001 pixels"):
@@ -54,6 +58,7 @@ Expected: FAIL because the module does not exist.
 MAX_IMAGE_BYTES = 100 * 1024 * 1024
 MAX_IMAGE_PIXELS = 100_000_000
 
+
 def validate_image_limits(path: Path, *, dimensions: tuple[int, int]) -> None:
     size = path.stat().st_size
     if size > MAX_IMAGE_BYTES:
@@ -72,9 +77,10 @@ Stat before `Image.open`. After opening, read only `image.size`, call the valida
 Run: `make test-k K='image_limits or collect_images' AI=1`
 Expected: PASS.
 
-### Task 2: Document and verify limits
+## Task 2: Document and verify limits
 
 **Files:**
+
 - Modify: `docs/usage/cli-usage.md`
 - Modify: `tests/test_main_errors.py`
 

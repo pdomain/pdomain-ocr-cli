@@ -20,9 +20,10 @@ Kind: plan
 
 ---
 
-### Task 1: Add the slow multiset regression
+## Task 1: Add the slow multiset regression
 
 **Files:**
+
 - Modify: `tests/test_pipeline_integration.py`
 
 - [ ] **Step 1: Add a page-word helper**
@@ -30,10 +31,7 @@ Kind: plan
 ```python
 def _word_multiset(page) -> Counter[str]:
     return Counter(
-        word.value
-        for block in page.blocks
-        for line in block.lines
-        for word in line.words
+        word.value for block in page.blocks for line in block.lines for word in line.words
     )
 ```
 

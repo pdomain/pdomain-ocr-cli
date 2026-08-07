@@ -20,9 +20,10 @@ Kind: plan
 
 ---
 
-### Task 1: Land the upstream result contract
+## Task 1: Land the upstream result contract
 
 **Files:**
+
 - Modify in sibling repo: `../pdomain-book-tools/pdomain_book_tools/ocr/models.py`
 - Test in sibling repo: `../pdomain-book-tools/tests/ocr/test_models.py`
 
@@ -53,9 +54,10 @@ git add pdomain_book_tools tests
 git commit -m "feat: expose OCR page rotation"
 ```
 
-### Task 2: Orient the shared image in the CLI
+## Task 2: Orient the shared image in the CLI
 
 **Files:**
+
 - Modify: `pdomain_ocr_cli/_pipeline.py`
 - Modify: `pdomain_ocr_cli/ocr_to_txt.py`
 - Test: `tests/test_pipeline_integration.py`
@@ -63,7 +65,9 @@ git commit -m "feat: expose OCR page rotation"
 - [ ] **Step 1: Add a failing unit test for quarter turns**
 
 ```python
-@pytest.mark.parametrize(("degrees", "size"), [(0, (20, 10)), (90, (10, 20)), (180, (20, 10)), (270, (10, 20))])
+@pytest.mark.parametrize(
+    ("degrees", "size"), [(0, (20, 10)), (90, (10, 20)), (180, (20, 10)), (270, (10, 20))]
+)
 def test_orient_image_uses_ocr_rotation(degrees, size):
     image = Image.new("RGB", (20, 10))
     assert orient_image(image, degrees).size == size

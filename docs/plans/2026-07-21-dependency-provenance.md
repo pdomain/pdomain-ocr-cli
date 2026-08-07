@@ -20,9 +20,10 @@ Kind: plan
 
 ---
 
-### Task 1: Add package metadata contracts
+## Task 1: Add package metadata contracts
 
 **Files:**
+
 - Create: `tests/test_dependency_metadata.py`
 - Modify: `pyproject.toml`
 - Modify: `uv.lock`
@@ -35,6 +36,7 @@ def test_direct_dependencies_have_upper_bounds():
     requirements = data["project"]["dependencies"]
     requirements += data["project"]["optional-dependencies"].get("gpu", [])
     assert all("<" in requirement for requirement in requirements)
+
 
 def test_build_backends_are_exactly_pinned():
     requires = tomllib.loads(Path("pyproject.toml").read_text())["build-system"]["requires"]
@@ -62,9 +64,10 @@ git add pyproject.toml uv.lock tests/test_dependency_metadata.py
 git commit -m "build: bound runtime and build dependencies"
 ```
 
-### Task 2: Freeze pre-commit revisions
+## Task 2: Freeze pre-commit revisions
 
 **Files:**
+
 - Modify: `.pre-commit-config.yaml`
 - Modify: `.github/workflows/dep-refresh.yml`
 - Modify: `tests/test_workflows_static.py`

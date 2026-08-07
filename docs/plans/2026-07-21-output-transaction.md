@@ -20,15 +20,18 @@ Kind: plan
 
 ---
 
-### Task 1: Specify rollback behavior with tests
+## Task 1: Specify rollback behavior with tests
 
 **Files:**
+
 - Modify: `tests/test_artifacts.py`
 
 - [ ] **Step 1: Add new-artifact rollback coverage**
 
 ```python
-def test_page_output_transaction_removes_new_sidecars_when_text_promotion_fails(tmp_path, monkeypatch):
+def test_page_output_transaction_removes_new_sidecars_when_text_promotion_fails(
+    tmp_path, monkeypatch
+):
     json_path = tmp_path / "page.json"
     txt_path = tmp_path / "page.txt"
     transaction = PageOutputTransaction()
@@ -50,9 +53,10 @@ Create both destinations with `old-json` and `old-text`, trigger the same failur
 Run: `uv run pytest -n auto tests/test_artifacts.py -k 'removes_new_sidecars or restores_overwritten' -v`
 Expected: FAIL because promoted sidecars remain or old files are lost.
 
-### Task 2: Implement backup and rollback
+## Task 2: Implement backup and rollback
 
 **Files:**
+
 - Modify: `pdomain_ocr_cli/_artifacts.py`
 - Modify: `tests/test_artifacts.py`
 
