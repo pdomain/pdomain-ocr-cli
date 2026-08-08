@@ -81,6 +81,7 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 
 ## Open issues
 
+- [Weekly dep-refresh branches and pull requests accumulate instead of landing](2026-08-08-dep-refresh-cannot-auto-land.md) (found 2026-08-08; Now)
 - [Layout detection and illustration crops use the unrotated page image](2026-07-19-gh-18-layout-crops-ignore-rotation.md) (former GH #18; Now)
 - [No multiset test that default layout reorganization preserves every OCR word](2026-07-19-gh-41-default-layout-word-preservation-test.md) (former GH #41; Now)
 - [Installers do not pin pdomain packages against dependency confusion](2026-07-19-gh-24-installer-dependency-confusion.md) (former GH #24; Next)
