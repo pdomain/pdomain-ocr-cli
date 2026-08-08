@@ -16,7 +16,7 @@ $(_goals):
 
 else
 
-.PHONY: setup refresh-version install uninstall reset remove-venv upgrade-deps lint format format-check pre-commit-check typecheck test test-slow test-integration test-layout-integration installer-test coverage coverage-slow build wheel-smoke wheel-smoke-one check-release-deps clean ci ci-slow upgrade-pdomain-book-tools update-pdomain-deps release-patch release-minor release-major _do-release help \
+.PHONY: setup refresh-version install uninstall reset remove-venv upgrade-deps lint format format-check pre-commit-check update-hooks typecheck test test-slow test-integration test-layout-integration installer-test coverage coverage-slow build wheel-smoke wheel-smoke-one check-release-deps clean ci ci-slow upgrade-pdomain-book-tools update-pdomain-deps release-patch release-minor release-major _do-release help \
         local-setup local-dev local-check local-upgrade-deps local-install local-uninstall local-run local-test local-test-slow \
         dev-local install-local uninstall-local check-local-editable upgrade-deps-local run-local \
         ci-against-master
@@ -90,6 +90,7 @@ upgrade-deps: ## Upgrade dependencies and sync (refuses in local-dev mode; use l
 	uv lock --upgrade
 	@echo "Syncing upgraded dependencies..."
 	uv sync --group dev
+	@$(MAKE) --no-print-directory update-hooks
 	@echo "Dependencies upgraded and environment synced!"
 
 update-pdomain-deps: ## Bump sibling pd-* deps to registry latest; leaves diff staged
@@ -117,6 +118,13 @@ format-check: ## Read-only ruff format+lint check (no auto-fix; matches CI exact
 pre-commit-check: ## Run pre-commit on all files
 	@echo "🪝 Running pre-commit on all files..."
 	uv run pre-commit run --all-files
+
+update-hooks: ## Bump pinned pre-commit hook revisions in .pre-commit-config.yaml
+	@echo "⬆️  Updating pinned pre-commit hook revisions..."
+	@# The hook exits non-zero when it rewrites the config, which is the success
+	@# case here, so its status is not the target's status.
+	-@uv run pre-commit run pre-commit-update --all-files --hook-stage manual
+	@echo "✅ Hook revisions updated — review the .pre-commit-config.yaml diff."
 
 typecheck: ## Run basedpyright at all mode (workspace canonical)
 	uv run basedpyright pdomain_ocr_cli --level error
