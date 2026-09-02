@@ -65,6 +65,15 @@ pdomain-ops = { index = "pdomain-index-pip" }
 [tool.hatch.version]
 source = "vcs"
 
+[tool.hatch.build]
+# Virtual environments must never reach the sdist: they contain absolute
+# symlinks to the uv-managed interpreter, which uv refuses to unpack.
+# Without this, `uv build` fails whenever a local .venv-container exists.
+exclude = [
+    ".venv/**",
+    ".venv-container/**",
+]
+
 [tool.ruff]
 line-length = 100
 
