@@ -22,7 +22,7 @@ $(_goals):
 
 else
 
-.PHONY: setup refresh-version install uninstall reset remove-venv upgrade-deps lint format format-check pre-commit-check update-hooks typecheck test test-slow test-integration test-layout-integration installer-test coverage coverage-slow build wheel-smoke wheel-smoke-one check-release-deps clean ci ci-slow upgrade-pdomain-book-tools update-pdomain-deps release-patch release-minor release-major _do-release help \
+.PHONY: setup install-hooks refresh-version install uninstall reset remove-venv upgrade-deps lint format format-check pre-commit-check update-hooks typecheck test test-slow test-integration test-layout-integration installer-test coverage coverage-slow build wheel-smoke wheel-smoke-one check-release-deps clean ci ci-slow upgrade-pdomain-book-tools update-pdomain-deps release-patch release-minor release-major _do-release help \
         local-setup local-dev local-check local-upgrade-deps local-install local-uninstall local-run local-test local-test-slow \
         dev-local install-local uninstall-local check-local-editable upgrade-deps-local run-local \
         ci-against-master
@@ -43,10 +43,23 @@ setup: ## Set up development environment (sync deps + pre-commit hooks if applic
 	@echo "🔧 Ensuring PowerShell (pwsh) is available for install-script tests..."
 	@./scripts/ensure-pwsh.sh
 	@echo "🪝 Setting up pre-commit hooks..."
-	# Skip when core.hooksPath is set (e.g. hookify) or .git is a file (worktree — no hooks dir).
-	@[ -f .git/hooks/pre-commit ] || [ -n "$$(git config --get core.hooksPath 2>/dev/null)" ] || [ -f .git ] || uv run pre-commit install
+	@$(MAKE) --no-print-directory install-hooks
 	@$(MAKE) --no-print-directory refresh-version
 	@echo "✅ Setup complete!"
+
+install-hooks: ## (Re)install pre-commit hooks (repairs a stale interpreter path)
+	@# `pre-commit install` bakes an absolute interpreter path into .git/hooks.
+	@# A hook written against a different environment name, or against a worktree
+	@# that has since been deleted, keeps failing until it is rewritten — and a
+	@# "skip if the file exists" guard never rewrites it. Rewriting costs ~0.2s,
+	@# so do it every time this repo owns its hooks directory.
+	@if [ -f .git ]; then \
+	  echo "hooks: worktree checkout — the canonical repo owns them, skipping"; \
+	elif [ -n "$$(git config --get core.hooksPath 2>/dev/null)" ]; then \
+	  echo "hooks: core.hooksPath is set — leaving it alone, skipping"; \
+	else \
+	  uv run pre-commit install --hook-type pre-commit --hook-type commit-msg; \
+	fi
 
 refresh-version: ## Force hatch-vcs to re-derive `pdomain-ocr --version` from current git state (~1s)
 	@echo "🔄 Reinstalling pdomain-ocr-cli so hatch-vcs picks up the current HEAD / tags..."
