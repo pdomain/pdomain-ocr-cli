@@ -5,6 +5,12 @@ PYTHON_VERSIONS ?= 3.11 3.12 3.13
 PYTHON_VERSION ?=
 PDOMAIN_INDEX_URL := https://pdomain.github.io/pdomain-index-pip/simple/
 
+# uv installs into UV_PROJECT_ENVIRONMENT when it is set and into .venv
+# otherwise, so mirror that rule rather than hardcoding either name. The
+# pd-suite devcontainer sets ".venv-container" because the workspace is a bind
+# mount shared with the host; a plain checkout outside a container gets .venv.
+VENV := $(if $(UV_PROJECT_ENVIRONMENT),$(UV_PROJECT_ENVIRONMENT),.venv)
+
 ifdef AI
 _goals := $(or $(MAKECMDGOALS),ci)
 .PHONY: $(_goals)
@@ -44,7 +50,7 @@ setup: ## Set up development environment (sync deps + pre-commit hooks if applic
 
 refresh-version: ## Force hatch-vcs to re-derive `pdomain-ocr --version` from current git state (~1s)
 	@echo "🔄 Reinstalling pdomain-ocr-cli so hatch-vcs picks up the current HEAD / tags..."
-	@UV_LINK_MODE=copy uv pip install -e . --reinstall-package pdomain-ocr-cli
+	@uv sync --reinstall-package pdomain-ocr-cli
 	@echo "✅ Version now reports as:"
 	@uv run pdomain-ocr --version
 
@@ -58,7 +64,7 @@ uninstall: ## Remove the installed pdomain-ocr uv tool
 
 remove-venv: ## Remove the virtual environment
 	@echo "🗑️  Removing existing virtual environment..."
-	rm -rf .venv
+	rm -rf $(VENV)
 	@echo "✅ Virtual environment removed!"
 
 reset: ## Rebuild virtual environment (keeps UV cache)
@@ -74,7 +80,7 @@ reset: ## Rebuild virtual environment (keeps UV cache)
 # Intentionally POSIX sh compatible (no bash-isms).
 define _is_local_dev
 	( uv pip show pdomain-book-tools 2>/dev/null | grep -q "^Editable project location:" ) \
-	|| [ -f .venv/.pdomain-local-mode ]
+	|| [ -f $(VENV)/.pdomain-local-mode ]
 endef
 
 upgrade-deps: ## Upgrade dependencies and sync (refuses in local-dev mode; use local-upgrade-deps instead)
