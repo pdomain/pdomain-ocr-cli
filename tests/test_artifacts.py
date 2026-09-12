@@ -44,12 +44,22 @@ def test_atomic_write_uses_unique_temp_names(
     assert all(name != str(tmp_path / ".page.txt.tmp") for name in opened)
 
 
-def test_atomic_write_preserves_shared_readable_mode(tmp_path: Path) -> None:
+@pytest.mark.parametrize(("mask", "expected"), [(0o002, 0o664), (0o022, 0o644), (0o077, 0o600)])
+def test_atomic_write_mode_follows_the_umask(tmp_path: Path, mask: int, expected: int) -> None:
+    """The staging file carries an explicit mode, so the kernel masks it.
+
+    A hardcoded mode would hand a 0644 file to someone who deliberately runs a
+    private umask. Letting the umask decide keeps them private.
+    """
     target = tmp_path / "page.txt"
 
-    atomic_write_text(target, "hello")
+    previous = os.umask(mask)
+    try:
+        atomic_write_text(target, "hello")
+    finally:
+        _ = os.umask(previous)
 
-    assert target.stat().st_mode & 0o777 == 0o644
+    assert target.stat().st_mode & 0o777 == expected
 
 
 def test_atomic_write_json_document_uses_unique_temp_and_cleans_failure(
@@ -69,16 +79,20 @@ def test_atomic_write_json_document_uses_unique_temp_and_cleans_failure(
     assert not list(tmp_path.glob(".page.json.*.tmp"))
 
 
-def test_atomic_write_json_document_preserves_shared_readable_mode(
-    tmp_path: Path,
-) -> None:
+def test_atomic_write_json_document_mode_follows_the_umask(tmp_path: Path) -> None:
+    """Same rule for the JSON writer: no chmod, so the umask decides."""
+
     class Doc:
         def to_json_file(self, file_path: str | Path) -> None:
             Path(file_path).write_text("{}", encoding="utf-8")
 
     target = tmp_path / "page.json"
 
-    atomic_write_json_document(target, Doc())
+    previous = os.umask(0o022)
+    try:
+        atomic_write_json_document(target, Doc())
+    finally:
+        _ = os.umask(previous)
 
     assert target.stat().st_mode & 0o777 == 0o644
 
