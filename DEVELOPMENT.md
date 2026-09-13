@@ -88,7 +88,7 @@ If you also want pdomain-book-tools' own venv (to run its tests):
 | `upgrade-deps` | Upgrade the lockfile and sync the venv. Refuses in local-dev mode; use `local-upgrade-deps` instead. |
 | `local-upgrade-deps` | Upgrade dependencies, sync to the canonical baseline, then restore editable siblings. |
 | `upgrade-pdomain-book-tools` | Bump the `pdomain-book-tools` pin to the latest GitHub tag. |
-| `release-{patch,minor,major}` | Run release preflight, tag, push `master` and the tag, then dispatch the release workflow. |
+| `release-{patch,minor,major}` | Run release preflight, tag, push `master` and the tag, then build the artifacts and create the GitHub Release. |
 
 ### Local-dev
 
@@ -153,16 +153,23 @@ point is `pdomain_ocr_cli.ocr_to_txt:main` (wired via `[project.scripts]`).
 Releases are driven by `make release-patch`, `make release-minor`, or `make release-major`.
 The release script requires a clean, up-to-date `master`. It then runs
 `make ci-slow`, creates an annotated `vX.Y.Z` tag, and pushes `master` and the
-tag. Finally, it
-dispatches `.github/workflows/release.yml` with the tag input.
+tag. Finally it builds the artifacts and creates the GitHub Release itself,
+attaching everything under `dist/`. The workflows were removed on 2026-09-13,
+so the script is the whole path.
 
 `pdomain-ops` and `pdomain-book-tools` resolve from the self-hosted pdomain pip index
 for release builds. Do not commit path-based sibling sources for release.
 
-When the release workflow passes, it builds and publishes release artifacts as
-GitHub Release assets. `install.sh` / `install.ps1` resolve the latest
-non-prerelease GitHub Release and download that wheel. End users get the new
-release on their next `curl | sh`.
+`install.sh` / `install.ps1` resolve the latest non-prerelease GitHub Release
+and download that wheel, so end users get the new release on their next
+`curl | sh`.
+
+Publishing to the pip index is a separate, manual step, with no scheduled
+fallback:
+
+```bash
+(cd ../pdomain-index-pip && ./scripts/publish-index.sh)
+```
 
 Versioning is managed by `hatch-vcs` from git tags. `pyproject.toml`
 has no hardcoded version.
