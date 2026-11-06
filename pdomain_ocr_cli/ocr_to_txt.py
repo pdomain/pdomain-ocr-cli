@@ -114,6 +114,7 @@ from pdomain_ocr_cli._pipeline import (
     illustration_crop_path,
     iter_crop_regions,
     setup_layout_debug_env,
+    upright_layout_source,
     validate_extract_illustrations,
     write_diagnostic_snapshots,
 )
@@ -174,7 +175,7 @@ class _PageLayoutLike(Protocol):
 
 
 class _LayoutDetectorLike(Protocol):
-    def detect(self, img_path: Path) -> _PageLayoutLike: ...
+    def detect(self, source: Path | object) -> _PageLayoutLike: ...
 
 
 class _PageLike(Protocol):
@@ -461,8 +462,9 @@ def _run_doctr_batch_single_image_compat(
 ) -> list[_PageLike | None]:
     """Single-image fallback path when the batch OCR entry point is unavailable.
 
-    Uses per-image ``Document.from_image_ocr_via_doctr``; book-tools 0.17+ returns
-    a ``tuple[Document, int]`` (document, rotation_degrees) -- rotation is discarded.
+    Uses per-image ``Document.from_image_ocr_via_doctr``. book-tools 0.17+ returns
+    ``(document, rotation_degrees)``. The angle is stored on the page as
+    ``ocr_rotation_degrees`` so layout and crops use the same upright image.
     """
     if source_identifiers is None:
         identifiers = [str(i) for i in range(len(images))]
@@ -485,13 +487,16 @@ def _run_doctr_batch_single_image_compat(
 
     pages: list[_PageLike | None] = []
     for image, source_identifier in zip(images, identifiers, strict=True):
-        doc_result, _rotation = from_image(
+        doc_result, rotation = from_image(
             image,
             source_identifier=source_identifier,
             predictor=predictor,
         )
         doc_pages = doc_result.pages
-        pages.append(doc_pages[0] if doc_pages else None)
+        page = doc_pages[0] if doc_pages else None
+        if page is not None:
+            setattr(page, "ocr_rotation_degrees", rotation)  # noqa: B010  # protocol has no rotation field; keep the OCR angle for layout
+        pages.append(page)
     return pages
 
 
@@ -1021,7 +1026,7 @@ def main() -> None:
             )
             errors += len(survivor_jobs)
             continue
-        for job, page in zip(survivor_jobs, chunk_pages, strict=True):
+        for job, page, source_arr in zip(survivor_jobs, chunk_pages, survivor_arrays, strict=True):
             img_path = job.image_path
             print(f"Processing {img_path} ...", end=" ", flush=True)  # noqa: T201  # CLI output
             debug_file = None
@@ -1058,8 +1063,15 @@ def main() -> None:
                     continue
 
                 page_layout = None
+                layout_source: Path | object = img_path
                 if layout_detector is not None:
-                    page_layout = layout_detector.detect(img_path)
+                    layout_source = upright_layout_source(
+                        img_path,
+                        source_arr,
+                        page_image=getattr(page, "cv2_numpy_page_image", None),
+                        rotation_degrees=getattr(page, "ocr_rotation_degrees", None),
+                    )
+                    page_layout = layout_detector.detect(layout_source)
                     print(  # noqa: T201  # CLI output
                         f"  layout: {len(page_layout.regions)} regions ({page_layout.inference_ms} ms)",
                         flush=True,
@@ -1162,13 +1174,17 @@ def main() -> None:
                     and page_layout is not None
                     and cv2_module is not None
                 ):
-                    source_img = cv2_module.imread(str(img_path))
-                    if source_img is None:
-                        print(  # noqa: T201  # CLI output
-                            f"WARNING: could not re-read {img_path} for illustration crops",
-                            file=sys.stderr,
-                        )
+                    source_img: _Cv2ImageLike | None
+                    if layout_source is img_path:
+                        source_img = cv2_module.imread(str(img_path))
+                        if source_img is None:
+                            print(  # noqa: T201  # CLI output
+                                f"WARNING: could not re-read {img_path} for illustration crops",
+                                file=sys.stderr,
+                            )
                     else:
+                        source_img = cast("_Cv2ImageLike", layout_source)
+                    if source_img is not None:
                         for crop_pair in iter_crop_regions(
                             page_layout.regions,
                             args.layout_confidence,

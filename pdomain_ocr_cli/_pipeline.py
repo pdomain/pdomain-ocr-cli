@@ -346,6 +346,40 @@ def diagnostic_output_paths(json_path: Path, txt_path: Path) -> dict[str, Path]:
 # ---------------------------------------------------------------------------
 
 
+def upright_layout_source(
+    image_path: Path,
+    source_array: object,
+    *,
+    page_image: object | None,
+    rotation_degrees: object = None,
+) -> Path | object:
+    """Return the image layout detection and illustration crops should use.
+
+    A zero angle keeps the on-disk path. A non-zero quarter turn uses the
+    upright buffer OCR already stashed, or rotates ``source_array`` clockwise
+    by that angle. When batch OCR stashes a different array and does not
+    report an angle, that array is the upright image.
+    """
+    if rotation_degrees is None:
+        rotation = 0
+    elif isinstance(rotation_degrees, int) and rotation_degrees in {0, 90, 180, 270}:
+        rotation = rotation_degrees
+    else:
+        raise ValueError(f"unsupported OCR rotation: {rotation_degrees!r}")
+
+    if page_image is not None and page_image is not source_array:
+        return page_image
+    if rotation == 0:
+        return image_path
+
+    import numpy as np
+    from pdomain_book_tools.ocr.rotation import rotate_image
+
+    if not isinstance(source_array, np.ndarray):
+        raise TypeError("OCR rotation requires the decoded page array")
+    return rotate_image(source_array, rotation)
+
+
 def iter_crop_regions(
     regions: Iterable[_CropRegionLike],
     confidence_threshold: float,
