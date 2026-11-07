@@ -16,15 +16,16 @@ Release inputs will use tested compatibility ranges and immutable tool revisions
 - **Status:** active
 - **Read when:** changing Python metadata, build tools, or pre-commit updates
 - **Search terms:** upper bounds, build backend pins, pre-commit SHA, former GH 31, former GH 45, former GH 50
-- **Relates to:** [hook pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md); runtime bounds and build pins shipped in `7b0f4f7`, see [cli-orchestration.md](../architecture/cli-orchestration.md#dependency-bounds)
+- **Relates to:** hook pins (former GH #45, retired 2026-11-07; see `docs/context/decisions.md`); runtime bounds and build pins shipped in `7b0f4f7`, see [cli-orchestration.md](../architecture/cli-orchestration.md#dependency-bounds)
 
 **Implementation plan:** [dependency provenance plan](../plans/2026-07-21-dependency-provenance.md)
 
 ## Status on 2026-11-07
 
 The bounds and exact build-backend pins shipped in `7b0f4f7`. The `[gpu]`
-extra forwards to `pdomain-book-tools[gpu]==0.30.1`, which is exact. Hook
-revisions are still tags, pending the owner's decision (former GH #45). The
+extra forwards to `pdomain-book-tools[gpu]==0.30.1`, which is exact. On
+2026-11-07 the owner chose commit SHAs for hook revisions (former GH #45), and
+they shipped then. The
 weekly refresh workflow below no longer exists: commit `7041179` removed it on
 2026-09-13, so hook refreshes are local.
 

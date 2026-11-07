@@ -34,42 +34,18 @@ GitHub runs no workflows for this repository, so every check here is local.
 
 ## Status
 
-Task 1, package bounds and exact build-backend pins, shipped in `7b0f4f7`
-(v0.9.1); see [cli-orchestration.md](../architecture/cli-orchestration.md#dependency-bounds).
-Task 2 waits on the owner's choice between tag and SHA revisions (former GH #45).
+Both tasks shipped. Task 1, package bounds and exact build-backend pins,
+shipped in `7b0f4f7` (v0.9.1); see
+[cli-orchestration.md](../architecture/cli-orchestration.md#dependency-bounds).
+Task 2 shipped on 2026-11-07, after the owner chose commit SHAs for former
+GH #45. It differs from the original steps:
 
-## Task 2: Freeze pre-commit revisions
+- Each hook was frozen at the version it already used, not bumped.
+- The pin check is a local `pygrep` hook, `require-frozen-hook-revs`, not a
+  pytest. The same hook went to every pdomain repository, including ones
+  without Python tests.
+- The third-party `pre-commit-update` hook was removed, and `make update-hooks`
+  now runs `pre-commit autoupdate --freeze`.
 
-**Files:**
-
-- Modify: `.pre-commit-config.yaml`
-- Modify: `Makefile` (the `update-hooks` target)
-- Create: `tests/test_pre_commit_pins.py`
-
-- [ ] **Step 1: Add a failing SHA contract test**
-
-```python
-def test_remote_pre_commit_revisions_are_full_shas():
-    config = yaml.safe_load(Path(".pre-commit-config.yaml").read_text())
-    revisions = [repo["rev"] for repo in config["repos"] if repo["repo"] != "local"]
-    assert all(re.fullmatch(r"[0-9a-f]{40}", revision) for revision in revisions)
-```
-
-- [ ] **Step 2: Confirm the test fails**
-
-Run: `uv run pytest -n auto -k 'pre_commit_revisions_are_full_shas'`
-Expected: FAIL because revisions are tags.
-
-- [ ] **Step 3: Freeze hooks and refresh behavior**
-
-Run `uv run pre-commit autoupdate --freeze`. `make update-hooks` currently runs the `pre-commit-update` hook on the manual stage, which writes tags. Change it so later refreshes keep SHA revisions, for example by running `uv run pre-commit autoupdate --freeze` instead.
-
-- [ ] **Step 4: Verify and commit hook pins**
-
-Run: `uv run pytest -n auto -k 'pre_commit_revisions_are_full_shas' && make ci AI=1`
-Expected: both commands print `✅`.
-
-```bash
-git add .pre-commit-config.yaml Makefile tests/test_pre_commit_pins.py
-git commit -m "build: freeze pre-commit hook revisions"
-```
+The remaining follow-up is the requirement-parsing test listed in
+[intent-map.md](../context/intent-map.md#spec-review-follow-ups-2026-11-07).

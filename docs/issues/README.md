@@ -81,7 +81,6 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 
 ## Open issues
 
-- [Pre-commit hook revisions use mutable version tags](2026-07-19-gh-45-pre-commit-immutable-pins.md): needs a tags-or-SHAs decision (former GH #45)
 - [Deferred: --normalize-output flag after upstream glyph map](2026-07-19-normalize-output-flag-deferred.md): waits on `pdomain-book-tools`
 
 Resolved reports are deleted, so this index tracks open work only. Past

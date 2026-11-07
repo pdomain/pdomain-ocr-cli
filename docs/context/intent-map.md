@@ -28,10 +28,6 @@ Kind: context
 
 ## Deferred work
 
-- Guard the upstream safe checkpoint loader with a test in this repository
-  (former GH #15 part 2). The default revision pin shipped.
-- Replace mutable pre-commit revision tags with immutable commit pins if the
-  owner chooses SHAs (former GH #45).
 - Further split the large happy-path and error-path test modules when doing so
   improves readability without duplicating fixtures or weakening behavior
   oracles.
@@ -86,16 +82,12 @@ first:
 
 Governed reports under [`docs/issues/`](../issues/README.md) (GitHub tracker empty):
 
-- [Pre-commit immutable pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md) (former GH #45, needs decision)
 - [Deferred normalize-output](../issues/2026-07-19-normalize-output-flag-deferred.md) (Later)
 
 Standing priority order remains in [`docs/roadmap.md`](../roadmap.md).
 
 ## Needs owner decision
 
-- Choose tag or commit-SHA revisions for pre-commit hooks (former GH #45). The
-  2026-11-07 review recommends SHAs with `pre-commit autoupdate --freeze`, and
-  removing the third-party `pre-commit-update` hook.
 - Name the `--normalize-output` mode: `typographic` in the spec and plan, `ascii`
   in the issue and usage doc. The review favors `ascii`.
 - Six implemented specs now have review records, so the doc-retirer rules allow

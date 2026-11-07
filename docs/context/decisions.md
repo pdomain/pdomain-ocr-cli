@@ -15,6 +15,23 @@ Kind: context
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
 
+### 2026-11-07 Retired: Pre-commit hook revisions use mutable version tags
+
+- Old path: `docs/issues/2026-07-19-gh-45-pre-commit-immutable-pins.md`
+- Outcome: resolved. The owner chose commit SHAs on 2026-11-07. Every external
+  hook is frozen to the commit behind its existing tag, a local `pygrep` hook
+  rejects any other `rev:`, the `pre-commit-update` hook is removed, and
+  `make update-hooks` runs `pre-commit autoupdate --freeze`. The same change
+  went to every pdomain repository.
+- Why: a tag can be moved upstream, and pre-commit runs hook code on every
+  commit. `pre-commit-update` v0.9.0 has no freeze option, so each bump
+  reverted frozen SHAs to tags; `pdomain-ocr-labeler-spa` lost three of its six
+  frozen pins that way in `a7965c95`.
+- Superseded by: `docs/architecture/cli-orchestration.md` (Dependency bounds)
+- Removal commit: (fill after commit)
+- Rationale kept: the architecture section and this entry.
+- Remaining work: none
+
 ### 2026-11-07 Retired: Default OCR model pin and safe-load guard
 
 - Old path: `docs/issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md`
