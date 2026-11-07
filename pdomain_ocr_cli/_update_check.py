@@ -8,6 +8,8 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 from typing import Protocol, TypedDict, cast
 
+from pdomain_ocr_cli import _startup_notices
+
 try:
     _detected_version: str = _pkg_version("pdomain-ocr-cli")
 except PackageNotFoundError:  # pragma: no cover - only fires if package metadata is missing
@@ -36,6 +38,21 @@ class _UrlopenResponse(Protocol):
     ) -> bool | None: ...
 
     def read(self) -> bytes: ...
+
+
+def _env_truthy(name: str) -> bool:
+    """True if the env var is set to a truthy value (1/true/yes/on, case-insensitive)."""
+    return _startup_notices.env_truthy(name)
+
+
+def _report_failure(exc: Exception) -> None:
+    """Write a concise failure summary to stderr when ``PD_OCR_DEBUG`` is set.
+
+    Deliberately excludes tracebacks, tokens, and response bodies — only the
+    exception type and message.
+    """
+    if _env_truthy("PD_OCR_DEBUG"):
+        print(f"update check failed: {type(exc).__name__}: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
 
 
 def _parse_stable_tag(version: str) -> tuple[int, int, int] | None:
@@ -122,7 +139,7 @@ def check_for_update() -> None:
         # dicts. A truthiness-only guard would let the dict through to
         # ``_latest_stable_tag`` which iterates dict keys (strings) and calls
         # ``str.get("name", "")`` -> AttributeError, masked by the broad
-        # ``except Exception: pass`` below. Type-guard explicitly so the
+        # ``except Exception`` below. Type-guard explicitly so the
         # update-check machinery degrades cleanly instead of silently dying.
         tags = _parse_tag_payload(payload)
         if tags is None:
@@ -152,5 +169,5 @@ def check_for_update() -> None:
                 f"    curl -sSL {_INSTALL_URL} | sh\n"
             )
             print(notice, file=sys.stderr)  # noqa: T201  # CLI output
-    except Exception:  # noqa: BLE001 S110  # update check is best-effort; any failure is safe to swallow
-        pass  # Version check is best-effort
+    except Exception as exc:  # noqa: BLE001  # update check is best-effort; any failure is safe to swallow
+        _report_failure(exc)  # Version check is best-effort; report only under PD_OCR_DEBUG

@@ -283,6 +283,27 @@ def test_tags_request_uses_per_page_100(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Opt-in diagnostics: PD_OCR_DEBUG reports best-effort failures on stderr.
+# ---------------------------------------------------------------------------
+
+
+def test_debug_reports_network_failure(monkeypatch, capsys):
+    monkeypatch.setattr(_update_check, "VERSION", "0.5.0")
+    monkeypatch.setenv("PD_OCR_DEBUG", "1")
+    with patch("urllib.request.urlopen", _fake_urlopen_raises(TimeoutError("slow"))):
+        _update_check.check_for_update()
+    assert capsys.readouterr().err == "update check failed: TimeoutError: slow\n"
+
+
+def test_silent_without_debug(monkeypatch, capsys):
+    monkeypatch.setattr(_update_check, "VERSION", "0.5.0")
+    monkeypatch.delenv("PD_OCR_DEBUG", raising=False)
+    with patch("urllib.request.urlopen", _fake_urlopen_raises(TimeoutError("slow"))):
+        _update_check.check_for_update()
+    assert capsys.readouterr().err == ""
+
+
+# ---------------------------------------------------------------------------
 # User-Agent: GitHub may rate-limit the default ``Python-urllib/3.x`` UA more
 # aggressively than a clearly-identified application UA. Set an explicit one.
 # ---------------------------------------------------------------------------
