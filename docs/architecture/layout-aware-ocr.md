@@ -82,8 +82,9 @@ other than a decoded array raises `TypeError`. Crop boxes therefore stay inside
 the upright image that layout saw.
 
 On the sideways fixture `tests/fixtures/rotated_page.png`, layout reports 0
-regions at the default confidence of 0.5. That is correct: on the upright
-orientation the strongest box is a title at 0.472.
+regions at the default confidence of 0.5. That is correct. An offline run of
+the cached PP-DocLayout-Plus-L weights on 2026-11-07 scored the upright
+orientation's strongest box, a title, at 0.472. No test records that number.
 
 ## Performance notes
 
@@ -117,8 +118,9 @@ make test-integration
 make test-layout-integration
 ```
 
-`tests/test_default_layout_word_preservation.py` checks that default layout
-reorganization keeps every OCR word as a multiset. It also checks that
+The fast suite's `tests/test_default_layout_word_preservation.py` mocks DocTR
+and PP-DocLayout and checks that default layout reorganization keeps every OCR
+word as a multiset. It also checks that
 `--experimental-drop-layout-words` is the only switch that may drop figure
 words.
 

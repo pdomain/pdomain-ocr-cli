@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: process
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** process
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Read when:** filing a bug / defect / investigation report, or looking up an
   open issue's status, evidence, or resolution.
 - **Search terms:** issues folder, bug report, defect report, issue template,

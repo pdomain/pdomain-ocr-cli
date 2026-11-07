@@ -74,9 +74,9 @@ controlled fakes preserve OCR words. A word may move or receive a role label,
 but it must not disappear silently. `--no-illustration-placeholders` suppresses
 only the placeholder; caption text remains.
 
-A slow test also checks the default layout path with a multiset oracle.
-`tests/test_default_layout_word_preservation.py` runs default reorganization
-and asserts that every OCR word survives. A second test shows that
+A fast test also checks the default layout path with a multiset oracle.
+`tests/test_default_layout_word_preservation.py` mocks DocTR and PP-DocLayout,
+runs default reorganization, and asserts that every OCR word survives. A second test shows that
 `--experimental-drop-layout-words` may drop figure-internal words, so that flag
 is the only exception.
 
@@ -104,7 +104,8 @@ Verified against the repository on 2026-07-13.
   and `pyproject.toml`.
 - Fast behavior: `tests/test_main_flag_wiring.py` and
   `tests/test_main_happy.py`.
-- Slow behavior: `tests/test_pipeline_integration.py` and
+- Slow behavior: `tests/test_pipeline_integration.py`.
+- Default-layout word preservation (fast, mocked):
   `tests/test_default_layout_word_preservation.py`.
 - Installer contracts: `tests/test_install_ps1_cuda.py`,
   `tests/test_install_ps1.py`, and `tests/test_install_sh.py`.

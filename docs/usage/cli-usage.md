@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: usage
 ---
 
@@ -50,7 +50,7 @@ files in a directory are skipped with a warning.
 
 ### Image resource limits
 
-Every candidate image is checked before any OCR work starts:
+Every candidate image is checked before it joins an OCR batch:
 
 - **Compressed size** — files over 100 MiB (104,857,600 bytes) are rejected
   before decoding (collection still opens each candidate for a 16-byte
@@ -62,8 +62,10 @@ Every candidate image is checked before any OCR work starts:
 
 A rejected image is reported through the same per-image error channel as
 any other OCR failure: the CLI prints `ERROR processing <path>: ...` naming
-the path, the observed size or pixel count, and the limit, counts it as an
-error, and continues with the rest of the batch.
+the path and the limit, counts it as an error, and continues with the rest of
+the batch. The size check and the header pixel check also name the observed
+value. When Pillow or OpenCV hits the cap during decoding, the message names
+only the limit.
 
 These limits are fixed and not configurable. There is no processing
 timeout — a pathologically slow (but appropriately sized) image can still
