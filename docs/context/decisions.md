@@ -23,7 +23,7 @@ Kind: context
   approved closing the leftovers: pull requests #58 to #66 were closed and all
   13 `dep-refresh/*` branches on origin were deleted.
 - Superseded by: `docs/architecture/cli-orchestration.md` (Release boundary)
-- Removal commit: (fill after commit)
+- Removal commit: `298b332`
 - Rationale kept: GitHub runs no workflows for this repository; the release
   boundary section says so.
 - Remaining work: none
