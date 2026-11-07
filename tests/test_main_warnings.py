@@ -79,20 +79,44 @@ def test_main_noise_drop_warning_silent_with_zero_count(
     )
 
     err = capsys.readouterr().err
-    assert "mutable latest OCR model revision" in err
     assert "look like figure-internal noise" not in err
     assert "dropped 0 word(s)" not in err
     assert "--save-reorganize-diagnostics to write the full" not in err
     assert (out / "page.txt").read_text() == "POST-REORG TEXT"
 
 
-def test_main_prints_default_model_trust_warning_once(
+def test_main_pinned_default_has_no_model_trust_warning(
     mock_heavy_deps, run_main, single_image, capsys
 ):
+    """The default ``--model-version`` is now pinned, so the mutable-tip
+    warning must not fire when the flag is omitted.
+    """
     mock_heavy_deps()
     img, out = single_image
 
     run_main("--no-update-check", "--layout-model", "none", "-o", str(out), str(img))
+
+    err = capsys.readouterr().err
+    assert "mutable latest OCR model revision" not in err
+
+
+def test_main_explicit_latest_model_version_prints_trust_warning_once(
+    mock_heavy_deps, run_main, single_image, capsys
+):
+    """Explicitly opting into the mutable tip still surfaces the warning."""
+    mock_heavy_deps()
+    img, out = single_image
+
+    run_main(
+        "--no-update-check",
+        "--layout-model",
+        "none",
+        "--model-version",
+        "latest",
+        "-o",
+        str(out),
+        str(img),
+    )
 
     err = capsys.readouterr().err
     assert err.count("mutable latest OCR model revision") == 1

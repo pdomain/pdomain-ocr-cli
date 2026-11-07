@@ -32,7 +32,9 @@ TITLE_IMAGE = FIXTURES_DIR / "title_page_001.png"
 TITLE_EXPECTED = FIXTURES_DIR / "title_page_001.expected.txt"
 
 # Pin to a specific tag on the default HF repo so OCR output is reproducible.
-PINNED_MODEL_REVISION = "v0.7"
+# Shares its value with the CLI's own pinned ``--model-version`` default so
+# there is a single source of truth for the pinned revision.
+PINNED_MODEL_REVISION = ocr_to_txt.DEFAULT_MODEL_REVISION
 
 
 pytestmark = pytest.mark.slow

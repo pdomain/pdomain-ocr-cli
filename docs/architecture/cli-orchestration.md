@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-06
 Kind: architecture
 Supersedes:
   - docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md
@@ -30,8 +30,9 @@ reports errors, and selects artifacts. Detailed rules live behind those seams.
 3. `RuntimeSession` owns the predictor, device, and batch runner. It normalizes
    backend exceptions and validates result counts.
 4. `main()` processes validated results and prepares requested artifacts.
-5. Atomic helpers replace completed artifacts; `PageOutputTransaction` writes
-   the final text file last.
+5. `PageOutputTransaction` stages JSON, illustration crops, and the final
+   text file, then promotes the text file last. A failed promotion rolls
+   those files back.
 
 The CLI builds the fine-tuned DocTR predictor through the two-checkpoint-path
 `get_finetuned_torch_doctr_predictor` call. `pdomain-book-tools` owns the
@@ -47,9 +48,11 @@ exit as clean CLI errors (not raw stack traces for expected resolve paths).
 
 A backend exception becomes `BatchRuntimeError`, and a batch must return
 exactly one result per submitted image. Artifact helpers use unique temporary
-files and atomic replacement. The final text file is written last, so its
-presence signals a complete requested artifact set. Sidecar rollback after a
-failed final text write is not implemented.
+files and atomic replacement. JSON, illustration crops, and the final text
+file are staged together and promoted by one transaction. The text file is
+promoted last, so its presence signals a complete requested artifact set. If
+promotion fails, the transaction removes new files and restores the previous
+ones. Diagnostic snapshots stay outside that transaction.
 
 ## Trust and network boundaries
 

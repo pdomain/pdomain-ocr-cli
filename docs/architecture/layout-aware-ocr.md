@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-07-19
+Last verified: 2026-11-06
 Kind: architecture
 ---
 
@@ -87,12 +87,12 @@ lands.
 
 ## Artifact lifecycle
 
-The CLI writes JSON sidecars, diagnostic snapshots, layout-debug reports, and
-illustration crops through exclusive temporary files and atomic replacement.
-It writes the final `.txt` file last. Presence of `<image>.txt` is the
-completeness signal for that page's requested artifacts. The CLI does **not**
-today roll back already-promoted sidecars if the final `.txt` write fails
-(optional residual: roadmap former GH #22).
+The CLI writes JSON sidecars, illustration crops, and the final `.txt` file
+through one transaction: exclusive temporary files, then promotion together.
+The text file is promoted last. Presence of `<image>.txt` is the completeness
+signal for that page's requested artifacts. If promotion fails, the transaction
+removes the new files and restores the previous ones. Diagnostic snapshots and
+the layout-debug report stay outside that transaction.
 
 ## Test coverage
 

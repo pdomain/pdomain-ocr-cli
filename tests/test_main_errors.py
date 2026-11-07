@@ -4,12 +4,21 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
+import cv2
 import pytest
 from _fakes import FakeArray, FakePage
+from PIL import Image as _PILImage
+from PIL import UnidentifiedImageError as _PILUnidentifiedImageError
 
 from pdomain_ocr_cli import ocr_to_txt
+from pdomain_ocr_cli._artifacts import PageOutputTransaction
+from pdomain_ocr_cli._image_limits import MAX_IMAGE_BYTES, MAX_IMAGE_PIXELS
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # Atomic-write / JSON sidecar cleanup
@@ -51,9 +60,10 @@ def test_main_save_json_failure_cleans_up_tmp_and_increments_errors(
         )
     assert exc_info.value.code == 1
 
-    # No canonical JSON, no leftover hidden tmp.
+    # No canonical JSON, and no leftover stage or temp sibling.
     assert not (out / "page.json").exists()
-    assert not (out / ".page.json.tmp").exists()
+    assert list(out.glob(".*.stage")) == []
+    assert list(out.glob(".*.tmp")) == []
     err = capsys.readouterr().err
     assert "ERROR processing" in err
     assert "No space left on device" in err
@@ -62,6 +72,37 @@ def test_main_save_json_failure_cleans_up_tmp_and_increments_errors(
     # orphan ``.txt`` for downstream pipelines that key on its
     # existence to mean "this page completed".
     assert not (out / "page.txt").exists()
+
+
+def test_main_exception_before_commit_removes_staged_sidecars(
+    mock_heavy_deps, monkeypatch, run_main, single_image, capsys
+):
+    """A failure after a sidecar is staged, and before commit, must not
+    leave the ``.stage`` file in the output directory.
+    """
+    mock_heavy_deps()
+    img, out = single_image
+
+    def boom(_self, _path, _text, *, encoding="utf-8"):
+        raise RuntimeError("before commit")
+
+    monkeypatch.setattr(PageOutputTransaction, "add_text", boom)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "--save-json",
+            "-o",
+            str(out),
+            str(img),
+        )
+    assert exc_info.value.code == 1
+    assert not (out / "page.json").exists()
+    assert not (out / "page.txt").exists()
+    assert list(out.glob(".*.stage")) == []
+    assert "before commit" in capsys.readouterr().err
 
 
 def test_main_save_json_failure_with_no_tmp_swallows_unlink_error(
@@ -98,6 +139,104 @@ def test_main_save_json_failure_with_no_tmp_swallows_unlink_error(
     err = capsys.readouterr().err
     assert "explode before any byte hits disk" in err
     assert not (out / "page.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Page output transaction rollback (issue #22) — driven through the real
+# ocr_to_txt.main() write path, not PageOutputTransaction directly.
+# ---------------------------------------------------------------------------
+
+
+def test_main_txt_promotion_failure_rolls_back_json_sidecar(
+    mock_heavy_deps, monkeypatch, run_main, single_image, capsys
+):
+    """A page's JSON sidecar and final ``.txt`` are promoted through one
+    ``PageOutputTransaction``. When the ``.txt`` promotion (the last step)
+    fails, the transaction must roll back the already-promoted JSON
+    sidecar too, leaving no orphaned sidecar on disk. This drives the real
+    ``ocr_to_txt.main()`` write path end to end, not ``PageOutputTransaction``
+    in isolation, proving issue #22 is fixed for the shipped CLI.
+    """
+    mock_heavy_deps()
+    img, out = single_image
+
+    real_promote = PageOutputTransaction._promote
+
+    def flaky_promote(self, destination, staged):
+        if destination.suffix == ".txt":
+            raise OSError("simulated txt promotion failure")
+        real_promote(self, destination, staged)
+
+    monkeypatch.setattr(PageOutputTransaction, "_promote", flaky_promote)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "--save-json",
+            "-o",
+            str(out),
+            str(img),
+        )
+
+    assert exc_info.value.code == 1
+    # Neither the (already-promoted) json sidecar nor the failed .txt
+    # survive — and no sibling temp/backup file leaks either.
+    assert not (out / "page.txt").exists()
+    assert not (out / "page.json").exists()
+    assert list(out.iterdir()) == []
+
+
+def test_main_reports_affected_paths_when_rollback_also_fails(
+    mock_heavy_deps, monkeypatch, run_main, single_image, capsys
+):
+    """Spec AC4: when a page's transaction fails *and* its own rollback
+    also fails, the operator must see every affected sub-exception on the
+    normal ``ERROR processing`` line — not just a bare
+    ``artifact promotion and rollback failed (N sub-exceptions)`` summary
+    that only expands under ``PD_OCR_DEBUG``.
+    """
+    mock_heavy_deps()
+    img, out = single_image
+
+    real_promote = PageOutputTransaction._promote
+
+    def flaky_promote(self, destination, staged):
+        if destination.suffix == ".txt":
+            raise OSError("simulated txt promotion failure")
+        real_promote(self, destination, staged)
+
+    monkeypatch.setattr(PageOutputTransaction, "_promote", flaky_promote)
+
+    real_unlink = Path.unlink
+
+    def flaky_unlink(self, missing_ok=False):
+        if self.suffix == ".json":
+            raise OSError("simulated rollback unlink failure")
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", flaky_unlink)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "--save-json",
+            "-o",
+            str(out),
+            str(img),
+        )
+
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert "ERROR processing" in err
+    assert "artifact promotion and rollback failed" in err
+    # Both the original failure and the rollback failure are named on the
+    # same line, with no PD_OCR_DEBUG needed.
+    assert "simulated txt promotion failure" in err
+    assert "simulated rollback unlink failure" in err
 
 
 # ---------------------------------------------------------------------------
@@ -146,10 +285,12 @@ def test_main_extract_illustrations_imencode_returns_false_no_tmp_swallows_unlin
 def test_main_extract_illustrations_crop_atomic_write_failure_skips_and_cleans_tmp(
     mock_heavy_deps, monkeypatch, run_main, single_image, capsys
 ):
-    """When atomic crop write fails, the atomic-write branch must remove
-    any sibling tmp it created and emit an error,
-    not crash the batch and not leave the canonical crop on disk.
-    (B18 atomic-write invariant for illustration crops.)
+    """When staging a crop for the page's output transaction fails, the
+    transaction must clean up any sibling temp it created, emit an error,
+    and leave no orphaned crop or ``.txt`` behind — the whole page's
+    artifact set (json/crops/``.txt``) is promoted together, so a crop
+    failure must not leave a partial page on disk.
+    (B18 atomic-write invariant for illustration crops; issue #22.)
     """
     mock_heavy_deps()
     img, out = single_image
@@ -167,11 +308,11 @@ def test_main_extract_illustrations_crop_atomic_write_failure_skips_and_cleans_t
     fake_cv2.imread = MagicMock(return_value=FakeArray(100))
     fake_cv2.imencode = MagicMock(return_value=(True, b"\x00"))
     monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", lambda: (fake_cv2, {"figure"}))
-    monkeypatch.setattr(
-        ocr_to_txt,
-        "atomic_write_bytes",
-        MagicMock(side_effect=OSError("disk full")),
-    )
+
+    def boom_write(fd, data):
+        raise OSError("disk full")
+
+    monkeypatch.setattr("pdomain_ocr_cli._artifacts.os.write", boom_write)
 
     with pytest.raises(SystemExit) as exc_info:
         run_main(
@@ -186,9 +327,9 @@ def test_main_extract_illustrations_crop_atomic_write_failure_skips_and_cleans_t
 
     assert exc_info.value.code == 1
     assert not (out / "page.txt").exists()
-    # The crop did not land.
+    # The crop did not land, and no sibling temp/stage/backup file leaked.
     assert not (out / "i_page_01.jpg").exists()
-    assert not list(out.glob(".i_page_01*.tmp*"))
+    assert list(out.iterdir()) == []
     err = capsys.readouterr().err
     assert "disk full" in err
 
@@ -379,6 +520,397 @@ def test_main_per_image_exception_with_debug_prints_traceback(
     err = capsys.readouterr().err
     assert "ERROR processing" in err
     assert "Traceback" in err  # traceback.print_exc header
+
+
+# ---------------------------------------------------------------------------
+# Image resource limits (oversized inputs rejected before OCR work)
+# ---------------------------------------------------------------------------
+
+
+def test_main_rejects_oversized_byte_size_and_continues_batch(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    run_main: Callable[..., None],
+    make_images: Callable[[int], list[Path]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A file over ``MAX_IMAGE_BYTES`` is rejected via the per-image error
+    channel; the batch continues and a second, valid image still produces
+    text output."""
+    _ = mock_heavy_deps()
+    imgs = make_images(2)
+    out = imgs[0].parent / "out"
+    big_path = imgs[0]
+    _ = big_path.write_bytes(b"\x00" * (MAX_IMAGE_BYTES + 1))
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "-o",
+            str(out),
+            str(imgs[0]),
+            str(imgs[1]),
+        )
+
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert str(big_path) in err
+    assert f"{MAX_IMAGE_BYTES + 1} bytes" in err
+    assert str(MAX_IMAGE_BYTES) in err
+    assert (out / f"{imgs[1].stem}.txt").exists()
+
+
+def test_main_rejects_oversized_pixel_dimensions_and_continues_batch(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: Callable[..., None],
+    make_images: Callable[[int], list[Path]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An image whose decoded pixel count exceeds ``MAX_IMAGE_PIXELS`` is
+    rejected via the per-image error channel; the batch continues and a
+    second, valid image still produces text output.
+
+    A narrowly-scoped ``PIL.Image.open`` seam stands in for a real
+    100-million-pixel file (which would be slow and memory-heavy to
+    construct); the real decoder is used for every other path so the
+    second image is genuinely OCR'd end to end.
+    """
+    _ = mock_heavy_deps()
+    imgs = make_images(2)
+    out = imgs[0].parent / "out"
+    big_path = imgs[0]
+    oversized_dimensions = (100_000_001, 1)
+
+    real_open = _PILImage.open
+
+    class _FakeImageHeader:
+        size: tuple[int, int] = oversized_dimensions
+
+        def __enter__(self) -> _FakeImageHeader:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            return None
+
+    def fake_open(fp: Path) -> _FakeImageHeader | _PILImage.Image:
+        if fp == big_path:
+            return _FakeImageHeader()
+        return real_open(fp)
+
+    monkeypatch.setattr(_PILImage, "open", fake_open)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "-o",
+            str(out),
+            str(imgs[0]),
+            str(imgs[1]),
+        )
+
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert str(big_path) in err
+    assert "100000001 pixels" in err
+    assert str(MAX_IMAGE_PIXELS) in err
+    assert (out / f"{imgs[1].stem}.txt").exists()
+
+
+def test_main_pillow_unidentified_format_falls_through_to_cv2_and_still_produces_text(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: Callable[..., None],
+    single_image: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A format Pillow can't identify (e.g. a HEIC/HEIF variant whose
+    Pillow codec isn't registered, even though the suffix is admitted at
+    collection) but that cv2 CAN decode must not be rejected outright.
+
+    ``Image.open`` is stubbed to always raise ``UnidentifiedImageError``
+    for this path; the real, valid fixture bytes are left on disk so
+    ``cv2.imdecode`` decodes them normally and the page still produces
+    text -- proving the pixel-limit checks do not become a hard Pillow
+    format gate ahead of cv2.
+    """
+    _ = mock_heavy_deps()
+    img, out = single_image
+
+    def fake_open(fp: Path) -> _PILImage.Image:
+        raise _PILUnidentifiedImageError(f"cannot identify image file {fp!r}")
+
+    monkeypatch.setattr(_PILImage, "open", fake_open)
+
+    run_main("--no-update-check", "--layout-model", "none", "-o", str(out), str(img))
+
+    assert (out / f"{img.stem}.txt").read_text() == "FAKE OCR TEXT"
+    # No error should have been recorded for the fallback path.
+    assert "ERROR processing" not in capsys.readouterr().err
+
+
+def test_main_pillow_unidentified_format_cv2_backstop_rejects_oversized_decode(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: Callable[..., None],
+    make_images: Callable[[int], list[Path]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The cv2-decode backstop pixel check (used when Pillow can't
+    identify the format) must actually reject an oversized decoded array,
+    not just accept small ones -- the only other fallback test exercises
+    the accepting side, which would leave this rejection branch untested
+    and any regression there invisible to the coverage gate.
+
+    ``Image.open`` raises ``UnidentifiedImageError`` for one path;
+    ``cv2.imdecode`` is stubbed to report a decoded shape over
+    ``MAX_IMAGE_PIXELS`` for that same path's bytes. A second, valid image
+    in the same batch must still produce text.
+    """
+    _ = mock_heavy_deps()
+    # ``make_images`` copies the same fixture bytes to every path, so the
+    # two inputs are byte-for-byte identical; ``cv2.imdecode`` receives only
+    # the raw buffer, not a path. Gate the fake on call order instead: the
+    # per-image loop processes jobs in input-argument order, so the first
+    # ``cv2.imdecode`` call belongs to ``imgs[0]`` (the ``UnidentifiedImageError``
+    # path) and the second to ``imgs[1]`` (the real decode).
+    imgs = make_images(2)
+    out = imgs[0].parent / "out"
+    unidentified_path = imgs[0]
+
+    real_open = _PILImage.open
+
+    def fake_open(fp: Path) -> _PILImage.Image:
+        if fp == unidentified_path:
+            raise _PILUnidentifiedImageError(f"cannot identify image file {fp!r}")
+        return real_open(fp)
+
+    monkeypatch.setattr(_PILImage, "open", fake_open)
+
+    real_imdecode = cv2.imdecode
+    call_count = 0
+
+    class _FakeDecodedArray:
+        shape: tuple[int, int, int] = (10_001, 10_001, 3)
+
+    def fake_imdecode(buf: cv2.typing.MatLike, flags: int) -> cv2.typing.MatLike | None:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            return cast("cv2.typing.MatLike", cast("object", _FakeDecodedArray()))
+        return real_imdecode(buf, flags)
+
+    monkeypatch.setattr(cv2, "imdecode", fake_imdecode)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "-o",
+            str(out),
+            str(imgs[0]),
+            str(imgs[1]),
+        )
+
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert str(unidentified_path) in err
+    assert "100020001 pixels" in err
+    assert str(MAX_IMAGE_PIXELS) in err
+    assert (out / f"{imgs[1].stem}.txt").exists()
+
+
+def test_main_real_oversized_image_cv2_decoder_cap_reports_limit_and_continues_batch(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: Callable[..., None],
+    make_images: Callable[[int], list[Path]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """End to end, with a genuinely oversized image and the REAL (not
+    stubbed) cv2 decoder: ``OPENCV_IO_MAX_IMAGE_PIXELS`` (set at process
+    start, see the top of ``ocr_to_txt.py``) makes cv2 itself refuse to
+    decode past ``MAX_IMAGE_PIXELS``, raising ``cv2.error`` -- OpenCV's own
+    raw assertion text, not this CLI's ``ImageLimitError`` -- instead of
+    returning ``None``. That must still surface through the per-file error
+    channel naming the path and this CLI's limit, not OpenCV's raw
+    assertion text alone.
+
+    This is the only test in the suite that drives the real default
+    runtime path for a genuinely oversized image: the sibling
+    ``..._cv2_backstop_rejects_oversized_decode`` test stubs
+    ``cv2.imdecode`` itself, which only exercises the Python backstop that
+    OpenCV's own cap makes unreachable by default.
+    """
+    _ = mock_heavy_deps()
+    imgs = make_images(2)
+    out = imgs[0].parent / "out"
+    oversized_path = imgs[0]
+    # Real, genuinely oversized PNG: 10_001 x 10_001 = 100_020_001 pixels,
+    # one over MAX_IMAGE_PIXELS. A solid-color image compresses to ~100 KB
+    # and both constructs and decodes in well under a second.
+    _PILImage.new("L", (10_001, 10_001)).save(oversized_path)
+
+    real_open = _PILImage.open
+
+    def fake_open(fp: Path) -> _PILImage.Image:
+        if fp == oversized_path:
+            raise _PILUnidentifiedImageError(f"cannot identify image file {fp!r}")
+        return real_open(fp)
+
+    monkeypatch.setattr(_PILImage, "open", fake_open)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "-o",
+            str(out),
+            str(imgs[0]),
+            str(imgs[1]),
+        )
+
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert str(oversized_path) in err
+    assert f"{MAX_IMAGE_PIXELS}-pixel limit" in err
+    assert (out / f"{imgs[1].stem}.txt").exists()
+
+
+def test_main_cv2_error_unrelated_to_pixel_cap_is_not_relabeled_as_limit_violation(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: Callable[..., None],
+    make_images: Callable[[int], list[Path]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A ``cv2.error`` that is NOT OpenCV's ``CV_IO_MAX_IMAGE_PIXELS``
+    pixel-cap assertion (e.g. genuine decode corruption cv2 reports via an
+    exception rather than by returning ``None``) must be left as-is --
+    reported through the normal per-file error channel with its own
+    message, not relabeled as this CLI's pixel-limit rejection.
+    """
+    _ = mock_heavy_deps()
+    imgs = make_images(2)
+    out = imgs[0].parent / "out"
+    corrupt_path = imgs[0]
+
+    real_imdecode = cv2.imdecode
+    call_count = 0
+
+    def fake_imdecode(buf: cv2.typing.MatLike, flags: int) -> cv2.typing.MatLike | None:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise cv2.error("OpenCV(4.14.0) some/other/file.cpp:1: error: unrelated decode failure")
+        return real_imdecode(buf, flags)
+
+    monkeypatch.setattr(cv2, "imdecode", fake_imdecode)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "-o",
+            str(out),
+            str(imgs[0]),
+            str(imgs[1]),
+        )
+
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert str(corrupt_path) in err
+    assert "unrelated decode failure" in err
+    assert f"{MAX_IMAGE_PIXELS}-pixel limit" not in err
+    assert (out / f"{imgs[1].stem}.txt").exists()
+
+
+def test_main_pillow_decompression_bomb_error_rejected_and_continues_batch(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: Callable[..., None],
+    make_images: Callable[[int], list[Path]],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A file so large that Pillow's own decompression-bomb guard raises
+    ``DecompressionBombError`` while merely opening the header (more than
+    double Pillow's own, lower, default pixel threshold) must be rejected
+    through the same per-file error channel as every other oversized
+    input, naming the path and this CLI's ``MAX_IMAGE_PIXELS`` limit.
+
+    ``Image.open`` is stubbed to raise ``DecompressionBombError`` directly
+    for this path, standing in for a real image far too large to
+    construct quickly in a test.
+    """
+    _ = mock_heavy_deps()
+    imgs = make_images(2)
+    out = imgs[0].parent / "out"
+    huge_path = imgs[0]
+
+    real_open = _PILImage.open
+
+    def fake_open(fp: Path) -> _PILImage.Image:
+        if fp == huge_path:
+            raise _PILImage.DecompressionBombError(
+                "Image size (500000000 pixels) exceeds limit of 178956970 pixels, could be decompression bomb DOS attack."
+            )
+        return real_open(fp)
+
+    monkeypatch.setattr(_PILImage, "open", fake_open)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "-o",
+            str(out),
+            str(imgs[0]),
+            str(imgs[1]),
+        )
+
+    assert exc_info.value.code == 1
+    err = capsys.readouterr().err
+    assert str(huge_path) in err
+    assert str(MAX_IMAGE_PIXELS) in err
+    assert (out / f"{imgs[1].stem}.txt").exists()
+
+
+def test_main_does_not_disable_pillow_decompression_bomb_guard_for_other_consumers(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    run_main: Callable[..., None],
+    single_image: tuple[Path, Path],
+    tmp_path: Path,
+) -> None:
+    """Regression for a prior bug: ``main()`` must not mutate
+    ``PIL.Image.MAX_IMAGE_PIXELS`` (or otherwise disable Pillow's own
+    decompression-bomb guard) as a process-global side effect.
+
+    After a normal run completes, a real image in Pillow's own
+    warn-but-not-error range (its default ``MAX_IMAGE_PIXELS`` is lower
+    than this CLI's 100-million-pixel limit) must still trip Pillow's
+    guard for any other Pillow consumer -- e.g. book-tools' own
+    ``Image.open`` calls -- opened directly, outside this CLI's checks.
+    Under this repo's ``filterwarnings = ["error", ...]``, Pillow's
+    warning surfaces as a raised ``DecompressionBombWarning``.
+    """
+    _ = mock_heavy_deps()
+    img, out = single_image
+    run_main("--no-update-check", "--layout-model", "none", "-o", str(out), str(img))
+
+    still_guarded = tmp_path / "still_guarded.png"
+    # Just over Pillow's own default MAX_IMAGE_PIXELS (~89.5M) but under
+    # this CLI's 100M limit -- warn-range for Pillow, not this CLI.
+    _PILImage.new("L", (90_000_000, 1)).save(still_guarded)
+
+    with pytest.raises(_PILImage.DecompressionBombWarning):
+        _PILImage.open(still_guarded).close()
 
 
 # ---------------------------------------------------------------------------
@@ -713,6 +1245,94 @@ def test_main_keyboard_interrupt_mid_batch_emits_summary_and_exits_130(
     assert "Done (" not in captured.out
 
 
+def test_main_keyboard_interrupt_mid_commit_with_failing_rollback_emits_summary_and_exits_130(
+    mock_heavy_deps, monkeypatch, run_main, make_images, capsys
+):
+    """Regression for N1: a ``KeyboardInterrupt`` raised mid-``commit()``,
+    where the resulting rollback *also* fails, must still reach the
+    per-page loop as a plain ``KeyboardInterrupt`` — not wrapped in a
+    ``BaseExceptionGroup``, which is neither a ``KeyboardInterrupt`` nor an
+    ``Exception`` and would escape both per-page handlers, skipping the
+    B20 summary/exit-130 path this test exists to confirm still fires.
+    """
+    import threading
+
+    ns = mock_heavy_deps()
+    imgs = make_images(3)
+    out = imgs[0].parent / "out"
+    second_stem = imgs[1].stem
+
+    call_count = {"n": 0}
+    third_seen = {"n": 0}
+
+    def counting_batch(images, *, predictor, device, source_identifiers):
+        call_count["n"] += 1
+        if call_count["n"] == 3:
+            third_seen["n"] += 1
+        return [FakePage(text="OK") for _ in images]
+
+    ns.runtime_session.runner = counting_batch
+
+    # The second image's ``.txt`` promotion raises KeyboardInterrupt after
+    # its (--save-json) sidecar already promoted successfully; the
+    # resulting rollback then also fails to unlink that sidecar.
+    real_promote = PageOutputTransaction._promote
+
+    def flaky_promote(self, destination, staged):
+        if destination.stem == second_stem and destination.suffix == ".txt":
+            raise KeyboardInterrupt
+        real_promote(self, destination, staged)
+
+    monkeypatch.setattr(PageOutputTransaction, "_promote", flaky_promote)
+
+    real_unlink = Path.unlink
+
+    def flaky_unlink(self, missing_ok=False):
+        if self.stem == second_stem and self.suffix == ".json":
+            raise OSError("rollback unlink boom")
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", flaky_unlink)
+
+    class _RecordingThread(threading.Thread):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.joined = False
+
+        def join(self, timeout=None):
+            self.joined = True
+            return super().join(timeout=timeout)
+
+    started = _RecordingThread(target=lambda: None, daemon=True)
+    started.start()
+    monkeypatch.setattr(ocr_to_txt, "_start_update_check_thread", lambda disabled: started)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--layout-model",
+            "none",
+            "--batch-pages",
+            "1",
+            "--save-json",
+            "-o",
+            str(out),
+            str(imgs[0]),
+            str(imgs[1]),
+            str(imgs[2]),
+        )
+
+    assert exc_info.value.code == 130
+    assert third_seen["n"] == 0
+    assert started.joined is True
+
+    captured = capsys.readouterr()
+    assert "Interrupted after 1/3 image(s)" in captured.err
+    assert captured.err.index("rollback also failed") < captured.err.index("Interrupted after")
+    assert "rollback unlink boom" in captured.err
+    assert "Done." not in captured.out
+    assert "Done (" not in captured.out
+
+
 def test_main_layout_debug_setup_failure_recorded_per_image_not_batch_abort(
     mock_heavy_deps, monkeypatch, run_main, make_images, capsys
 ):
@@ -889,3 +1509,64 @@ def test_main_all_images_corrupt_skips_batch_exits_1(mock_heavy_deps, run_main, 
     assert "2 error(s)" in captured.out
     # _run_doctr_batch must have been skipped entirely.
     assert batch_called == [], "batch must not be called when all images fail to decode"
+
+
+def test_main_cv2_decode_failure_with_valid_pillow_header_reports_error(
+    mock_heavy_deps: Callable[..., SimpleNamespace],
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: Callable[..., None],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A file whose Pillow header opens fine (so it clears the byte- and
+    pixel-limit checks) but whose bytes ``cv2.imdecode`` can't decode
+    (e.g. a Pillow-only codec cv2 lacks, like some AVIF/HEIC builds) must
+    still be reported as a per-image decode error.
+
+    A narrowly-scoped ``PIL.Image.open`` seam stands in for a real
+    Pillow-openable-but-cv2-undecodable file; the on-disk bytes stay
+    plain garbage so ``cv2.imdecode`` genuinely returns ``None``. ``opened``
+    pins the production code to actually calling the patched ``Image.open``
+    -- without it, this test would still pass even if the ``Image.open``
+    call were deleted from the production per-image loop.
+    """
+    _ = mock_heavy_deps()
+    undecodable = tmp_path / "page.png"
+    _ = undecodable.write_bytes(b"GARBAGE_BYTES_CV2_CANNOT_DECODE")
+    out = tmp_path / "out"
+
+    class _FakeImageHeader:
+        size: tuple[int, int] = (10, 10)
+
+        def __enter__(self) -> _FakeImageHeader:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            return None
+
+    opened: list[Path] = []
+
+    def fake_open(fp: Path) -> _FakeImageHeader:
+        opened.append(fp)
+        assert fp == undecodable
+        return _FakeImageHeader()
+
+    monkeypatch.setattr(_PILImage, "open", fake_open)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_main(
+            "--no-update-check",
+            "--layout-model",
+            "none",
+            "-o",
+            str(out),
+            str(undecodable),
+        )
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "ERROR processing" in captured.err
+    assert "cv2.imdecode returned None" in captured.err
+    # Pins the header check running before cv2.imdecode: without a real
+    # Image.open call in production, ``opened`` would stay empty.
+    assert opened == [undecodable]

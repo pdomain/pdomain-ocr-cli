@@ -70,21 +70,32 @@ subsequent runs.
 import argparse
 import importlib
 import math
+import os
 import shutil as _shutil
 import subprocess as _subprocess
 import sys
 import threading
+import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
-from pdomain_ocr_cli import _startup_notices
-from pdomain_ocr_cli._artifacts import (
-    atomic_write_bytes,
-    atomic_write_json_document,
-    atomic_write_text,
+# cv2 reads OPENCV_IO_MAX_IMAGE_PIXELS at import time. Set it before any
+# import that can pull cv2 in, and keep a caller's own override.
+from pdomain_ocr_cli._image_limits import (
+    MAX_IMAGE_PIXELS,
+    ImageLimitError,
+    validate_byte_size,
+    validate_pixel_count,
 )
+
+os.environ["OPENCV_IO_MAX_IMAGE_PIXELS"] = os.environ.get(
+    "OPENCV_IO_MAX_IMAGE_PIXELS", str(MAX_IMAGE_PIXELS)
+)
+
+from pdomain_ocr_cli import _startup_notices
+from pdomain_ocr_cli._artifacts import PageOutputTransaction
 from pdomain_ocr_cli._batch_plan import (
     BatchPlanError,
     build_batch_plan,
@@ -119,7 +130,11 @@ from pdomain_ocr_cli._pipeline import (
     write_diagnostic_snapshots,
 )
 from pdomain_ocr_cli._policy import build_run_policy
-from pdomain_ocr_cli._runtime import BatchRuntimeError, DefaultRuntimeSession, RuntimeSession
+from pdomain_ocr_cli._runtime import (
+    BatchRuntimeError,
+    DefaultRuntimeSession,
+    RuntimeSession,
+)
 from pdomain_ocr_cli._update_check import VERSION as _VERSION
 from pdomain_ocr_cli._update_check import check_for_update as _check_for_update
 
@@ -591,6 +606,11 @@ def _positive_batch_pages(s: str) -> int:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
+# Pinned so a default run is reproducible. Only None and "latest" are treated
+# as mutable revisions, so this value does not trigger the trust warning.
+DEFAULT_MODEL_REVISION = "v0.7"
+
+
 def parse_args() -> argparse.Namespace:
     """Parse and return the CLI arguments for ``pdomain-ocr``."""
     p = argparse.ArgumentParser(
@@ -608,8 +628,12 @@ def parse_args() -> argparse.Namespace:
     _ = src.add_argument(
         "--model-version",
         metavar="TAG",
-        default=None,
-        help="HF repo revision/tag to use (default: latest). Requires --hf-repo.",
+        default=DEFAULT_MODEL_REVISION,
+        help=(
+            "HF repo revision/tag to use "
+            f"(default: {DEFAULT_MODEL_REVISION}, pinned for reproducible runs). "
+            "Requires --hf-repo."
+        ),
     )
     _ = src.add_argument(
         "--det-filename",
@@ -836,6 +860,19 @@ def collect_images(inputs: list[str], recursive: bool) -> list[Path]:
     return _collect_images(inputs, recursive, is_image_file=_IS_IMAGE_FILE)
 
 
+def _format_error_detail(exc: BaseException) -> str:
+    """Render a per-image error, including each path in an exception group.
+
+    A commit that fails and then fails to roll back raises a
+    ``BaseExceptionGroup`` whose own text omits the affected paths. Each
+    sub-exception is an ``OSError`` whose text includes the filename.
+    """
+    if isinstance(exc, BaseExceptionGroup):
+        details = "; ".join(str(sub) for sub in exc.exceptions)
+        return f"{exc.message}: {details}"
+    return str(exc)
+
+
 def main() -> None:
     """Entry point for the ``pdomain-ocr`` CLI command."""
     raw_args = parse_args()
@@ -961,7 +998,9 @@ def main() -> None:
     def _record_error(img_path: object, exc: BaseException) -> None:
         """Emit per-image error to stderr (and traceback under PD_OCR_DEBUG)."""
         print()  # noqa: T201  # CLI output — close unterminated "Processing X ..." line
-        print(f"ERROR processing {img_path}: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
+        print(  # noqa: T201  # CLI output
+            f"ERROR processing {img_path}: {_format_error_detail(exc)}", file=sys.stderr
+        )
         if _env_truthy("PD_OCR_DEBUG"):
             import traceback
 
@@ -972,6 +1011,7 @@ def main() -> None:
     # module import time) rather than re-importing on every chunk iteration.
     import cv2  # optional [gpu] dep; always present with doctr
     import numpy as np
+    from PIL import Image, UnidentifiedImageError
 
     outer_break = False
     jobs = batch_plan.jobs
@@ -990,12 +1030,48 @@ def main() -> None:
         for job in chunk:
             img_path = job.image_path
             try:
+                # Reject oversized inputs before decode: byte size from stat,
+                # then pixel count from the Pillow header. Pillow's
+                # decompression-bomb warning is suppressed only for this open.
+                # Its hard error is reported as the same per-file limit.
+                validate_byte_size(img_path, img_path.stat().st_size)
+                dimensions: tuple[int, int] | None
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", Image.DecompressionBombWarning)
+                        with Image.open(img_path) as header:
+                            dimensions = header.size
+                except Image.DecompressionBombError as exc:
+                    raise ImageLimitError(
+                        f"{img_path}: decoded image exceeds the {MAX_IMAGE_PIXELS}-pixel limit "
+                        + f"(Pillow decompression-bomb guard: {exc})"
+                    ) from exc
+                except UnidentifiedImageError:
+                    # Pillow does not recognize the format. cv2 may still
+                    # decode it; the decoded array is checked below.
+                    dimensions = None
+                if dimensions is not None:
+                    validate_pixel_count(img_path, dimensions)
                 raw = img_path.read_bytes()
-                arr = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
+                try:
+                    arr = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
+                except cv2.error as exc:
+                    # cv2 raises, rather than returning None, when the image
+                    # exceeds OPENCV_IO_MAX_IMAGE_PIXELS. Name the path and
+                    # this CLI's limit. Any other cv2.error stays as-is.
+                    if "CV_IO_MAX_IMAGE_PIXELS" not in str(exc):
+                        raise
+                    raise ImageLimitError(
+                        f"{img_path}: decoded image exceeds the {MAX_IMAGE_PIXELS}-pixel limit "
+                        + f"(OpenCV decoder cap: {exc})"
+                    ) from exc
                 if arr is None:
                     raise ValueError(  # noqa: TRY301  # raise inside try is intentional: outer except unifies all decode failures
                         "cv2.imdecode returned None -- image bytes are not a valid image format"
                     )
+                if dimensions is None:
+                    height, width, _channels = cast("tuple[int, int, int]", arr.shape)
+                    validate_pixel_count(img_path, (width, height))
             except Exception as e:  # noqa: BLE001  # per-image decode error: catch all, report, continue
                 # Print the "Processing X ..." prefix here (for decode failures)
                 # so that each failed image's output stays on its own terminated
@@ -1033,6 +1109,8 @@ def main() -> None:
             dest_dir = job.dest_dir
             out_path = job.txt_path
             json_path = job.json_path
+            transaction: PageOutputTransaction | None = None
+            committed = False
 
             try:
                 # ``dest_dir.mkdir`` operates on a user-supplied path (``-o`` or
@@ -1128,26 +1206,23 @@ def main() -> None:
                 if not text:
                     print(f"WARNING: empty text result for {img_path}", file=sys.stderr)  # noqa: T201  # CLI output
 
-                # The canonical ``.txt`` is written *last* (after the json
-                # sidecar, diagnostic snapshots, and illustration crops) so
-                # that any per-image failure leaves the output directory
-                # without a ``.txt`` for that page. External pipelines key
-                # on ``.txt`` existence to mean "this page completed
-                # successfully"; an orphan ``.txt`` next to a missing
-                # sidecar would silently masquerade as a clean run.
-                # (Code-review B19.) Combined with the B18 atomic-write
-                # invariant on the ``.txt`` itself, the per-page artifact
-                # set is now all-or-nothing.
+                # The canonical ``.txt`` is promoted last. JSON, illustration
+                # crops, and the text file are staged into one transaction and
+                # promoted together. If any promotion fails, the transaction
+                # removes every new file it already promoted and restores every
+                # file it backed up. Diagnostic snapshots and the layout-debug
+                # report stay best-effort artifacts outside the transaction.
                 extra_paths: list[str] = []
+                transaction = PageOutputTransaction()
                 if args.save_json:
                     # ``_SinglePageDoc.to_json_file`` writes a document-envelope
                     # JSON (same shape as Document.to_json_file) so downstream
-                    # consumers see an identical format. Atomic write: sibling
-                    # temp + os.replace (Code-review B18).
+                    # consumers see an identical format. Staged now, promoted
+                    # with the rest of the page by ``commit()``.
                     doc = _SinglePageDoc(
                         page, source_identifier=img_path.name, source_path=img_path
                     )
-                    atomic_write_json_document(json_path, doc)
+                    transaction.add_via_writer(json_path, doc.to_json_file)
                     extra_paths.append(str(json_path))
                 if policy.want_diagnostic_export:
                     diag_paths = diagnostic_output_paths(json_path, out_path)
@@ -1206,14 +1281,15 @@ def main() -> None:
                                     file=sys.stderr,
                                 )
                                 continue
-                            atomic_write_bytes(crop_path, bytes(encoded))
+                            transaction.add_bytes(crop_path, bytes(encoded))
                             extra_paths.append(str(crop_path))
 
-                # B19: ``.txt`` is written *last* so a failure in any prior
-                # sidecar/crop step leaves no orphan ``.txt``. B18: still
-                # atomic, so a SIGKILL/OOM/ENOSPC mid-rename never leaves a
-                # truncated ``.txt`` at the canonical path.
-                atomic_write_text(out_path, text)
+                # Text is staged last so it is promoted last. A failure
+                # promoting any earlier sidecar rolls the whole transaction
+                # back and leaves no orphan ``.txt``.
+                transaction.add_text(out_path, text)
+                transaction.commit()
+                committed = True
 
                 tag = " (no-reorg)" if args.no_reorg else ""
                 if extra_paths:
@@ -1221,13 +1297,23 @@ def main() -> None:
                 else:
                     print(f"-> {out_path}{tag}")  # noqa: T201  # CLI output
                 processed += 1
-            except KeyboardInterrupt:
+            except KeyboardInterrupt as exc:
                 # ``KeyboardInterrupt`` inherits from ``BaseException`` and so
                 # is NOT caught by the ``except Exception`` branch below. Without
                 # this branch, Ctrl-C mid-batch escapes the for-loop entirely,
                 # skipping the end-of-batch summary, the update-thread join, and
                 # the deterministic exit code. (B20)
                 print()  # close the unterminated ``Processing X ...`` line  # noqa: T201  # CLI output
+                # commit() attaches rollback failures as notes. Print them
+                # before the summary so a failed restore is not silent.
+                # __notes__ exists only after add_note(); reading it earlier
+                # raises AttributeError.
+                try:
+                    interrupt_notes = exc.__notes__
+                except AttributeError:
+                    interrupt_notes = []
+                for note in interrupt_notes:
+                    print(note, file=sys.stderr)  # noqa: T201  # CLI output
                 interrupted = True
                 outer_break = True
                 break
@@ -1238,6 +1324,8 @@ def main() -> None:
                 _record_error(img_path, e)
                 errors += 1
             finally:
+                if transaction is not None and not committed:
+                    transaction.abort()
                 clear_layout_debug_env()
 
     if _update_thread is not None:

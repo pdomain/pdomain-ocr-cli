@@ -13,7 +13,7 @@ from pdomain_ocr_cli._hf_models import (
     DEFAULT_HF_REPO,
     DEFAULT_RECO_FILENAME,
 )
-from pdomain_ocr_cli.ocr_to_txt import parse_args
+from pdomain_ocr_cli.ocr_to_txt import DEFAULT_MODEL_REVISION, parse_args
 
 
 def _argv(*args):
@@ -42,7 +42,7 @@ def test_defaults_with_single_input():
     assert args.layout_checkpoint is None
     assert args.layout_confidence == 0.5
     assert args.hf_repo == DEFAULT_HF_REPO
-    assert args.model_version is None
+    assert args.model_version == DEFAULT_MODEL_REVISION
     assert args.det_filename == DEFAULT_DET_FILENAME
     assert args.reco_filename == DEFAULT_RECO_FILENAME
     assert args.detection is None

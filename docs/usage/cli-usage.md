@@ -48,6 +48,27 @@ Recognized image suffixes come from `pdomain-book-tools`
 family (`.jp2`, `.j2k`, `.jpf`, `.jpx`). Matching is case-insensitive. Other
 files in a directory are skipped with a warning.
 
+### Image resource limits
+
+Every candidate image is checked before any OCR work starts:
+
+- **Compressed size** — files over 100 MiB (104,857,600 bytes) are rejected
+  before decoding (collection still opens each candidate for a 16-byte
+  magic-number sniff; decoding is what's skipped).
+- **Decoded pixel count** — images whose width × height exceeds
+  100,000,000 pixels are rejected before they enter a batch. This guards
+  against decompression-bomb-style inputs whose small compressed size hides
+  a huge decoded footprint.
+
+A rejected image is reported through the same per-image error channel as
+any other OCR failure: the CLI prints `ERROR processing <path>: ...` naming
+the path, the observed size or pixel count, and the limit, counts it as an
+error, and continues with the rest of the batch.
+
+These limits are fixed and not configurable. There is no processing
+timeout — a pathologically slow (but appropriately sized) image can still
+run for as long as OCR takes.
+
 ## Text normalization
 
 ```sh
@@ -104,9 +125,9 @@ step) without duplication.
 ## Model selection
 
 By default, `pdomain-ocr` downloads fine-tuned weights from
-`pdomain/pdomain-ocr-models` on Hugging Face the first time it runs, tracking
-the latest revision of that repo. Pass `--model-version <tag>` to pin to
-a specific release.
+`pdomain/pdomain-ocr-models` on Hugging Face the first time it runs, pinned
+to revision `v0.7` for reproducible output. Pass `--model-version <tag>` to
+use a different release.
 
 ```sh
 # Pin to a specific model version (HF Hub revision / tag)
@@ -130,9 +151,10 @@ files exist next to them, they're picked up automatically.
 ### Model trust boundary
 
 Treat OCR and layout model checkpoints as trusted inputs. This project
-maintains the default model source, but mutable latest revisions can change.
-For reproducible runs, pass `--model-version` pinned to a tag or commit. Use
-custom `--hf-repo`, local `--detection` / `--recognition`, and
+maintains the default model source and pins the default `--model-version` to
+a fixed revision, so a plain `pdomain-ocr` invocation is already reproducible.
+Pass an explicit `--model-version <tag>` to use a different pinned release.
+Use custom `--hf-repo`, local `--detection` / `--recognition`, and
 `--layout-checkpoint` values only from sources you trust.
 
 ## Layout detection
@@ -303,7 +325,7 @@ treating it as fatal. The current set:
 | Flag | Short | Default | Purpose |
 | --- | --- | --- | --- |
 | `--hf-repo REPO_ID` | | `pdomain/pdomain-ocr-models` | HF Hub repo for OCR models. |
-| `--model-version TAG` | | latest | HF revision / tag. |
+| `--model-version TAG` | | `v0.7` | HF revision / tag. |
 | `--det-filename PATH` | | `detection/pdomain-all-detection-model-finetuned.pt` | Detection-model path within the HF repo. |
 | `--reco-filename PATH` | | `recognition/pdomain-all-recognition-model-finetuned.pt` | Recognition-model path within the HF repo. |
 | `--detection PT_FILE` | `-d` | — | Local detection `.pt`; requires `--recognition` too. |

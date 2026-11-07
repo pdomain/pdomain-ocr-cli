@@ -23,6 +23,16 @@ def test_warns_when_default_model_revision_is_mutable() -> None:
     assert any("mutable latest OCR model revision" in warning for warning in warnings)
 
 
+def test_warns_when_explicit_revision_is_latest() -> None:
+    warnings = model_security_warnings(_args(model_version="latest"))
+    assert any("mutable latest OCR model revision" in warning for warning in warnings)
+
+
+def test_pinned_default_revision_has_no_mutable_warning() -> None:
+    warnings = model_security_warnings(_args(model_version="v0.7"))
+    assert not any("mutable latest OCR model revision" in warning for warning in warnings)
+
+
 def test_warns_for_custom_hf_repo() -> None:
     warnings = model_security_warnings(_args(hf_repo="someone/model"))
     assert any("custom Hugging Face OCR repo" in warning for warning in warnings)
