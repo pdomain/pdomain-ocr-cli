@@ -78,8 +78,13 @@ layout source:
 - Otherwise the decoded page array is rotated clockwise by the angle.
 
 An angle other than 0, 90, 180, or 270 raises `ValueError`. Rotating anything
-other than a decoded array raises `TypeError`. Crop boxes therefore stay inside
-the upright image that layout saw.
+other than a decoded array raises `TypeError`. Crop boxes come from layout on the
+same upright image; a box that runs past the edge is clamped, and an empty one
+is skipped without a warning.
+
+The batch OCR path does not report an angle. It relies on `pdomain-book-tools`
+storing the upright page buffer. If a batch page has no stored buffer, layout
+and crops read the on-disk file, rotated or not, and no error is raised.
 
 On the sideways fixture `tests/fixtures/rotated_page.png`, layout reports 0
 regions at the default confidence of 0.5. That is correct. An offline run of

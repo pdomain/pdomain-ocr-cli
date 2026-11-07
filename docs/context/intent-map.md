@@ -42,6 +42,32 @@ Kind: context
 - Decide whether batch-size overrides belong in `pdomain-book-tools`,
   `pdomain-ops`, or CLI flags and caller-side glue.
 
+## Spec review follow-ups (2026-11-07)
+
+Each spec's `## Adversarial Review` section has the evidence. Highest value
+first:
+
+- Pin the default OCR model to the commit SHA behind `v0.7`, and warn on
+  branch names such as `main` ([model provenance](../specs/2026-07-21-model-provenance-design.md)).
+- Make `tests/test_dependency_metadata.py` parse requirements, so a marker
+  cannot hide an unbounded one ([dependency provenance](../specs/2026-07-21-dependency-provenance-design.md)).
+- Close the output-transaction gaps: backup bookkeeping before the rename,
+  reported backup-cleanup errors, and a sweep of stale `.bak`/`.stage` files
+  ([output transaction](../specs/2026-07-21-output-transaction-design.md)).
+- Report the three update-check failures that stay silent in debug mode
+  ([update-check diagnostics](../specs/2026-07-21-update-check-diagnostics-design.md)).
+- Fall back to the REST API when the `gh` path has no digest, force TLS 1.2
+  on Windows PowerShell 5.1, and stop overwriting `TMPDIR` in `install.sh`
+  ([installer trust](../specs/2026-07-21-installer-trust-design.md)).
+- Give the batch OCR path an explicit rotation angle, and test 180° and 270°
+  crops on real pixels ([rotation](../specs/2026-07-21-rotation-propagation-design.md)).
+- Add a slow real-model word-preservation test with `--validate-reorg`, plus
+  overlap, caption and two-column cases ([word preservation](../specs/2026-07-21-default-layout-word-preservation-design.md)).
+- Bound decoded memory per chunk and re-check file size after reading
+  ([image limits](../specs/2026-07-21-image-resource-limits-design.md)).
+- Settle the normalize-output contract before upstream work starts
+  ([normalize output](../specs/2026-07-21-normalize-output-design.md)).
+
 ## Rejected directions
 
 - Do not keep completed execution plans in `docs/archive/` when current code,
@@ -68,11 +94,15 @@ Standing priority order remains in [`docs/roadmap.md`](../roadmap.md).
 
 ## Needs owner decision
 
-- Choose tag or commit-SHA revisions for pre-commit hooks (former GH #45).
-- Six implemented specs cannot be retired by the doc-retirer rules because they
-  have no `## Adversarial Review` section. They are marked `implemented` and
-  point at their architecture docs. Decide whether to add a review record and
-  retire them, or keep them:
+- Choose tag or commit-SHA revisions for pre-commit hooks (former GH #45). The
+  2026-11-07 review recommends SHAs with `pre-commit autoupdate --freeze`, and
+  removing the third-party `pre-commit-update` hook.
+- Name the `--normalize-output` mode: `typographic` in the spec and plan, `ascii`
+  in the issue and usage doc. The review favors `ascii`.
+- Six implemented specs now have review records, so the doc-retirer rules allow
+  retiring them. Each was implemented with deviations, and the open deviations
+  are listed under the spec review follow-ups above. Decide whether to retire
+  them now or keep them until those follow-ups land:
   [rotation](../specs/2026-07-21-rotation-propagation-design.md),
   [word preservation](../specs/2026-07-21-default-layout-word-preservation-design.md),
   [installer trust](../specs/2026-07-21-installer-trust-design.md),

@@ -66,12 +66,20 @@ stays a `KeyboardInterrupt`, and its rollback notes print before the interrupt
 summary. Diagnostic snapshots and the layout-debug report stay outside the
 transaction.
 
+The transaction covers failures inside the running process only. A crash,
+`SIGKILL`, or power loss mid-commit can leave hidden `.bak` and `.stage` files
+next to the outputs, and the next run does not restore them. Stale sidecars
+or crops from an earlier run with other flags are not removed. Concurrent runs
+writing to the same output directory are not locked against each other.
+
 ## Trust and network boundaries
 
 OCR and layout checkpoints are trusted inputs. The default OCR model is
-`pdomain/pdomain-ocr-models` pinned to revision `v0.7`. Only an unset revision
-or `latest` counts as mutable, and an explicit `latest` still prints a trust
-warning. Custom checkpoint paths or repositories also print a warning. The CLI
+`pdomain/pdomain-ocr-models` at the tag `v0.7`. A Hugging Face tag can be moved
+by the repository owner, so this pin is stable but not immutable; only a commit
+SHA is. Only an unset revision or `latest` counts as mutable, and an explicit
+`latest` still prints a trust warning. Branch names such as `main` do not
+warn. Custom checkpoint paths or repositories also print a warning. The CLI
 does not sandbox model deserialization itself. `pdomain-book-tools` loads
 DocTR checkpoints with `torch.load(..., weights_only=True)` and rejects any
 checkpoint that is not a plain state dict of tensors. No test in this
@@ -79,19 +87,25 @@ repository guards that upstream behavior yet.
 
 The startup-notice seam owns update and GPU notices, including the environment
 and CLI opt-outs. The update check stays silent on failure unless
-`PD_OCR_DEBUG` is set. Then stderr gets
-`update check failed: {type}: {message}`, without tracebacks, tokens, or
-response bodies.
+`PD_OCR_DEBUG` is set. Then an exception prints
+`update check failed: {type}: {message}` to stderr, without a traceback. The
+message is the exception's own text and is not scrubbed. Three failures stay
+silent even in debug mode: a response that is not a list, such as a rate-limit
+reply; no stable tag; and an unparseable current version.
 
 The POSIX and PowerShell installers install the wheel from the latest GitHub
 Release. They pass the pdomain index to `uv` as a named `--index` with
-`--index-strategy first-index`, so a pdomain package name cannot resolve from
-another index. Before download, each installer requires the release asset's
+`--index-strategy first-index`, so a package listed on the pdomain index, such
+as `pdomain-book-tools`, cannot resolve from another index. PyPI stays in the
+index list, so a name the pdomain index does not list can still come from PyPI. Before download, each installer requires the release asset's
 digest to be a lowercase `sha256:` plus 64 hex characters. After download, it
 refuses the wheel if the bytes do not match. `install.sh` reads the digest
 from the wheel's own asset record, so a CR or CRLF between assets cannot apply
 the sdist digest to the wheel. Piped PowerShell installation stays
 self-contained, and Windows PowerShell 5.1 skips the Unix file-mode step.
+The digest comes from the same GitHub API as the wheel, so it catches
+corruption in transit, not a replaced release asset. `uv` does not hash-check
+the wheel's dependencies.
 
 ## Dependency bounds
 

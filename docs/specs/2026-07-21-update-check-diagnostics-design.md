@@ -30,3 +30,16 @@ The existing general debug switch will control diagnostics. The checker will cat
 - `PD_OCR_DEBUG=1` reports each failure on stderr.
 - Diagnostics never include a traceback, token, or response body.
 - Update checks remain non-fatal.
+
+## Adversarial Review
+
+Reviewed on 2026-11-07 by one independent, read-only reviewer (Claude Sonnet)
+against master `3297650`. The reviewer checked the design and its acceptance
+criteria against the code and tests.
+
+**Verdict:** Implemented with deviations.
+
+- Medium: three failures stay silent even with `PD_OCR_DEBUG=1`: a non-list response such as a rate-limit reply, no stable tag, and an unparseable current version. Documented; reporting them is a follow-up.
+- Medium: the message prints the exception text unscrubbed. The URL carries no token, so nothing leaks today, but nothing enforces the criterion. Documented. Follow-up.
+- Medium: only the timeout failure has a debug-on test. Follow-up.
+- Low: accepted truthy values for `PD_OCR_DEBUG` are undocumented; a late diagnostic from the background thread can be lost or interleaved; module docstrings still say errors are swallowed. Follow-up.

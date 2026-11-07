@@ -41,3 +41,16 @@ Runtime requirements will use the next incompatible major version as an exclusiv
 - Remote hook revisions are full SHAs.
 - Automated refresh keeps full SHAs.
 - Metadata, lock, build, wheel smoke, and full CI pass.
+
+## Adversarial Review
+
+Reviewed on 2026-11-07 by one independent, read-only reviewer (Claude Sonnet)
+against master `3297650`. The reviewer checked the design and its acceptance
+criteria against the code and tests.
+
+**Verdict:** The shipped bounds are sound. The bounds test is weaker than its name, and the hook half of the design is stale.
+
+- Medium: `_is_bounded` in `tests/test_dependency_metadata.py` is a substring check, so a marker such as `; python_version < '3.12'` makes an unbounded requirement pass. It checks only `dependencies` and the `gpu` extra. Follow-up: parse with `packaging`.
+- Medium: `pillow>=11.0,<13` spans two majors and the `<1` caps on 0.x packages differ from the "next major" rule; no document records why. Follow-up.
+- Medium: the design and acceptance criteria still rely on the removed weekly refresh workflow. Task 2 of the plan also needs to remove the third-party `pre-commit-update` hook and the `-@` in `make update-hooks`, and its test would need PyYAML or a regex. Follow-up.
+- Recommendation for former GH #45: pin hook revisions to SHAs with `pre-commit autoupdate --freeze` and remove the `pre-commit-update` hook. The cost is small and it drops a tag-pinned hook that runs code.

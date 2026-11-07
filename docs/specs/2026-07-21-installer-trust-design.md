@@ -33,3 +33,17 @@ The installers will read the wheel asset's `digest` from the GitHub Releases API
 - Both installers verify the selected wheel against the API digest.
 - Missing, malformed, and mismatched digests fail closed.
 - Installer contract tests cover POSIX and PowerShell scripts.
+
+## Adversarial Review
+
+Reviewed on 2026-11-07 by one independent, read-only reviewer (Claude Sonnet)
+against master `3297650`. The reviewer checked the design and its acceptance
+criteria against the code and tests.
+
+**Verdict:** Implemented with deviations.
+
+- Medium: `first-index` protects only names the pdomain index lists. PyPI stays in the index list, so an unlisted pdomain-* name can still resolve from PyPI. The architecture doc now says so. Restricting resolution further is a follow-up.
+- Medium: on the `gh` path, a release record with no digest fails closed instead of falling back to the REST API, which would supply one. No test covers it. Follow-up.
+- Medium: Windows PowerShell 5.1 is untested on a real host and does not force TLS 1.2. Follow-up.
+- Medium: `install.sh` parses JSON with regexes over minimal fixtures; nested objects or several wheels could misparse. It fails closed. Follow-up.
+- Low: the digest comes from the same API as the wheel, so it catches corruption, not a replaced asset, and dependencies are not hash-checked. Documented. `install.sh` overwrites `TMPDIR`, and a comment still cites the removed `release.yml`. Follow-up.

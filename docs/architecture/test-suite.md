@@ -80,6 +80,11 @@ runs default reorganization, and asserts that every OCR word survives. A second 
 `--experimental-drop-layout-words` may drop figure-internal words, so that flag
 is the only exception.
 
+That test covers one synthetic page with one figure region. It uses a fixed
+fake layout, not the real `pp-doclayout-plus-l` model, and it does not enable
+`--validate-reorg`. It does not cover partly overlapping words, words outside
+every region, captions, or multi-column pages.
+
 ## Implementation deviations
 
 The implementation took five different directions from the original design:

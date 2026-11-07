@@ -62,6 +62,8 @@ surfacing (flag name, help text, defaults, docs) and any caller-side glue.
   (former GH #45).
   [`docs/issues/2026-07-19-gh-45-pre-commit-immutable-pins.md`](issues/2026-07-19-gh-45-pre-commit-immutable-pins.md),
   [`docs/plans/2026-07-21-dependency-provenance.md`](plans/2026-07-21-dependency-provenance.md) Task 2
+- **Next:** fixes from the 2026-11-07 spec reviews, highest value first.
+  [`docs/context/intent-map.md`](context/intent-map.md) (Spec review follow-ups)
 - **Later:** `--normalize-output`, after `pdomain-book-tools` ships shared
   normalization and a glyph map.
   [`docs/issues/2026-07-19-normalize-output-flag-deferred.md`](issues/2026-07-19-normalize-output-flag-deferred.md),

@@ -37,3 +37,16 @@ No CLI-only glyph map will be created. Until the upstream symbol and version exi
 - Omitted flag and `none` preserve current output exactly.
 - `typographic` delegates to the upstream function.
 - Composition with existing quote and dash flags is tested.
+
+## Adversarial Review
+
+Reviewed on 2026-11-07 by one independent, read-only reviewer (Claude Sonnet)
+against master `3297650`. The reviewer checked the design and its acceptance
+criteria against the code and tests.
+
+**Verdict:** Waiting on upstream is reasonable, but the design cannot be built as written.
+
+- High: the mode name differs across documents: `typographic` in this spec and the plan, `ascii` in the issue and usage doc. The stated purpose, mapping long-s and ligatures to ASCII, fits `ascii`. Owner decision.
+- High: the transform's contract is undefined: whether it may map one character to several, delete characters, or pass unmapped glyphs through. The never-drop-words rule needs that contract and a token-preservation test. Follow-up.
+- Medium: the plan tests reversed transform order, but this spec fixes the order. JSON output would not be normalized, which no document says. Follow-up.
+- Medium: nothing tracks the upstream `normalize_text` work, and the documents disagree on its module path. `pdomain-book-tools` has a glyph-annotation vocabulary it could build on. The plan's gate checks the sibling checkout instead of the pinned release. Follow-up.

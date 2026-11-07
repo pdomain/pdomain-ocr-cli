@@ -33,3 +33,15 @@ Processing timeouts are excluded. Safely interrupting native OCR requires subpro
 - Boundary values are accepted; values one unit above are rejected.
 - Errors name the path, observed value, and limit.
 - Usage documentation states both fixed limits and the timeout non-goal.
+
+## Adversarial Review
+
+Reviewed on 2026-11-07 by one independent, read-only reviewer (Claude Sonnet)
+against master `3297650`. The reviewer checked the design and its acceptance
+criteria against the code and tests.
+
+**Verdict:** Implemented with deviations. All five acceptance criteria are met in code.
+
+- Medium: the check runs per chunk after the models load, not before model work begins as the summary says. No oversized decode precedes it, so this is a startup-cost issue, not a gap. Accepted; the usage doc says "before it joins an OCR batch".
+- Medium: the cap is per image, while a chunk holds several decoded arrays, about 300 MB each at the cap. There is no aggregate bound. Follow-up.
+- Low: `stat()` and `read_bytes()` are separate, so a growing file is not re-checked; formats Pillow cannot read are capped only after decode; a lower caller-set `OPENCV_IO_MAX_IMAGE_PIXELS` makes the error name the wrong limit; no real JP2, multi-frame TIFF or symlink fixtures. Follow-up.

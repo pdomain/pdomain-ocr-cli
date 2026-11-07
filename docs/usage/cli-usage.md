@@ -128,7 +128,7 @@ step) without duplication.
 
 By default, `pdomain-ocr` downloads fine-tuned weights from
 `pdomain/pdomain-ocr-models` on Hugging Face the first time it runs, pinned
-to revision `v0.7` for reproducible output. Pass `--model-version <tag>` to
+to the tag `v0.7`. Pass `--model-version <tag>` to
 use a different release.
 
 ```sh
@@ -154,8 +154,9 @@ files exist next to them, they're picked up automatically.
 
 Treat OCR and layout model checkpoints as trusted inputs. This project
 maintains the default model source and pins the default `--model-version` to
-a fixed revision, so a plain `pdomain-ocr` invocation is already reproducible.
-Pass an explicit `--model-version <tag>` to use a different pinned release.
+the tag `v0.7`. A Hugging Face tag can be moved by the repository owner. For an
+immutable pin, pass a 40-character commit SHA with `--model-version`. Branch
+names such as `main` move and do not print a warning.
 Use custom `--hf-repo`, local `--detection` / `--recognition`, and
 `--layout-checkpoint` values only from sources you trust.
 

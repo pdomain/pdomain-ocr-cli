@@ -45,20 +45,41 @@ checkpoints with `weights_only=True`.
 
 - Create: `tests/test_upstream_safe_load.py`
 
-- [ ] **Step 1: Add the contract test**
+- [ ] **Step 1: Add a behavioral contract test**
+
+Do not search the module source for `weights_only=True`: that string also
+appears in two docstrings, so the check would pass after the real call changed.
+Test the behavior instead:
 
 ```python
-import inspect
+import pickle
+from pathlib import Path
 
-from pdomain_book_tools.ocr import doctr_support
+import pytest
+import torch
+
+from pdomain_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
 
 
-def test_upstream_torch_load_is_weights_only() -> None:
-    source = inspect.getsource(doctr_support)
-    assert "weights_only=True" in source
+class _Marker:
+    """Any non-tensor class; weights_only=True refuses to unpickle it."""
+
+
+def test_upstream_loader_refuses_pickled_objects(tmp_path: Path) -> None:
+    det = tmp_path / "det.pt"
+    reco = tmp_path / "reco.pt"
+    torch.save(_Marker(), det)
+    torch.save({}, reco)
+    with pytest.raises(pickle.UnpicklingError):
+        get_finetuned_torch_doctr_predictor(det, reco)
 ```
 
-In 0.30.1 the loader is `functools.partial(torch.load, weights_only=True)` in `pdomain_book_tools/ocr/doctr_support.py`. If upstream moves it, find it with `rg -n 'torch\.load' ../pdomain-book-tools/pdomain_book_tools`.
+With `weights_only=True`, `torch.load` raises `UnpicklingError`. If upstream
+drops it, the load succeeds and `_validate_state_dict` raises `ValueError`
+instead, so the test fails. Confirm the call signature against the pinned
+release before writing the test. Also add a test that the CLI calls
+`get_finetuned_torch_doctr_predictor` without its `torch_load` override, which
+would bypass the safe loader.
 
 - [ ] **Step 2: Verify the contract**
 

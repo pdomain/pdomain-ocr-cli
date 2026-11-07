@@ -49,3 +49,16 @@ The default changes only when users omit `--model-version`. An explicit revision
 - Explicit mutable revisions still produce the existing warning.
 - A test proves the installed upstream loader requests `weights_only=True`.
 - Fast tests and the slow model smoke test pass.
+
+## Adversarial Review
+
+Reviewed on 2026-11-07 by one independent, read-only reviewer (Claude Sonnet)
+against master `3297650`. The reviewer checked the design and its acceptance
+criteria against the code and tests.
+
+**Verdict:** Sound but unfinished.
+
+- High: `v0.7` is a tag, and a Hugging Face tag can be moved, so it is not the immutable revision this spec promises. The architecture, usage and README text now say so. Pinning the default to the commit SHA behind `v0.7` is a follow-up.
+- High: the planned guard, a source-string search for `weights_only=True`, also matches two docstrings, so it passes even if the real call changes. The plan's Task 2 now specifies a behavioral test instead.
+- Medium: only an unset revision or `latest` warns; `main` and other branch names do not. The pin test does not cover them. Follow-up.
+- Medium: the spec ignores the layout model. The default PP-DocLayout weights are safetensors pinned to a commit SHA upstream; a custom `--layout-checkpoint` is warn-only. Recorded here.
