@@ -1,8 +1,8 @@
 ---
-Status: active
+Status: implemented
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -13,12 +13,12 @@ The update checker will remain silent by default and explain failures when `PD_O
 ## Agent Index
 
 - **Kind:** spec
-- **Status:** active
+- **Status:** implemented
 - **Read when:** changing startup notices or update-check errors
 - **Search terms:** PD_OCR_DEBUG, update check diagnostics, former GH 35
-- **Relates to:** [issue](../issues/2026-07-19-gh-35-update-check-diagnostics.md)
+- **Relates to:** shipped in commit `b9e1f02` (v0.9.1); current behavior is [cli-orchestration.md](../architecture/cli-orchestration.md)
 
-**Implementation plan:** [update-check diagnostics plan](../plans/2026-07-21-update-check-diagnostics.md)
+**Implementation plan:** retired after it shipped; see the 2026-11-07 tombstone in [decisions](../context/decisions.md).
 
 ## Adopted design
 

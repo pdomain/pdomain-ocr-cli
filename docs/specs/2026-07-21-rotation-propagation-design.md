@@ -1,8 +1,8 @@
 ---
-Status: active
+Status: implemented
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -13,12 +13,12 @@ Layout detection and illustration cropping will use the same oriented pixels tha
 ## Agent Index
 
 - **Kind:** spec
-- **Status:** active
+- **Status:** implemented
 - **Read when:** implementing rotated layout or crop handling
 - **Search terms:** rotation metadata, layout crop, former GH 18
-- **Relates to:** [issue](../issues/2026-07-19-gh-18-layout-crops-ignore-rotation.md)
+- **Relates to:** shipped in commit `c325c13` (v0.9.0); current behavior is [layout-aware-ocr.md](../architecture/layout-aware-ocr.md)
 
-**Implementation plan:** [rotation propagation plan](../plans/2026-07-21-rotation-propagation.md)
+**Implementation plan:** retired after it shipped; see the 2026-11-07 tombstone in [decisions](../context/decisions.md).
 
 ## Adopted design
 

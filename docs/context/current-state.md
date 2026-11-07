@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: context
 ---
 
@@ -17,13 +17,12 @@ Kind: context
 
 ## What matters now
 
-Highest open product work is on the roadmap Now section:
-
-- Layout/crop alignment with OCR page rotation (former GH #18)
-- Default-layout word-preservation multiset coverage (former GH #41)
-
-See [`docs/roadmap.md`](../roadmap.md). Output normalization remains deferred
-pending shared upstream logic.
+v0.9.1 is released and published to the pdomain pip index. It ships
+rotation-aligned layout and crops, installer index and digest checks, image
+limits, output rollback, the pinned `v0.7` model, update-check diagnostics, and
+dependency bounds. No product work is in the Now tier. The open items are one
+blocked fix, two owner decisions, and deferred output normalization; see
+[`docs/roadmap.md`](../roadmap.md).
 
 These docs describe current behavior:
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
@@ -42,24 +41,24 @@ Former issue numbers are provenance tags only; see
 
 ## In-flight work
 
-No feature branch is required for docs hygiene. Product work follows the
-roadmap Now / Next / Blocked sections after the 2026-07-19 completed-item
-reconcile.
+None. GitHub runs no workflows for this repository; releases run locally
+through `make release-{patch,minor,major}`.
 
 ## Test state
 
-The fast test suite passes with `make test AI=1` after installing the declared
-PowerShell prerequisite through `scripts/ensure-pwsh.sh`.
+The v0.9.1 release preflight `make ci-slow` passed on 2026-11-07 with 468
+tests and 100% coverage. The fast suite runs with `make test AI=1` after
+installing the declared PowerShell prerequisite through
+`scripts/ensure-pwsh.sh`.
 
 ## Risks
 
-- Rotation vs layout misalignment on rotated pages until #18 lands.
-- Model checkpoint safety remains partly blocked upstream (#15).
-- Installer dependency-confusion residual (#24) and missing wheel integrity
-  checks (#30).
+- Model checkpoints still deserialize without a safe-load mode; that fix is
+  blocked upstream (former GH #15).
+- Nine stale dep-refresh pull requests (#58 to #66) remain open on GitHub.
 
 Predictor batch-size defaults now live upstream. Only benchmarking or CLI
 exposure remains deferred.
 
-Open governed defect and residual reports live under
-[`docs/issues/`](../issues/README.md) (12 active); see intent-map Open issues.
+Open governed reports live under [`docs/issues/`](../issues/README.md)
+(4 active); see intent-map Open issues.

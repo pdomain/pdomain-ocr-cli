@@ -16,7 +16,7 @@ Release inputs will use tested compatibility ranges and immutable tool revisions
 - **Status:** active
 - **Read when:** changing Python metadata, build tools, or pre-commit updates
 - **Search terms:** upper bounds, build backend pins, pre-commit SHA, former GH 31, former GH 45, former GH 50
-- **Relates to:** [runtime bounds](../issues/2026-07-19-gh-31-runtime-dep-upper-bounds.md), [hook pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md), [build pins](../issues/2026-07-19-gh-50-pin-build-backends.md)
+- **Relates to:** [hook pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md); runtime bounds and build pins shipped in `7b0f4f7`, see [cli-orchestration.md](../architecture/cli-orchestration.md#dependency-bounds)
 
 **Implementation plan:** [dependency provenance plan](../plans/2026-07-21-dependency-provenance.md)
 

@@ -1,8 +1,8 @@
 ---
-Status: active
+Status: implemented
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -13,12 +13,12 @@ A slow integration test will compare word multisets before and after default lay
 ## Agent Index
 
 - **Kind:** spec
-- **Status:** active
+- **Status:** implemented
 - **Read when:** changing default layout or word-preservation coverage
 - **Search terms:** word multiset, default layout, two column, former GH 41
-- **Relates to:** [issue](../issues/2026-07-19-gh-41-default-layout-word-preservation-test.md)
+- **Relates to:** shipped in commit `c325c13` (v0.9.0); current behavior is [test-suite.md](../architecture/test-suite.md)
 
-**Implementation plan:** [word-preservation plan](../plans/2026-07-21-default-layout-word-preservation.md)
+**Implementation plan:** retired after it shipped; see the 2026-11-07 tombstone in [decisions](../context/decisions.md).
 
 ## Adopted design
 

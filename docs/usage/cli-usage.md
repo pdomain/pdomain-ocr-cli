@@ -274,9 +274,12 @@ pdomain-ocr --help
 ## Installer behavior
 
 The `install.sh` and `install.ps1` bootstrap scripts install the wheel
-asset from the latest GitHub Release, not a git ref. Both scripts always pass
-`--extra-index-url https://pdomain.github.io/pdomain-index-pip/simple/`
-so `pdomain-book-tools` resolves from the pdomain package index. They
+asset from the latest GitHub Release, not a git ref. Before installing, each
+script checks the wheel against the `sha256` digest GitHub reports for that
+asset. A missing, malformed, or mismatched digest stops the install. Both
+scripts pass `https://pdomain.github.io/pdomain-index-pip/simple/` to `uv` as a
+named `--index` with `--index-strategy first-index`, so `pdomain-book-tools`
+resolves only from the pdomain package index. They
 default the uv tool environment to Python 3.13; set
 `PD_OCR_INSTALL_PYTHON` before running either script to use another
 supported Python version.
@@ -288,7 +291,7 @@ supported Python version.
 | `PD_OCR_NO_UPDATE_CHECK=1` | Skip the background GitHub-tag upgrade-notice request (same as `--no-update-check`). |
 | `PD_OCR_NO_GPU_NUDGE=1` | Silence the one-line "GPU detected but installed CPU-only" message printed on startup when `nvidia-smi` is on `PATH` but the `[gpu]` extra wasn't installed. See the FAQ in [README.md](../../README.md#faq) for details. |
 | `PD_OCR_INSTALL_PYTHON` | Installer-only override for the Python version passed to `uv tool install --python`; defaults to `3.13`. |
-| `PD_OCR_DEBUG=1` | On per-image processing errors, also print the full traceback to stderr. |
+| `PD_OCR_DEBUG=1` | On per-image processing errors, also print the full traceback to stderr. If the background update check fails, print `update check failed: {type}: {message}`. |
 | `PD_OCR_REORGANIZE_STRICT=1` | Read by `pdomain-book-tools`'s `reorganize_page()`. When set, words dropped during reorganize raise `ReorganizeDroppedWordsError` instead of being re-added with a warning. Useful in CI to fail loudly on pipeline regressions. |
 | `HF_HOME`, `HF_HUB_CACHE` | Override the Hugging Face model cache location (default `~/.cache/huggingface/hub`). Honored by the upstream `huggingface_hub` library — pdomain-ocr-cli does not read these directly. |
 

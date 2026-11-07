@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: context
 ---
 
@@ -28,16 +28,10 @@ Kind: context
 
 ## Deferred work
 
-- Constrain executable model checkpoints with immutable defaults and a safer
-  format or loading mode when upstream compatibility permits.
-- Add untrusted-image resource controls, including file-size and decoded-pixel
-  limits, and document the supported processing-time boundary.
-- Verify installer-downloaded release wheels with published checksums or
-  GitHub/Sigstore attestations.
-- Replace mutable pre-commit revision tags with immutable commit pins where the
-  update workflow can keep those pins maintainable.
-- Evaluate upper bounds or compatibility caps for build and runtime
-  dependencies, including `hatchling`, `hatch-vcs`, and pdomain packages.
+- Constrain executable model checkpoints with a safer format or loading mode
+  when upstream compatibility permits. The default revision pin shipped.
+- Replace mutable pre-commit revision tags with immutable commit pins if the
+  owner chooses SHAs (former GH #45).
 - Further split the large happy-path and error-path test modules when doing so
   improves readability without duplicating fixtures or weakening behavior
   oracles.
@@ -66,22 +60,28 @@ Kind: context
 
 Governed reports under [`docs/issues/`](../issues/README.md) (GitHub tracker empty):
 
-- [Layout/crops ignore rotation](../issues/2026-07-19-gh-18-layout-crops-ignore-rotation.md) (former GH #18, Now)
-- [Default-layout word-preservation test](../issues/2026-07-19-gh-41-default-layout-word-preservation-test.md) (former GH #41, Now)
-- [Installer dependency confusion](../issues/2026-07-19-gh-24-installer-dependency-confusion.md) (former GH #24)
-- [Installer artifact verification](../issues/2026-07-19-gh-30-installer-artifact-verification.md) (former GH #30)
-- [Runtime dep upper bounds](../issues/2026-07-19-gh-31-runtime-dep-upper-bounds.md) (former GH #31)
-- [Pin build backends](../issues/2026-07-19-gh-50-pin-build-backends.md) (former GH #50)
-- [Untrusted image resource limits](../issues/2026-07-19-gh-38-untrusted-image-resource-limits.md) (former GH #38)
-- [Update-check diagnostics](../issues/2026-07-19-gh-35-update-check-diagnostics.md) (former GH #35)
-- [Sidecar rollback residual](../issues/2026-07-19-gh-22-sidecar-rollback-on-txt-failure.md) (former GH #22)
-- [Pre-commit immutable pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md) (former GH #45)
 - [Model revision pin + safe load](../issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md) (former GH #15, Blocked)
+- [Pre-commit immutable pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md) (former GH #45, needs decision)
+- [Dep-refresh leftovers](../issues/2026-08-08-dep-refresh-cannot-auto-land.md) (needs decision)
 - [Deferred normalize-output](../issues/2026-07-19-normalize-output-flag-deferred.md) (Later)
 
 Standing priority order remains in [`docs/roadmap.md`](../roadmap.md).
 
 ## Needs owner decision
+
+- Choose tag or commit-SHA revisions for pre-commit hooks (former GH #45).
+- Close dep-refresh pull requests #58 to #66 and delete their `dep-refresh/*`
+  branches on origin. Commit `7041179` removed the workflow on 2026-09-13.
+- Six implemented specs cannot be retired by the doc-retirer rules because they
+  have no `## Adversarial Review` section. They are marked `implemented` and
+  point at their architecture docs. Decide whether to add a review record and
+  retire them, or keep them:
+  [rotation](../specs/2026-07-21-rotation-propagation-design.md),
+  [word preservation](../specs/2026-07-21-default-layout-word-preservation-design.md),
+  [installer trust](../specs/2026-07-21-installer-trust-design.md),
+  [image limits](../specs/2026-07-21-image-resource-limits-design.md),
+  [update-check diagnostics](../specs/2026-07-21-update-check-diagnostics-design.md),
+  [output transaction](../specs/2026-07-21-output-transaction-design.md).
 
 - Decide whether `docs/decisions/type-suppressions.md` should remain a separate
   decision record or be consolidated into

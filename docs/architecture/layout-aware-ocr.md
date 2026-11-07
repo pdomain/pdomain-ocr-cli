@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-11-06
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -65,14 +65,25 @@ pdomain-ocr --layout-debug page.png
 
 ## Page rotation
 
-The underlying OCR layer can re-OCR a page at 90° / 180° / 270° when upright
-recognition confidence is low and keep the best orientation for **text**.
+The OCR layer can re-read a page at 90°, 180°, or 270° when upright
+recognition confidence is low. It keeps the orientation with the best text.
 
-**Current CLI gap (roadmap former GH #18):** layout detection and illustration
-crops still run on the original on-disk image path. The single-image OCR path
-does not pass the chosen rotation into layout or crop steps. On rotated pages,
-regions and crops can disagree with the upright text stream until that wiring
-lands.
+Layout detection and illustration crops use that same upright image. The
+single-image OCR path keeps the angle on the page as `ocr_rotation_degrees`.
+`upright_layout_source()` in `pdomain_ocr_cli/_pipeline.py` then picks the
+layout source:
+
+- If OCR stored an upright page buffer, layout and crops use it.
+- If the angle is 0, layout reads the on-disk file and crops re-read it.
+- Otherwise the decoded page array is rotated clockwise by the angle.
+
+An angle other than 0, 90, 180, or 270 raises `ValueError`. Rotating anything
+other than a decoded array raises `TypeError`. Crop boxes therefore stay inside
+the upright image that layout saw.
+
+On the sideways fixture `tests/fixtures/rotated_page.png`, layout reports 0
+regions at the default confidence of 0.5. That is correct: on the upright
+orientation the strongest box is a title at 0.472.
 
 ## Performance notes
 
@@ -106,6 +117,11 @@ make test-integration
 make test-layout-integration
 ```
 
+`tests/test_default_layout_word_preservation.py` checks that default layout
+reorganization keeps every OCR word as a multiset. It also checks that
+`--experimental-drop-layout-words` is the only switch that may drop figure
+words.
+
 ## Related flags
 
 These aren't layout-specific but interact with the reorganize step that
@@ -132,3 +148,20 @@ consumes layout output:
   every OCR word; the always-on warning's count is then 0 and the
   warning does not fire. Footnote / header / footer / abandoned
   regions are NEVER dropped, regardless of this flag.
+
+## Evidence
+
+- Code: `pdomain_ocr_cli/_pipeline.py` (`upright_layout_source`),
+  `pdomain_ocr_cli/ocr_to_txt.py` (single-image rotation, layout and crop
+  calls), `pdomain_ocr_cli/_artifacts.py` (`PageOutputTransaction`).
+- Tests: `tests/test_upright_layout.py`
+  (`test_rotated_page_layout_and_crops_use_upright_image`,
+  `test_unrotated_page_keeps_on_disk_layout_and_crops`,
+  `test_kept_angle_orients_layout_when_no_buffer_is_stashed`,
+  `test_upright_layout_source_rejects_non_quarter_turn`),
+  `tests/test_default_layout_word_preservation.py`
+  (`test_default_layout_preserves_every_ocr_word`), `tests/test_artifacts.py`.
+- History: commit `c325c13` (v0.9.0, `pdomain-book-tools==0.30.1`) and
+  `7af73fc` (v0.9.1).
+- Verified: 2026-11-07, by reading the code and tests at `7af73fc`. The
+  v0.9.1 release preflight `make ci-slow` passed with 468 tests.

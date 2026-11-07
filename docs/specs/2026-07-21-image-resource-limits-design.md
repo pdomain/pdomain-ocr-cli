@@ -1,8 +1,8 @@
 ---
-Status: active
+Status: implemented
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -13,12 +13,12 @@ The CLI will reject files over 100 MiB or decoded images over 100 million pixels
 ## Agent Index
 
 - **Kind:** spec
-- **Status:** active
+- **Status:** implemented
 - **Read when:** changing image admission or security limits
 - **Search terms:** image byte limit, decompression bomb, pixel limit, former GH 38
-- **Relates to:** [issue](../issues/2026-07-19-gh-38-untrusted-image-resource-limits.md)
+- **Relates to:** shipped in commit `7af73fc` (v0.9.1); current behavior is [cli-orchestration.md](../architecture/cli-orchestration.md)
 
-**Implementation plan:** [image limits plan](../plans/2026-07-21-image-resource-limits.md)
+**Implementation plan:** retired after it shipped; see the 2026-11-07 tombstone in [decisions](../context/decisions.md).
 
 ## Adopted design
 

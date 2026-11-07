@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** High — mutable model defaults and unsafe deserialize residual
 - **Affected version:** pdomain-ocr-cli master @ 3a818aa (docs baseline)
@@ -23,6 +23,11 @@ Level: I1
 - **Relates to:** [roadmap](../roadmap.md)
 
 ## Summary
+
+**Update 2026-11-07:** Part 1 shipped in commit `7af73fc` (v0.9.1). The default
+`--model-version` is now `v0.7`, and only an unset revision or `latest` counts
+as mutable. Part 2, safe checkpoint loading, is still blocked upstream. The
+summary below describes the state on 2026-07-19.
 
 Part 1: default model revision pin is not on master (may exist on `fix/security-15-torch-load-pinning`). Part 2: safe `weights_only` / torch.load hardening is blocked on upstream pdomain-book-tools work. Warn-side for user .pt paths shipped as former GH #16 (former GH #15).
 

@@ -1,8 +1,8 @@
 ---
-Status: active
+Status: implemented
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -13,12 +13,12 @@ A failed page write will restore every pre-existing artifact and remove every ne
 ## Agent Index
 
 - **Kind:** spec
-- **Status:** active
+- **Status:** implemented
 - **Read when:** changing page artifact promotion or rollback
 - **Search terms:** sidecar rollback, artifact transaction, former GH 22
-- **Relates to:** [issue](../issues/2026-07-19-gh-22-sidecar-rollback-on-txt-failure.md)
+- **Relates to:** shipped in commit `7af73fc` (v0.9.1); current behavior is [cli-orchestration.md](../architecture/cli-orchestration.md)
 
-**Implementation plan:** [output transaction plan](../plans/2026-07-21-output-transaction.md)
+**Implementation plan:** retired after it shipped; see the 2026-11-07 tombstone in [decisions](../context/decisions.md).
 
 ## Adopted design
 

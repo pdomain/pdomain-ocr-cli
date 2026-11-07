@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Medium — hook tags can move; not full commit SHAs
 - **Affected version:** pdomain-ocr-cli master @ 3a818aa (docs baseline)
@@ -23,6 +23,12 @@ Level: I1
 - **Relates to:** [intent map](../context/intent-map.md)
 
 ## Summary
+
+**Update 2026-11-07:** Still open; it needs an owner decision between tag
+revisions and commit SHAs. Hook revisions are tags, and `pre-commit-update`
+runs only on the manual stage. The GitHub workflows, including dep-refresh,
+were removed on 2026-09-13 (`7041179`), so the dep-refresh step below no
+longer applies.
 
 `.pre-commit-config.yaml` pins hooks with version tags (e.g. v0.15.22) and runs `pre-commit-update` for reviewed bumps. Immutable full commit SHA pins are not used (former GH #45 residual).
 

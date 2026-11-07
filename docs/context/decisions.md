@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: context
 ---
 
@@ -14,6 +14,158 @@ Kind: context
 - **Status:** active
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
+
+### 2026-11-07 — Remaining-work docs pass after v0.9.0 and v0.9.1
+
+- **Context:** v0.9.0 (`c325c13`) and v0.9.1 (`7af73fc`) shipped most of the
+  roadmap, but the roadmap, issue index, plans, and architecture still
+  described that work as open.
+- **Decision:** Promote shipped behavior into architecture with Evidence
+  blocks. Retire six implemented plans and nine resolved issues. Mark six
+  implemented specs `implemented` and keep them, because they lack the
+  `## Adversarial Review` section that spec retirement requires. Replace the
+  roadmap narrative with a one-line-per-item remaining-work list.
+- **Rationale:** Open-work docs must not list finished work, and present-tense
+  architecture must match the code.
+- **Evidence:** Code and tests at `7af73fc`; commits `c325c13`, `23f263e`,
+  `b9e1f02`, `7b0f4f7`, `7af73fc`, and `7041179`. The v0.9.1 preflight
+  `make ci-slow` passed with 468 tests.
+- **Remaining work:** See `docs/roadmap.md`.
+
+### 2026-11-07 Retired: Rotation propagation implementation plan
+
+- Old path: `docs/plans/2026-07-21-rotation-propagation.md`
+- Outcome: implemented in `c325c13`
+- Superseded by: `docs/architecture/layout-aware-ocr.md`
+- Removal commit: (fill after commit)
+- Rationale kept: The plan proposed a new upstream `PageResult.rotation_degrees` field. The shipped code instead keeps the angle from `from_image_ocr_via_doctr`'s `(document, rotation)` return. The architecture doc records the shipped design.
+- Remaining work: none
+
+### 2026-11-07 Retired: Default-layout word-preservation plan
+
+- Old path: `docs/plans/2026-07-21-default-layout-word-preservation.md`
+- Outcome: implemented in `c325c13`
+- Superseded by: `docs/architecture/test-suite.md`
+- Removal commit: (fill after commit)
+- Rationale kept: Test scaffolding only; the architecture doc names the shipped test.
+- Remaining work: none
+
+### 2026-11-07 Retired: Installer trust implementation plan
+
+- Old path: `docs/plans/2026-07-21-installer-trust.md`
+- Outcome: implemented in `23f263e`
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: First-index binding and digest rules are in Trust and network boundaries.
+- Remaining work: none
+
+### 2026-11-07 Retired: Image resource limits implementation plan
+
+- Old path: `docs/plans/2026-07-21-image-resource-limits.md`
+- Outcome: implemented in `7af73fc`
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: Limits are in Execution invariants and `docs/usage/cli-usage.md`.
+- Remaining work: none
+
+### 2026-11-07 Retired: Update-check diagnostics implementation plan
+
+- Old path: `docs/plans/2026-07-21-update-check-diagnostics.md`
+- Outcome: implemented in `b9e1f02`
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: Diagnostic format is in Trust and network boundaries.
+- Remaining work: none
+
+### 2026-11-07 Retired: Output transaction implementation plan
+
+- Old path: `docs/plans/2026-07-21-output-transaction.md`
+- Outcome: implemented in `7af73fc`
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: Rollback rules are in Execution invariants.
+- Remaining work: none
+
+### 2026-11-07 Retired: Layout detection and illustration crops use the unrotated page image (former GH #18)
+
+- Old path: `docs/issues/2026-07-19-gh-18-layout-crops-ignore-rotation.md`
+- Outcome: resolved in `c325c13`; code and tests prove the fix
+- Superseded by: `docs/architecture/layout-aware-ocr.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/layout-aware-ocr.md`
+- Remaining work: none
+
+### 2026-11-07 Retired: No multiset default-layout word-preservation test (former GH #41)
+
+- Old path: `docs/issues/2026-07-19-gh-41-default-layout-word-preservation-test.md`
+- Outcome: resolved in `c325c13`; code and tests prove the fix
+- Superseded by: `docs/architecture/test-suite.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/test-suite.md`
+- Remaining work: none
+
+### 2026-11-07 Retired: Installers do not pin pdomain packages against dependency confusion (former GH #24)
+
+- Old path: `docs/issues/2026-07-19-gh-24-installer-dependency-confusion.md`
+- Outcome: resolved in `23f263e`; code and tests prove the fix
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/cli-orchestration.md`
+- Remaining work: none
+
+### 2026-11-07 Retired: Installers do not verify downloaded release wheel integrity (former GH #30)
+
+- Old path: `docs/issues/2026-07-19-gh-30-installer-artifact-verification.md`
+- Outcome: resolved in `23f263e`; code and tests prove the fix
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/cli-orchestration.md`
+- Remaining work: none
+
+### 2026-11-07 Retired: Runtime dependency ranges have no upper bounds (former GH #31)
+
+- Old path: `docs/issues/2026-07-19-gh-31-runtime-dep-upper-bounds.md`
+- Outcome: resolved in `7b0f4f7`; code and tests prove the fix
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/cli-orchestration.md`
+- Remaining work: none
+
+### 2026-11-07 Retired: Build backend requirements are unpinned (former GH #50)
+
+- Old path: `docs/issues/2026-07-19-gh-50-pin-build-backends.md`
+- Outcome: resolved in `7b0f4f7`; code and tests prove the fix
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/cli-orchestration.md`
+- Remaining work: none
+
+### 2026-11-07 Retired: No resource limits for untrusted image inputs (former GH #38)
+
+- Old path: `docs/issues/2026-07-19-gh-38-untrusted-image-resource-limits.md`
+- Outcome: resolved in `7af73fc`; code and tests prove the fix
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/cli-orchestration.md`
+- Remaining work: none
+
+### 2026-11-07 Retired: Update-check failures are swallowed without diagnostics (former GH #35)
+
+- Old path: `docs/issues/2026-07-19-gh-35-update-check-diagnostics.md`
+- Outcome: resolved in `b9e1f02`; code and tests prove the fix
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/cli-orchestration.md`
+- Remaining work: none
+
+### 2026-11-07 Retired: No rollback of sidecars if final .txt write fails (former GH #22)
+
+- Old path: `docs/issues/2026-07-19-gh-22-sidecar-rollback-on-txt-failure.md`
+- Outcome: resolved in `7af73fc`; code and tests prove the fix
+- Superseded by: `docs/architecture/cli-orchestration.md`
+- Removal commit: (fill after commit)
+- Rationale kept: shipped behavior and its Evidence block in `docs/architecture/cli-orchestration.md`
+- Remaining work: none
 
 ### 2026-07-19 — Roadmap completed-item reconcile
 

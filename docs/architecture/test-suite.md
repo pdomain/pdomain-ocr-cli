@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: architecture
 Supersedes:
   - docs/specs/2026-05-28-test-suite-reorganization-design.md
@@ -22,7 +22,8 @@ Supersedes:
 
 The test suite separates fast, deterministic checks from slow, model-backed
 integration tests. The fast suite covers CLI behavior, policy, output planning,
-artifact safety, warnings, model resolution, installers, and workflow contracts.
+artifact safety, warnings, model resolution, installers, dependency metadata,
+and image limits.
 It uses controlled fakes in place of heavy OCR and layout dependencies. It still
 exercises real CLI orchestration and output-writing paths.
 
@@ -73,10 +74,11 @@ controlled fakes preserve OCR words. A word may move or receive a role label,
 but it must not disappear silently. `--no-illustration-placeholders` suppresses
 only the placeholder; caption text remains.
 
-**Coverage gap (roadmap former GH #41):** fast word-preservation cases often
-force `--layout-model none` or use `FakePage`. Slow default-layout tests prove
-the path runs, but do not yet assert a multiset “every OCR word preserved”
-oracle under default layout reorganization.
+A slow test also checks the default layout path with a multiset oracle.
+`tests/test_default_layout_word_preservation.py` runs default reorganization
+and asserts that every OCR word survives. A second test shows that
+`--experimental-drop-layout-words` may drop figure-internal words, so that flag
+is the only exception.
 
 ## Implementation deviations
 
@@ -102,8 +104,11 @@ Verified against the repository on 2026-07-13.
   and `pyproject.toml`.
 - Fast behavior: `tests/test_main_flag_wiring.py` and
   `tests/test_main_happy.py`.
-- Slow behavior: `tests/test_pipeline_integration.py`.
-- Installer contracts: `tests/test_install_ps1_cuda.py` and
-  `tests/test_install_ps1.py`.
+- Slow behavior: `tests/test_pipeline_integration.py` and
+  `tests/test_default_layout_word_preservation.py`.
+- Installer contracts: `tests/test_install_ps1_cuda.py`,
+  `tests/test_install_ps1.py`, and `tests/test_install_sh.py`.
+- Dependency metadata: `tests/test_dependency_metadata.py`.
 - History: commits `24c889f`, `8f4b7e8`, `6823f1e`, `47e8653`, `cf36030`,
-  and `d887fc0`.
+  and `d887fc0`; multiset word preservation in `c325c13`.
+- Re-verified 2026-11-07 against `7af73fc`.

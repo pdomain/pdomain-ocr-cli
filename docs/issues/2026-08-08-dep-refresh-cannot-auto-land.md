@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-08-08
-Last verified: 2026-08-08
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-08-08
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Medium — no data loss, but stray branches/PRs pile up weekly and
   obscure real signal
@@ -27,6 +27,11 @@ Level: I1
 - **Relates to:** [issues README](README.md)
 
 ## Summary
+
+**Update 2026-11-07:** The cause is gone. Commit `7041179` removed
+`dep-refresh.yml` and `ci.yml` on 2026-09-13, and branch protection is off.
+The leftovers are still open: pull requests #58 through #66 and their
+`dep-refresh/*` branches on origin. Closing them is an owner decision.
 
 `dep-refresh.yml` names a fresh branch per run
 (`dep-refresh/$(date +%Y-%m-%d)-$GITHUB_RUN_ID`) and the repo has
