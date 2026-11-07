@@ -25,7 +25,7 @@ Kind: context
   model provenance plan.
 - Superseded by: `docs/architecture/cli-orchestration.md` (Trust and network
   boundaries)
-- Removal commit: (fill after commit)
+- Removal commit: `8eb7fc2`
 - Rationale kept: the plan's Status section and the architecture doc.
 - Remaining work: pin the default to the commit SHA behind `v0.7`; see the
   intent map's spec review follow-ups.
