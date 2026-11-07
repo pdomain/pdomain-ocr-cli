@@ -36,7 +36,9 @@ preserves history.
 [`issues/`](issues/README.md). The GitHub Issues feature is **enabled** but the
 remote tracker is kept **empty** (planning is in-repo); see
 [`decisions/2026-07-19-github-issues-cutover.md`](decisions/2026-07-19-github-issues-cutover.md).
-Cross-repo work may still use `ConcaveTrillion/ocr-container-meta`.
+Items that cut across several `pdomain-*` repos are filed in
+`pdomain-book-tools/docs/issues/`. The old `ConcaveTrillion/ocr-container-meta`
+tracker is retired.
 
 The layout follows the workspace documentation taxonomy and this repository's
 [docgraph rules](../DOCGRAPH.md).

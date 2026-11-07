@@ -70,21 +70,16 @@ Full target list: `make help`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md
 - [`docs/architecture/layout-aware-ocr.md`](docs/architecture/layout-aware-ocr.md) — layout-aware OCR behavior.
 - [`docs/usage/cli-usage.md`](docs/usage/cli-usage.md) — end-user usage reference.
 
-## GH issues
+## Issues
 
-GH issues in **`ConcaveTrillion/ocr-container-meta`** track cross-cut work
-tasks — not this repo's own tracker.
-
-`/decompose-spec --sync` syncs plans under `docs/plans/` in the workspace
-root to those issues. Milestone naming follows the pattern
-`spec: <plan-basename> (#N)`.
-
-When shipping a plan task:
-
-- Before starting: `gh issue view <N> --repo ConcaveTrillion/ocr-container-meta`
-- After completing: `gh issue close <N> --repo ConcaveTrillion/ocr-container-meta`
-- List open tasks:
-  `gh issue list --repo ConcaveTrillion/ocr-container-meta --milestone "spec: <name> (#N)" --state open`
+Work is tracked as Markdown files in `docs/issues/`. The open list is
+[`docs/issues/README.md`](docs/issues/README.md). Items that cut across several
+`pdomain-*` repos are filed in
+`/mnt/work/projects/pdomain/pdomain-book-tools/docs/issues/`. GitHub Issues is
+still enabled on `pdomain/pdomain-ocr-cli`, but the remote tracker is kept
+empty. `ConcaveTrillion/ocr-container-meta` was the tracker for the old
+`/workspaces/ocr-container` workspace. Its last push was 2026-06-06, and it is
+no longer used.
 
 ## docs/ folder
 
@@ -134,8 +129,9 @@ change any step below.
    `plans/` (the work plan), `specs/` (design specs — follow any `Spec:`
    pointer from the issue), `research/` (prior investigations), `decisions/`
    (ADRs / constraints), `architecture/` (shipped design).
-4. **Check live issue status.** `gh issue view <N> --repo <owner/repo>` —
-   confirm it isn't already closed; note its milestone.
+4. **Check the issue's status.** Open its file under `docs/issues/`, or under
+   `pdomain-book-tools/docs/issues/` for cross-repo work, and confirm it is
+   still open.
 5. **Check for in-flight work.** Open PRs and existing branches touching the
    same area, to avoid colliding with work-in-progress.
 6. **Consult agent memory.** `.claude/agent-memory/<repo>/feedback_*.md` for
@@ -143,7 +139,8 @@ change any step below.
 7. **Locate code with `Explore` first.** Use an `Explore` subagent to find
    relevant files before broad `Read`/grep.
 8. **Isolate in a worktree.** Never work directly in the interactive checkout
-   at `/workspaces/ocr-container/<repo>/`. Use the `using-git-worktrees` skill
+   at `/mnt/work/projects/pdomain/pdomain-ocr-cli/`; put worktrees under
+   `/mnt/work/projects/pdomain/.worktrees/`. Use the `using-git-worktrees` skill
    to set up an isolated worktree. When delegating to a full-power
    implementation agent, pass `isolation: "worktree"` on the `Agent` call
    (skip for `-docs` agents and the `driver` agent). When an agent returns a
