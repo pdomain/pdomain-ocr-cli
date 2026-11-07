@@ -130,25 +130,74 @@ $WheelName = if ($WheelAsset.name) {
     Split-Path -Leaf ([Uri]$WheelUrl).AbsolutePath
 }
 
+# Fail closed on any missing or malformed digest, before downloading. A
+# digest that is absent or not a well-formed sha256 means we cannot verify
+# the wheel we're about to fetch, so refuse rather than install unverified.
+# Use the case-SENSITIVE -cnotmatch: plain -notmatch is case-insensitive in
+# PowerShell, which would accept uppercase hex here while install.sh (grep,
+# case-sensitive by default) rejects it — the spec requires lowercase only,
+# and both installers must agree on what they accept.
+$WheelDigest = $WheelAsset.digest
+if (-not $WheelDigest -or $WheelDigest -cnotmatch '^sha256:[0-9a-f]{64}$') {
+    throw "Latest release $ReleaseTag wheel asset '$WheelName' has no verifiable sha256 digest (got: '$WheelDigest'). Refusing to install an unverified wheel."
+}
+$WheelDigestHex = $WheelDigest.Substring(7)
+
 Write-Host "Latest release: $ReleaseTag"
 Write-Host "Wheel asset:    $WheelUrl"
+Write-Host "Wheel digest:   $WheelDigest"
 Write-Host "pdomain-index-pip:       $PdIndexUrl"
 
 $TempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("pdomain-ocr-install-" + [guid]::NewGuid().ToString("N"))
-New-Item -ItemType Directory -Path $TempDir | Out-Null
+$TempDirItem = New-Item -ItemType Directory -Path $TempDir
+# Windows PowerShell 5.1 has no $IsWindows. An unset variable is falsy, so
+# `-not $IsWindows` alone enters this branch and aborts on UnixFileMode
+# before the download. UnixFileMode exists only on PowerShell 6+ off Windows.
+if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) {
+    # New-Item's directory mode follows umask (e.g. 0777 at umask 0) — unlike
+    # `mktemp -d`, which is always 0700. Without this, another local user
+    # could replace the downloaded wheel between the Get-FileHash check below
+    # and the `uv tool install` call, defeating digest verification.
+    $TempDirItem.UnixFileMode = [System.IO.UnixFileMode]::UserRead -bor
+        [System.IO.UnixFileMode]::UserWrite -bor
+        [System.IO.UnixFileMode]::UserExecute
+}
 
 try {
     $WheelFile = Join-Path $TempDir $WheelName
     Write-Host "Downloading wheel..."
     Invoke-WebRequest -Uri $WheelUrl -OutFile $WheelFile
 
+    # Verify the downloaded wheel against the digest GitHub reported for it,
+    # BEFORE calling `uv tool install`. A digest that doesn't match the bytes
+    # we actually fetched means the download was tampered with or corrupted;
+    # either way, installing it would be worse than failing here.
+    $WheelActualHex = (Get-FileHash -Algorithm SHA256 -Path $WheelFile).Hash.ToLowerInvariant()
+    if ($WheelActualHex -ne $WheelDigestHex) {
+        throw "Wheel digest mismatch for $WheelFile.`n  expected: sha256:$WheelDigestHex`n  actual:   sha256:$WheelActualHex"
+    }
+    Write-Host "Digest verified: sha256:$WheelActualHex"
+
     Write-Host "Installing pdomain-ocr $ReleaseTag from $WheelName..."
-    $UvArgs = @("tool", "install", "--python", $PythonVersion, "--reinstall", $WheelFile, "--extra-index-url", $PdIndexUrl)
+    # "first-index" makes uv stop looking once a package name resolves on an
+    # index, in index-URL order. The pdomain index is bound via a named
+    # `--index` (not the deprecated `--extra-index-url`): uv ranks
+    # --index/UV_INDEX strictly above --extra-index-url, and passing --index
+    # explicitly on the CLI replaces (rather than merges with) any UV_INDEX
+    # the environment supplies. Verified against real uv 0.11.32 with local
+    # decoy indexes: a hostile UV_INDEX env var beats --extra-index-url but
+    # cannot beat this --index binding, and the pdomain --index is always
+    # listed before the CUDA extra --index below, so it's still checked
+    # first under first-index.
+    $UvArgs = @(
+        "tool", "install", "--python", $PythonVersion, "--reinstall", $WheelFile,
+        "--index-strategy", "first-index", "--index", "pdomain=$PdIndexUrl"
+    )
     if ($BookToolsExtras) {
         $UvArgs += @("--with", "pdomain-book-tools$BookToolsExtras")
     }
     if ($ExtraIndex) {
-        $UvArgs += @("--extra-index-url", $ExtraIndex)
+        $UvArgs += @("--index", "pytorch-cuda=$ExtraIndex")
     }
     & uv @UvArgs
 } finally {
