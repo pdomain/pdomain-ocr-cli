@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling==1.33.0", "hatch-vcs==0.5.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -14,9 +14,10 @@ license = { text = "Unlicense" }
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "pdomain-book-tools==0.30.1",
-    "pdomain-book-contracts>=0.2.0",
-    "pdomain-ops>=0.11.2",
-    "huggingface_hub>=1.16",
+    "pdomain-book-contracts>=0.2.0,<1",
+    "pdomain-ops>=0.11.2,<1",
+    "huggingface_hub>=1.16,<2",
+    "pillow>=11.0,<13",
 ]
 
 [project.optional-dependencies]
@@ -27,7 +28,7 @@ dependencies = [
 # This forwards to pdomain-book-tools' own [gpu] extra, which owns the
 # actual CUDA dependency list.
 gpu = [
-    "pdomain-book-tools[gpu]",
+    "pdomain-book-tools[gpu]==0.30.1",
 ]
 
 [project.scripts]

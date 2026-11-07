@@ -1514,6 +1514,7 @@ dependencies = [
     { name = "pdomain-book-contracts" },
     { name = "pdomain-book-tools" },
     { name = "pdomain-ops" },
+    { name = "pillow" },
 ]
 
 [package.optional-dependencies]
@@ -1536,11 +1537,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "huggingface-hub", specifier = ">=1.16" },
-    { name = "pdomain-book-contracts", specifier = ">=0.2.0", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "huggingface-hub", specifier = ">=1.16,<2" },
+    { name = "pdomain-book-contracts", specifier = ">=0.2.0,<1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
     { name = "pdomain-book-tools", specifier = "==0.30.1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
-    { name = "pdomain-book-tools", extras = ["gpu"], marker = "extra == 'gpu'", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
-    { name = "pdomain-ops", specifier = ">=0.11.2", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pdomain-book-tools", extras = ["gpu"], marker = "extra == 'gpu'", specifier = "==0.30.1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pdomain-ops", specifier = ">=0.11.2,<1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pillow", specifier = ">=11.0,<13" },
 ]
 provides-extras = ["gpu"]
 
