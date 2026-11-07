@@ -15,6 +15,21 @@ Kind: context
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
 
+### 2026-11-07 Retired: Default OCR model pin and safe-load guard
+
+- Old path: `docs/issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md`
+- Outcome: resolved. The `v0.7` default pin shipped in `7af73fc` (v0.9.1).
+  The safe-load guard, `tests/test_upstream_safe_load.py`, landed on
+  2026-11-07. It ports the AST scan from the unmerged `fix/issue-backlog`
+  commit `e251b40` and adds the behavioral and no-override tests from the
+  model provenance plan.
+- Superseded by: `docs/architecture/cli-orchestration.md` (Trust and network
+  boundaries)
+- Removal commit: (fill after commit)
+- Rationale kept: the plan's Status section and the architecture doc.
+- Remaining work: pin the default to the commit SHA behind `v0.7`; see the
+  intent map's spec review follow-ups.
+
 ### 2026-11-07 Retired: Weekly dep-refresh branches and pull requests accumulate instead of landing
 
 - Old path: `docs/issues/2026-08-08-dep-refresh-cannot-auto-land.md`

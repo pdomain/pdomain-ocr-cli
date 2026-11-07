@@ -82,8 +82,11 @@ SHA is. Only an unset revision or `latest` counts as mutable, and an explicit
 warn. Custom checkpoint paths or repositories also print a warning. The CLI
 does not sandbox model deserialization itself. `pdomain-book-tools` loads
 DocTR checkpoints with `torch.load(..., weights_only=True)` and rejects any
-checkpoint that is not a plain state dict of tensors. No test in this
-repository guards that upstream behavior yet.
+checkpoint that is not a plain state dict of tensors.
+`tests/test_upstream_safe_load.py` guards that upstream behavior: it scans the
+installed package for any `torch.load` without `weights_only=True`, checks that
+a pickled object is refused at load time, and checks that the CLI passes no
+`torch_load` override.
 
 The startup-notice seam owns update and GPU notices, including the environment
 and CLI opt-outs. The update check stays silent on failure unless
@@ -138,7 +141,8 @@ and tests. The v0.9.1 release preflight `make ci-slow` passed with 468 tests.
   `tests/test_image_limits.py`, `tests/test_opencv_io_max_image_pixels.py`,
   `tests/test_model_security.py`, `tests/test_update_check_network.py`,
   `tests/test_startup_notices.py`, `tests/test_install_sh.py`,
-  `tests/test_install_ps1.py`, and `tests/test_dependency_metadata.py`.
+  `tests/test_install_ps1.py`, `tests/test_dependency_metadata.py`, and
+  `tests/test_upstream_safe_load.py` (added 2026-11-07).
 - History: commits `87f066a`, `bcf8807`, `a0c2054`, `0287e2c`, `1c3993c`,
   and `9e8b089`; workflow removal `7041179`; installer checks `23f263e`;
   update-check diagnostics `b9e1f02`; dependency bounds `7b0f4f7`; model pin,

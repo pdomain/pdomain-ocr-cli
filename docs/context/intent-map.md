@@ -86,7 +86,6 @@ first:
 
 Governed reports under [`docs/issues/`](../issues/README.md) (GitHub tracker empty):
 
-- [Model revision pin + safe load](../issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md) (former GH #15, Next)
 - [Pre-commit immutable pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md) (former GH #45, needs decision)
 - [Deferred normalize-output](../issues/2026-07-19-normalize-output-flag-deferred.md) (Later)
 

@@ -53,11 +53,6 @@ surfacing (flag name, help text, defaults, docs) and any caller-side glue.
 
 ## Remaining work
 
-- **Next:** add a test that fails if `pdomain-book-tools` stops loading
-  checkpoints with `weights_only=True`; the default model pin already shipped
-  (former GH #15).
-  [`docs/issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md`](issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md),
-  [`docs/plans/2026-07-21-model-provenance.md`](plans/2026-07-21-model-provenance.md)
 - **Needs a decision:** pre-commit hook revisions as tags or commit SHAs
   (former GH #45).
   [`docs/issues/2026-07-19-gh-45-pre-commit-immutable-pins.md`](issues/2026-07-19-gh-45-pre-commit-immutable-pins.md),

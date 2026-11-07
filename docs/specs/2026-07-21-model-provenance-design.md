@@ -16,7 +16,7 @@ The CLI will pin its default OCR model to an immutable Hugging Face revision and
 - **Status:** active
 - **Read when:** implementing model provenance or safe-loading checks
 - **Search terms:** model revision, weights_only, Hugging Face, former GH 15
-- **Relates to:** [issue](../issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md)
+- **Relates to:** [decisions tombstone](../context/decisions.md) (former GH #15, retired 2026-11-07)
 
 **Implementation plan:** [model provenance plan](../plans/2026-07-21-model-provenance.md)
 
@@ -59,6 +59,6 @@ criteria against the code and tests.
 **Verdict:** Sound but unfinished.
 
 - High: `v0.7` is a tag, and a Hugging Face tag can be moved, so it is not the immutable revision this spec promises. The architecture, usage and README text now say so. Pinning the default to the commit SHA behind `v0.7` is a follow-up.
-- High: the planned guard, a source-string search for `weights_only=True`, also matches two docstrings, so it passes even if the real call changes. The plan's Task 2 now specifies a behavioral test instead.
+- High: the planned guard, a source-string search for `weights_only=True`, also matches two docstrings, so it passes even if the real call changes. Fixed on 2026-11-07: `tests/test_upstream_safe_load.py` uses an AST scan of the installed package plus a behavioral load test.
 - Medium: only an unset revision or `latest` warns; `main` and other branch names do not. The pin test does not cover them. Follow-up.
 - Medium: the spec ignores the layout model. The default PP-DocLayout weights are safetensors pinned to a commit SHA upstream; a custom `--layout-checkpoint` is warn-only. Recorded here.

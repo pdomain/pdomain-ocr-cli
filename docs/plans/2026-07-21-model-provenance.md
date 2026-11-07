@@ -16,7 +16,7 @@ Pin the default OCR model and guard the upstream safe-loading contract.
 
 ## Architecture
 
-Argument parsing owns the immutable default. Model-security warnings continue to classify user overrides, while a test-only source inspection guards the upstream `weights_only=True` contract.
+Argument parsing owns the immutable default. Model-security warnings continue to classify user overrides, while an AST scan of the installed package and a behavioral load test guard the upstream `weights_only=True` contract.
 
 ## Tech Stack
 
@@ -34,66 +34,22 @@ GitHub runs no workflows for this repository, so every check here is local.
 
 ## Status
 
-Task 1, the `v0.7` default revision pin, shipped in `7af73fc` (v0.9.1); see
+Both tasks shipped. Task 1, the `v0.7` default revision pin, shipped in
+`7af73fc` (v0.9.1); see
 [cli-orchestration.md](../architecture/cli-orchestration.md#trust-and-network-boundaries).
-Task 2 is open and not blocked: `pdomain-book-tools` 0.30.1 already loads
-checkpoints with `weights_only=True`.
+Task 2 added `tests/test_upstream_safe_load.py` on 2026-11-07. It has three
+guards:
 
-## Task 2: Guard safe upstream loading
+- An AST scan of every `.py` file in the installed `pdomain_book_tools`. It
+  fails on any `torch.load` call, or `functools.partial` wrap of it, that lacks
+  a literal `weights_only=True`, including aliased imports. Synthetic sources
+  prove the scan accepts safe patterns and flags unsafe ones.
+- A behavioral test: a pickled non-tensor object makes
+  `get_finetuned_torch_doctr_predictor` raise `pickle.UnpicklingError`. With
+  `weights_only=False` the same call raises `ValueError` instead, so the test
+  fails.
+- A test that the CLI calls the predictor without a `torch_load` override.
 
-**Files:**
-
-- Create: `tests/test_upstream_safe_load.py`
-
-- [ ] **Step 1: Add a behavioral contract test**
-
-Do not search the module source for `weights_only=True`: that string also
-appears in two docstrings, so the check would pass after the real call changed.
-Test the behavior instead:
-
-```python
-import pickle
-from pathlib import Path
-
-import pytest
-import torch
-
-from pdomain_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
-
-
-class _Marker:
-    """Any non-tensor class; weights_only=True refuses to unpickle it."""
-
-
-def test_upstream_loader_refuses_pickled_objects(tmp_path: Path) -> None:
-    det = tmp_path / "det.pt"
-    reco = tmp_path / "reco.pt"
-    torch.save(_Marker(), det)
-    torch.save({}, reco)
-    with pytest.raises(pickle.UnpicklingError):
-        get_finetuned_torch_doctr_predictor(det, reco)
-```
-
-With `weights_only=True`, `torch.load` raises `UnpicklingError`. If upstream
-drops it, the load succeeds and `_validate_state_dict` raises `ValueError`
-instead, so the test fails. Confirm the call signature against the pinned
-release before writing the test. Also add a test that the CLI calls
-`get_finetuned_torch_doctr_predictor` without its `torch_load` override, which
-would bypass the safe loader.
-
-- [ ] **Step 2: Verify the contract**
-
-Run: `uv run pytest -n auto tests/test_upstream_safe_load.py -v`
-Expected: PASS against `pdomain-book-tools==0.30.1`.
-
-- [ ] **Step 3: Run all gates**
-
-Run: `make test-slow AI=1 && make ci AI=1`
-Expected: both commands print `✅`.
-
-- [ ] **Step 4: Commit the tripwire**
-
-```bash
-git add tests/test_upstream_safe_load.py
-git commit -m "test: guard upstream safe model loading"
-```
+One review follow-up remains: pin the default to the commit SHA behind `v0.7`,
+since an HF tag can be moved. It is listed in
+[intent-map.md](../context/intent-map.md#spec-review-follow-ups-2026-11-07).

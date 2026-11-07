@@ -53,9 +53,6 @@ installing the declared PowerShell prerequisite through
 
 ## Risks
 
-- No test here fails if `pdomain-book-tools` drops `weights_only=True` from
-  its checkpoint loader (former GH #15).
-
 Predictor batch-size defaults now live upstream. Only benchmarking or CLI
 exposure remains deferred.
 
