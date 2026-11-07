@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -19,6 +19,11 @@ The CLI will expose normalization as a default-off enum after `pdomain-book-tool
 - **Relates to:** [deferred issue](../issues/2026-07-19-normalize-output-flag-deferred.md)
 
 **Implementation plan:** [normalize-output plan](../plans/2026-07-21-normalize-output.md)
+
+## Status on 2026-11-07
+
+Still blocked. `pdomain-book-tools` 0.30.1 has no `text_normalize.py` and no
+`normalize_text`.
 
 ## Adopted design
 

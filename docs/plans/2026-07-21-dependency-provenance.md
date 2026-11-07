@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: plan
 ---
 
@@ -10,67 +10,41 @@ Kind: plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Publish bounded dependencies and make build and hook inputs immutable.
+## Goal
 
-**Architecture:** `pyproject.toml` remains the package metadata authority. Static tests enforce bounds and exact pins; the refresh workflow retains SHA-form hook revisions.
+Publish bounded dependencies and make build and hook inputs immutable.
 
-**Tech Stack:** Python packaging, uv, Hatchling, pre-commit, GitHub Actions, pytest
+## Architecture
+
+`pyproject.toml` remains the package metadata authority. Static tests enforce bounds and exact pins. Hook revisions are refreshed locally with `pre-commit autoupdate --freeze`.
+
+## Tech Stack
+
+Python packaging, uv, Hatchling, pre-commit, pytest
+
+## Global Constraints
+
+Never silently drop OCR words. Keep reusable logic in `pdomain-book-tools`.
+Run `make ci AI=1` before committing. Docs, code and tests change together.
+GitHub runs no workflows for this repository, so every check here is local.
 
 **Spec:** [dependency provenance design](../specs/2026-07-21-dependency-provenance-design.md)
 
 ---
 
-## Task 1: Add package metadata contracts
+## Status
 
-**Files:**
-
-- Create: `tests/test_dependency_metadata.py`
-- Modify: `pyproject.toml`
-- Modify: `uv.lock`
-
-- [ ] **Step 1: Add failing metadata tests**
-
-```python
-def test_direct_dependencies_have_upper_bounds():
-    data = tomllib.loads(Path("pyproject.toml").read_text())
-    requirements = data["project"]["dependencies"]
-    requirements += data["project"]["optional-dependencies"].get("gpu", [])
-    assert all("<" in requirement for requirement in requirements)
-
-
-def test_build_backends_are_exactly_pinned():
-    requires = tomllib.loads(Path("pyproject.toml").read_text())["build-system"]["requires"]
-    assert all("==" in requirement for requirement in requires)
-```
-
-- [ ] **Step 2: Confirm the tests fail**
-
-Run: `uv run pytest -n auto tests/test_dependency_metadata.py -v`
-Expected: FAIL on unbounded dependencies and unpinned build backends.
-
-- [ ] **Step 3: Apply compatibility caps and exact backend pins**
-
-For each runtime/GPU requirement, preserve its floor and add `<next-major`. Read the current `hatchling` and `hatch-vcs` versions from `uv.lock` and pin those exact versions under `[build-system].requires`.
-
-- [ ] **Step 4: Refresh and verify metadata**
-
-Run: `uv lock && uv run pytest -n auto tests/test_dependency_metadata.py -v && make build AI=1`
-Expected: lock succeeds, tests pass, and build prints `✅`.
-
-- [ ] **Step 5: Commit package bounds**
-
-```bash
-git add pyproject.toml uv.lock tests/test_dependency_metadata.py
-git commit -m "build: bound runtime and build dependencies"
-```
+Task 1, package bounds and exact build-backend pins, shipped in `7b0f4f7`
+(v0.9.1); see [cli-orchestration.md](../architecture/cli-orchestration.md#dependency-bounds).
+Task 2 waits on the owner's choice between tag and SHA revisions (former GH #45).
 
 ## Task 2: Freeze pre-commit revisions
 
 **Files:**
 
 - Modify: `.pre-commit-config.yaml`
-- Modify: `.github/workflows/dep-refresh.yml`
-- Modify: `tests/test_workflows_static.py`
+- Modify: `Makefile` (the `update-hooks` target)
+- Create: `tests/test_pre_commit_pins.py`
 
 - [ ] **Step 1: Add a failing SHA contract test**
 
@@ -83,19 +57,19 @@ def test_remote_pre_commit_revisions_are_full_shas():
 
 - [ ] **Step 2: Confirm the test fails**
 
-Run: `make test-k K='pre_commit_revisions_are_full_shas' AI=1`
+Run: `uv run pytest -n auto -k 'pre_commit_revisions_are_full_shas'`
 Expected: FAIL because revisions are tags.
 
 - [ ] **Step 3: Freeze hooks and refresh behavior**
 
-Run `uv run pre-commit autoupdate --freeze`. Change the dependency-refresh workflow's hook update command to the same `uv run pre-commit autoupdate --freeze` command.
+Run `uv run pre-commit autoupdate --freeze`. `make update-hooks` currently runs the `pre-commit-update` hook on the manual stage, which writes tags. Change it so later refreshes keep SHA revisions, for example by running `uv run pre-commit autoupdate --freeze` instead.
 
 - [ ] **Step 4: Verify and commit hook pins**
 
-Run: `make test-k K='workflows_static' AI=1 && make ci AI=1`
+Run: `uv run pytest -n auto -k 'pre_commit_revisions_are_full_shas' && make ci AI=1`
 Expected: both commands print `✅`.
 
 ```bash
-git add .pre-commit-config.yaml .github/workflows/dep-refresh.yml tests/test_workflows_static.py
+git add .pre-commit-config.yaml Makefile tests/test_pre_commit_pins.py
 git commit -m "build: freeze pre-commit hook revisions"
 ```

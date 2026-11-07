@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-03
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: process
 ---
 
@@ -35,7 +35,8 @@ make setup
 ```
 
 This syncs the dev deps from `pyproject.toml`, including `pdomain-book-tools`
-at the pinned git tag, and installs pre-commit hooks. You can now run
+at its exact pin from the self-hosted `pdomain-index-pip` index, and installs
+pre-commit hooks. You can now run
 `uv run pdomain-ocr ...` without installing globally.
 
 ### B. Editing pdomain repositories side-by-side
@@ -69,7 +70,7 @@ If you also want pdomain-book-tools' own venv (to run its tests):
 
 | Target | Purpose |
 | --- | --- |
-| `setup` | Install dev deps + pre-commit hooks (uses pinned `pdomain-book-tools` tag). |
+| `setup` | Install dev deps + pre-commit hooks (uses the exact `pdomain-book-tools` pin from `pdomain-index-pip`). |
 | `refresh-version` | Force-reinstall the editable package so `pdomain-ocr --version` re-derives from current git state (hatch-vcs bakes the version at install time, not at runtime — run this after `git pull` / new local tags). |
 | `install` | Install `pdomain-ocr` as a `uv tool` from local source, auto-detecting CUDA. |
 | `uninstall` | Remove the installed `pdomain-ocr` uv tool. |
@@ -81,19 +82,21 @@ If you also want pdomain-book-tools' own venv (to run its tests):
 | `wheel-smoke` | Build the wheel, install it into isolated Python 3.11 / 3.12 / 3.13 environments, and run `pdomain-ocr --version`. Override with `PYTHON_VERSIONS="3.13"` for a focused local run. |
 | `wheel-smoke-one` | Focused wheel smoke for one interpreter. Set `PYTHON_VERSION=3.11`, `3.12`, or `3.13`. |
 | `check-release-deps` | Fail release if runtime dependencies are path-sourced instead of package-index sourced. |
-| `ci` | `setup` → `pre-commit-check` → `format-check` → `typecheck` → `coverage` → `installer-test` → `wheel-smoke`. |
+| `ci` | `setup` → `pre-commit-check` → `format-check` → `typecheck` → `coverage` → `installer-test` → `build` → `wheel-smoke`. |
 | `ci-slow` | Full release-grade CI including slow integration coverage, build, and wheel smoke. |
 | `clean` | Remove caches and `dist/`. |
 | `reset` | `clean` + remove `.venv` + `setup`. |
 | `upgrade-deps` | Upgrade the lockfile and sync the venv. Refuses in local-dev mode; use `local-upgrade-deps` instead. |
 | `local-upgrade-deps` | Upgrade dependencies, sync to the canonical baseline, then restore editable siblings. |
-| `upgrade-pdomain-book-tools` | Bump the `pdomain-book-tools` pin to the latest GitHub tag. |
+| `update-pdomain-deps` | Bump the `>=` pins of `pdomain-book-tools` and `pdomain-ops` to the latest `pdomain-index-pip` version. It skips exact `==` pins, so bump `pdomain-book-tools==` by hand. |
+| `upgrade-pdomain-book-tools` | Deprecated alias for `update-pdomain-deps`. |
 | `release-{patch,minor,major}` | Run release preflight, tag, push `master` and the tag, then build the artifacts and create the GitHub Release. |
 
 ### Local-dev
 
-These targets are guarded: if the sibling is missing, they print a clear
-message and exit 1.
+`local-setup` clones missing siblings, and `local-dev` runs it first. The
+other targets except `local-check` and `local-uninstall` are guarded: without
+the local-dev marker they print an error and exit 1.
 
 None of them mutate `pyproject.toml`. Instead, they swap the pinned
 dependency for an editable install in the venv (or in the `uv tool`
@@ -107,14 +110,14 @@ install).
 | `local-upgrade-deps` | Upgrade dependencies, then restore editable siblings. |
 | `local-install` | Install `pdomain-ocr` as a `uv tool` with editable `pdomain-book-tools`; direct `pdomain-ops` resolves from the registry. |
 | `local-uninstall` | Remove the `uv tool` install. |
-| `local-run` | Run `pdomain-ocr` against the editable workspace. Pass args via `ARGS="…"`. |
+| `local-run` | Broken today: `scripts/local-run.sh` runs `make run`, which the Makefile does not define. Use `UV_NO_SYNC=1 uv run pdomain-ocr …` instead. |
 | `local-test` | Run the fast suite against editable siblings. |
 | `local-test-slow` | Run the full suite, including slow integration tests, against editable siblings. |
 
 Examples:
 
 ```sh
-make local-run ARGS='page.png --layout-debug'
+UV_NO_SYNC=1 uv run pdomain-ocr page.png --layout-debug
 make local-check
 ```
 
@@ -139,8 +142,9 @@ pdomain_ocr_cli/
 ├── _artifacts.py         # atomic page artifact writes and transactions
 ├── _model_security.py    # model trust-boundary warnings
 ├── _startup_notices.py   # update-check and GPU-nudge startup behavior
-├── _hf_download.py       # generic hf_hub_download wrapper (sidecar opt-in)
-├── _hf_models.py         # OCR + layout model resolution / prefetch / descriptors
+├── _hf_models.py         # argparse adapters around pdomain_book_tools.hf model resolution
+├── _image_limits.py      # size and pixel-count admission checks for input images
+├── _pipeline.py          # pure pipeline helpers split out of ocr_to_txt.main
 ├── _text_normalize.py    # curly-quote and em-dash post-processing
 └── _update_check.py      # background GitHub-tag upgrade-notice check
 ```
@@ -177,14 +181,15 @@ has no hardcoded version.
 ## Known quirks
 
 - `Makefile.local` is gitignored. The earlier separate-file pattern is now
-  merged into the main `Makefile`, with peer-existence guards on the
-  `*-local` targets. You can still add `-include Makefile.local` for
-  personal additions if you want them.
+  merged into the main `Makefile`: the `local-*` targets call
+  `scripts/local-*.sh`, and the old `*-local` names are deprecation aliases.
+  The `Makefile` does not include `Makefile.local`; add
+  `-include Makefile.local` yourself for personal additions.
 - Pylance / Pyright may flag `pdomain_book_tools.layout.adapters.pp_doclayout`
   and `transformers.utils` as unresolved. Those are intentional lazy
   imports (heavy dependencies loaded only when needed). Point your IDE at
   `.venv/bin/python` to silence them.
-- `pytest` prints a `DeprecationWarning: defusedxml.cElementTree is deprecated`
-  originating from `defusedxml/__init__.py`. This is a bug in `defusedxml`
-  itself: its own `__init__.py` imports the deprecated submodule. Watch for
-  a `defusedxml` release that fixes it and bump the pin when one appears.
+- `pyproject.toml`'s pytest `filterwarnings` still ignores the
+  `defusedxml.cElementTree is deprecated` `DeprecationWarning` that
+  `defusedxml` 0.7.1 raised on import. `defusedxml` is no longer in
+  `uv.lock`, so the filter may now be unused.

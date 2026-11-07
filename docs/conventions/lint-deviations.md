@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-31
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: process
 ---
 
@@ -94,7 +94,7 @@ From `[tool.ruff.lint.per-file-ignores]` in `pyproject.toml`.
 ### 13. `tests/**/*.py`
 
 Ignored: `S101`, `S105`, `S106`, `S311`, `T201`, `ANN`, `D`, `PLR2004`,
-`PT011`, `S108`, `PLR0133`, `PLW2901`, `PERF401`, `S603`, `S607`.
+`PT011`, `S108`, `PLR0133`, `PLW2901`, `PERF401`, `S603`, `S607`, `PLR0917`.
 
 `assert` is the test idiom (`S101`). Hardcoded passwords and random values are
 test fixtures (`S105`/`S106`/`S311`). `print()` is fine in tests (`T201`), and
@@ -104,7 +104,9 @@ and `/tmp` paths are fine (`S108`). Trivial self-comparisons can be intentional
 (`PLR0133`). Loop-var reassignment is an accepted test pattern (`PLW2901`),
 and list-building loops in tests are fine (`PERF401`). Test subprocesses use
 fixed fixture commands and intentionally resolve tools from `PATH`
-(`S603`/`S607`).
+(`S603`/`S607`). `PLR0917` too-many-positional-arguments counts pytest fixture
+and parametrize parameters, which pytest injects by name, so the count is not
+a design signal in tests.
 
 ### 14. `scripts/*.py`
 
@@ -133,9 +135,9 @@ Private modules follow internal convention and need no docstrings.
 
 ### 17. `T201` — print-found (ruff)
 
-**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (37 occurrences), `_batch_plan.py`
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (38 occurrences), `_batch_plan.py`
 (3), `_hf_models.py` (2), `_pipeline.py` (1), `_startup_notices.py` (1), and
-`_update_check.py` (1).
+`_update_check.py` (2).
 
 **Suppression form:** `# noqa: T201  # CLI output` inline.
 
@@ -148,39 +150,42 @@ that review still flags any *accidental* debug `print`.
 ### 18. `BLE001` — blind-except (ruff)
 
 **Files:** `pdomain_ocr_cli/_startup_notices.py` (lines 58, 79, 100),
-`_update_check.py` (line 155), and `ocr_to_txt.py` (lines 884, 898, 994,
-1218).
+`_update_check.py` (line 172), `ocr_to_txt.py` (lines 926, 940, 1075,
+1320), and `_artifacts.py` (lines 231, 236, 248).
 
 **Suppression form:** `# noqa: BLE001` (sometimes `# noqa: BLE001 S110`)
 inline, each with a trailing rationale.
 
-**Justification.** Three distinct best-effort boundaries:
+**Justification.** Five distinct catch-all boundaries:
 
 - The CuPy GPU probe and the GPU-install nudge helper must never crash
   `pdomain-ocr` — a broken native CuPy can even segfault, so the catch is
   intentionally `BaseException` and silent.
 - The update-check is best-effort; any network/parse failure is safe to
-  swallow.
-- The per-image loop in `main()` catches all errors, reports them, and
-  continues the batch rather than aborting on one bad scan.
+  swallow. It reports the failure only when `PD_OCR_DEBUG` is set.
+- Model-file resolution in `main()` normalizes every OCR and layout resolver
+  failure to one CLI stderr message and exit code 1.
+- Artifact rollback in `_artifacts.py` collects each cleanup error so a
+  rollback failure never masks the original write failure.
+- The per-image decode and processing handlers in `main()` catch all errors,
+  report them, and continue the batch rather than aborting on one bad scan.
 
 ### 19. `S110` — try-except-pass (ruff)
 
-**Files:** `pdomain_ocr_cli/_startup_notices.py` (line 100) and
-`_update_check.py` (line 155). Always paired with `BLE001`.
+**Files:** `pdomain_ocr_cli/_startup_notices.py` (line 100). Paired with
+`BLE001`.
 
-**Justification.** Both are best-effort boundaries. The startup notice helper
-and update check must not interrupt OCR when an optional dependency,
-subprocess, network request, or response parse fails.
+**Justification.** The startup notice helper is a best-effort boundary. It
+must not interrupt OCR when an optional dependency or subprocess fails.
 
 ### 20. `S310` — suspicious-url-open (ruff)
 
-**Files:** `pdomain_ocr_cli/_update_check.py` (lines 109, 116).
+**Files:** `pdomain_ocr_cli/_update_check.py` (line 133).
 
-**Suppression form:** `# noqa: S310` inline.
+**Suppression form:** `# noqa: S310` inline on the `urlopen` call.
 
-**Justification.** `urllib.request.Request` / `urlopen` are called only
-with a hardcoded `https://` PyPI URL. There is no `file://` or
+**Justification.** `urllib.request.urlopen` is called only with a hardcoded
+`https://` GitHub tags API URL. There is no `file://` or
 attacker-controlled scheme risk.
 
 ### 21. `S607` — start-process-with-partial-path (ruff)
@@ -206,7 +211,7 @@ update-check gate kept beside the tests that exercise it.
 
 ### 23. `TRY301` — raise-within-try (ruff)
 
-**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 991).
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 1069).
 
 **Suppression form:** `# noqa: TRY301` inline.
 
@@ -214,15 +219,15 @@ update-check gate kept beside the tests that exercise it.
 share the outer per-image decode handler. Moving the raise to a helper would
 split that single error-reporting path.
 
-### 24. `S603` — subprocess-without-shell-equals-true (ruff)
+### 24. `B010` — set-attr-with-constant (ruff)
 
-**Files:** `scripts/update_github_actions.py` (line 48).
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 513).
 
-**Suppression form:** `# noqa: S603` inline.
+**Suppression form:** `# noqa: B010` inline.
 
-**Justification.** The executable is resolved to an absolute path with
-`shutil.which`, and the command is passed as an argument list without shell
-parsing.
+**Justification.** The page protocol has no rotation field, so `setattr`
+attaches the OCR rotation angle to the page for the layout step without
+widening the protocol.
 
 ---
 
@@ -241,7 +246,7 @@ available.
 
 ### 26. `reportAttributeAccessIssue` — basedpyright
 
-**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (lines 413 and 436).
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (lines 429 and 452).
 
 **Suppression form:** `# pyright: ignore[reportAttributeAccessIssue]` inline.
 
@@ -251,7 +256,7 @@ The surrounding casts establish the callable types used downstream.
 
 ### 27. `reportPrivateUsage` — basedpyright
 
-**Files:** `tests/test_main_errors.py` (lines 31 and 79).
+**Files:** `tests/test_main_errors.py` (lines 40 and 120).
 
 **Suppression form:** `# pyright: ignore[reportPrivateUsage]` inline.
 
@@ -268,3 +273,11 @@ the public CLI boundary.
 - `failOnWarnings` is enabled for basedpyright.
 - Every inline suppression carries a trailing rationale, and this file is the
   consolidated catalogue.
+- `tests/test_opencv_io_max_image_pixels.py` (lines 32, 38, 58) contains
+  `# noqa: F401` text inside string-literal probe scripts that the tests run in
+  a subprocess. Ruff does not lint string contents, so these are not active
+  suppressions.
+- `# pragma: no cover` coverage exclusions appear in
+  `pdomain_ocr_cli/_update_check.py` (line 15) and `_artifacts.py` (lines 29
+  and 34), each with a trailing reason.
+- No `scripts/*.py` file carries an inline suppression.

@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-03
-Last verified: 2026-07-15
+Last verified: 2026-11-07
 Kind: process
 ---
 
@@ -192,9 +192,9 @@ how to remove the cache.
 ### Model trust boundary
 
 OCR and layout model checkpoints are trusted inputs. The default model
-source is maintained by this project, but mutable latest revisions can
-change. For reproducible runs, pass `--model-version` pinned to a tag
-or commit. Custom `--hf-repo`, local `--detection` / `--recognition`,
+source is maintained by this project, and the default `--model-version`
+is pinned to `v0.7`. A moving revision such as a branch name can
+change, so pass `--model-version` pinned to a tag or commit. Custom `--hf-repo`, local `--detection` / `--recognition`,
 and `--layout-checkpoint` values should only come from sources you
 trust.
 
@@ -252,11 +252,12 @@ makes exactly these outbound requests:
    - Cached at `~/.cache/huggingface/hub` by default; override with
      `$HF_HOME` or `$HF_HUB_CACHE`.
 2. **Version check** (every run, in the background):
-   - `GET https://api.github.com/repos/pdomain/pdomain-ocr-cli/tags`
+   - `GET https://api.github.com/repos/pdomain/pdomain-ocr-cli/tags?per_page=100`
    - 3-second timeout; if a newer release tag exists, prints a one-line
      upgrade notice to stderr.
-   - Best-effort: it silently suppresses any network or parse error, and
-     never blocks startup.
+   - Best-effort: it suppresses any network or parse error, and never
+     blocks startup. With `PD_OCR_DEBUG=1` it prints a one-line
+     `update check failed: ...` message to stderr.
    - Bypass entirely with `--no-update-check`, or persistently via
      the `PD_OCR_NO_UPDATE_CHECK=1` env var (e.g. offline runs or
      locked-down networks).
@@ -273,15 +274,20 @@ time to upgrade or to switch between CPU and GPU. They:
 
 - Install [uv](https://docs.astral.sh/uv/) if it isn't already on PATH.
 - Resolve the latest non-prerelease GitHub Release via the GitHub API
-  (or `gh` if authenticated) and download the published `.whl` asset.
+  (`install.sh` uses `gh` instead if it is authenticated) and download
+  the published `.whl` asset.
+- Check the downloaded wheel against the `sha256` digest GitHub reports
+  for it, and refuse to install if the digest is missing or does not
+  match.
 - Use Python 3.13 by default for the uv tool environment. Override with
   `PD_OCR_INSTALL_PYTHON` if you need another supported Python version.
 - Detect NVIDIA CUDA via `nvidia-smi`, pick the matching `cuXXX` PyTorch
   wheel index, and (when CUDA ≥ 12.4) add `--with 'pdomain-book-tools[gpu]'`
   for CuPy + opencv-cuda.
-- Run `uv tool install --reinstall <wheel>` with `--extra-index-url`
-  pointing at the self-hosted `pdomain-index-pip` (for `pdomain-book-tools`) and at
-  PyTorch's CUDA index when applicable.
+- Run `uv tool install --reinstall <wheel>` with
+  `--index-strategy first-index` and a named `--index` for the
+  self-hosted `pdomain-index-pip` (for `pdomain-book-tools`), listed
+  before PyTorch's CUDA `--index` when applicable.
 
 Once installed, `pdomain-ocr` itself only does the two outbound requests
 listed above.
@@ -310,7 +316,8 @@ CPU install (uses the self-hosted `pdomain-index-pip` PEP 503 index for
 
 ```sh
 uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
-    --extra-index-url https://pdomain.github.io/pdomain-index-pip/simple/
+    --index-strategy first-index \
+    --index pdomain=https://pdomain.github.io/pdomain-index-pip/simple/
 ```
 
 NVIDIA GPU install — replace `cuXXX` with your CUDA version (e.g.
@@ -320,9 +327,14 @@ extra):
 ```sh
 uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
     --with 'pdomain-book-tools[gpu]' \
-    --extra-index-url https://pdomain.github.io/pdomain-index-pip/simple/ \
-    --extra-index-url https://download.pytorch.org/whl/cuXXX
+    --index-strategy first-index \
+    --index pdomain=https://pdomain.github.io/pdomain-index-pip/simple/ \
+    --index pytorch-cuda=https://download.pytorch.org/whl/cuXXX
 ```
+
+These are the flags the installers use. A named `--index` with
+`--index-strategy first-index` makes `pdomain-book-tools` resolve only from
+the pdomain index, so another index cannot supply a package with that name.
 
 The `[gpu]` extra on `pdomain-book-tools` opts into `cupy-cuda12x` and
 `opencv-cuda`. Use `nvidia-smi` to read your CUDA version, or the
@@ -344,7 +356,8 @@ How the pieces fit together when you opt in:
 - **CUDA-enabled PyTorch wheels** — the same PyTorch you'd install
   on CPU, compiled to call into CUDA. The install script chooses
   the wheel matching your installed CUDA: `cu124` for CUDA 12.4,
-  `cu130` for 13.0, etc. (CUDA 12.4 or newer required.)
+  `cu130` for 13.0, etc. (CUDA 12.4 or newer is required for the
+  `[gpu]` extra.)
 - **OCR / layout model weights** — downloaded on first run; not
   GPU-specific.
 
@@ -367,7 +380,7 @@ Rough disk + memory budget for the NVIDIA path:
 Working on `pdomain-ocr-cli` itself? See [`DEVELOPMENT.md`](DEVELOPMENT.md) for the full
 developer guide. It covers `make setup`, the editable side-by-side workflow with
 `pdomain-book-tools` / `pdomain-ops` (`make local-setup`,
-`make run-local ARGS="…"`), the project layout, and the release process.
+`make local-dev`), the project layout, and the release process.
 Releases are blocked until all runtime dependencies, including
 `pdomain-ops`, resolve from `pdomain-index-pip` instead of a local path.
 
@@ -376,7 +389,7 @@ Quick start:
 ```sh
 git clone https://github.com/pdomain/pdomain-ocr-cli
 cd pdomain-ocr-cli
-make setup            # regular dev setup against the pinned pdomain-book-tools tag
+make setup            # regular dev setup against the pinned pdomain-book-tools version
 # — or —
-make local-setup      # also clones ../pdomain-book-tools and links it editable
+make local-dev        # also clones ../pdomain-book-tools and installs it editable
 ```

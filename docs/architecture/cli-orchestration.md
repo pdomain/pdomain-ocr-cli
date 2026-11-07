@@ -72,8 +72,10 @@ OCR and layout checkpoints are trusted inputs. The default OCR model is
 `pdomain/pdomain-ocr-models` pinned to revision `v0.7`. Only an unset revision
 or `latest` counts as mutable, and an explicit `latest` still prints a trust
 warning. Custom checkpoint paths or repositories also print a warning. The CLI
-does not sandbox model deserialization; safe loading waits on
-`pdomain-book-tools`.
+does not sandbox model deserialization itself. `pdomain-book-tools` loads
+DocTR checkpoints with `torch.load(..., weights_only=True)` and rejects any
+checkpoint that is not a plain state dict of tensors. No test in this
+repository guards that upstream behavior yet.
 
 The startup-notice seam owns update and GPU notices, including the environment
 and CLI opt-outs. The update check stays silent on failure unless

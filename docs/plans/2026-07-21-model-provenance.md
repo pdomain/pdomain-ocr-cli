@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: plan
 ---
 
@@ -10,57 +10,34 @@ Kind: plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Pin the default OCR model and guard the upstream safe-loading contract.
+## Goal
 
-**Architecture:** Argument parsing owns the immutable default. Model-security warnings continue to classify user overrides, while a test-only source inspection guards the upstream `weights_only=True` contract.
+Pin the default OCR model and guard the upstream safe-loading contract.
 
-**Tech Stack:** Python, argparse, pytest, pdomain-book-tools, uv
+## Architecture
+
+Argument parsing owns the immutable default. Model-security warnings continue to classify user overrides, while a test-only source inspection guards the upstream `weights_only=True` contract.
+
+## Tech Stack
+
+Python, argparse, pytest, pdomain-book-tools, uv
+
+## Global Constraints
+
+Never silently drop OCR words. Keep reusable logic in `pdomain-book-tools`.
+Run `make ci AI=1` before committing. Docs, code and tests change together.
+GitHub runs no workflows for this repository, so every check here is local.
 
 **Spec:** [model provenance design](../specs/2026-07-21-model-provenance-design.md)
 
 ---
 
-## Task 1: Pin the default revision
+## Status
 
-**Files:**
-
-- Modify: `pdomain_ocr_cli/ocr_to_txt.py`
-- Modify: `tests/test_parse_args.py`
-- Modify: `tests/test_model_security.py`
-
-- [ ] **Step 1: Add failing default and warning tests**
-
-```python
-def test_default_model_revision_is_immutable(monkeypatch):
-    monkeypatch.setattr(sys, "argv", ["pdomain-ocr", "page.png"])
-    assert parse_args().model_version == "v0.7"
-
-
-def test_default_revision_has_no_mutable_warning() -> None:
-    warnings = model_security_warnings(_args(model_version="v0.7"))
-    assert not any("mutable latest OCR model revision" in item for item in warnings)
-```
-
-- [ ] **Step 2: Confirm the tests fail**
-
-Run: `make test-k K='default_model_revision_is_immutable or default_revision_has_no_mutable_warning' AI=1`
-Expected: FAIL because the parser still defaults to `latest` or `None`.
-
-- [ ] **Step 3: Set one shared immutable default**
-
-Add `DEFAULT_MODEL_REVISION = "v0.7"` near the parser constants in `ocr_to_txt.py`. Use it as the `--model-version` default and make `_model_security.py` treat only `None` and `"latest"` as mutable.
-
-- [ ] **Step 4: Run focused tests**
-
-Run: `make test-k K='parse_args or model_security' AI=1`
-Expected: PASS.
-
-- [ ] **Step 5: Commit the default pin**
-
-```bash
-git add pdomain_ocr_cli/ocr_to_txt.py pdomain_ocr_cli/_model_security.py tests/test_parse_args.py tests/test_model_security.py
-git commit -m "fix: pin default OCR model revision"
-```
+Task 1, the `v0.7` default revision pin, shipped in `7af73fc` (v0.9.1); see
+[cli-orchestration.md](../architecture/cli-orchestration.md#trust-and-network-boundaries).
+Task 2 is open and not blocked: `pdomain-book-tools` 0.30.1 already loads
+checkpoints with `weights_only=True`.
 
 ## Task 2: Guard safe upstream loading
 
@@ -73,20 +50,20 @@ git commit -m "fix: pin default OCR model revision"
 ```python
 import inspect
 
-from pdomain_book_tools import doctr
+from pdomain_book_tools.ocr import doctr_support
 
 
 def test_upstream_torch_load_is_weights_only() -> None:
-    source = inspect.getsource(doctr)
+    source = inspect.getsource(doctr_support)
     assert "weights_only=True" in source
 ```
 
-Resolve the exact upstream module containing `torch.load` with `rg -n 'torch\.load' ../pdomain-book-tools/pdomain_book_tools` and import that module instead of `doctr` if needed.
+In 0.30.1 the loader is `functools.partial(torch.load, weights_only=True)` in `pdomain_book_tools/ocr/doctr_support.py`. If upstream moves it, find it with `rg -n 'torch\.load' ../pdomain-book-tools/pdomain_book_tools`.
 
 - [ ] **Step 2: Verify the contract**
 
 Run: `uv run pytest -n auto tests/test_upstream_safe_load.py -v`
-Expected: PASS against `pdomain-book-tools >=0.18.0`.
+Expected: PASS against `pdomain-book-tools==0.30.1`.
 
 - [ ] **Step 3: Run all gates**
 

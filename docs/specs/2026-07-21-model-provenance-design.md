@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -19,6 +19,12 @@ The CLI will pin its default OCR model to an immutable Hugging Face revision and
 - **Relates to:** [issue](../issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md)
 
 **Implementation plan:** [model provenance plan](../plans/2026-07-21-model-provenance.md)
+
+## Status on 2026-11-07
+
+The default revision pin (`v0.7`) shipped in `7af73fc`. The upstream
+safe-loading test has not been written. `pdomain-book-tools` 0.30.1 keeps the
+loader in `pdomain_book_tools/ocr/doctr_support.py`.
 
 ## Adopted design
 

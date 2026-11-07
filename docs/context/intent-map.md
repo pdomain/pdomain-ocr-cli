@@ -28,8 +28,8 @@ Kind: context
 
 ## Deferred work
 
-- Constrain executable model checkpoints with a safer format or loading mode
-  when upstream compatibility permits. The default revision pin shipped.
+- Guard the upstream safe checkpoint loader with a test in this repository
+  (former GH #15 part 2). The default revision pin shipped.
 - Replace mutable pre-commit revision tags with immutable commit pins if the
   owner chooses SHAs (former GH #45).
 - Further split the large happy-path and error-path test modules when doing so
@@ -53,16 +53,15 @@ Kind: context
 
 ## Blocked (waiting on)
 
-- Safe checkpoint loading remains blocked on upstream compatibility work
-  (roadmap Blocked section; former GH #15).
+- Output normalization waits on a shared `normalize_text` in
+  `pdomain-book-tools`; version 0.30.1 has none.
 
 ## Open issues
 
 Governed reports under [`docs/issues/`](../issues/README.md) (GitHub tracker empty):
 
-- [Model revision pin + safe load](../issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md) (former GH #15, Blocked)
+- [Model revision pin + safe load](../issues/2026-07-19-gh-15-model-revision-pin-and-safe-load.md) (former GH #15, Next)
 - [Pre-commit immutable pins](../issues/2026-07-19-gh-45-pre-commit-immutable-pins.md) (former GH #45, needs decision)
-- [Dep-refresh leftovers](../issues/2026-08-08-dep-refresh-cannot-auto-land.md) (needs decision)
 - [Deferred normalize-output](../issues/2026-07-19-normalize-output-flag-deferred.md) (Later)
 
 Standing priority order remains in [`docs/roadmap.md`](../roadmap.md).
@@ -70,8 +69,6 @@ Standing priority order remains in [`docs/roadmap.md`](../roadmap.md).
 ## Needs owner decision
 
 - Choose tag or commit-SHA revisions for pre-commit hooks (former GH #45).
-- Close dep-refresh pull requests #58 to #66 and delete their `dep-refresh/*`
-  branches on origin. Commit `7041179` removed the workflow on 2026-09-13.
 - Six implemented specs cannot be retired by the doc-retirer rules because they
   have no `## Adversarial Review` section. They are marked `implemented` and
   point at their architecture docs. Decide whether to add a review record and

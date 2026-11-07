@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-31
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: decision
 ---
 
@@ -40,8 +40,8 @@ No supersession relationship is recorded.
 | File | Line | Rule | Rationale |
 |------|------|------|-----------|
 | `pdomain_ocr_cli/_startup_notices.py` | 53 | `reportMissingImports` | `cupy` is an optional GPU dependency not declared in `pyproject.toml`. The import is a runtime probe; the ignore lets the type checker skip the missing stub. |
-| `pdomain_ocr_cli/ocr_to_txt.py` | 413 | `reportAttributeAccessIssue` | `module` is the result of `importlib.import_module("pdomain_ops.gpu.device")` cast to `object`. Basedpyright cannot resolve attributes on `object`; the `cast` on the same line completes the type for downstream callers. |
-| `pdomain_ocr_cli/ocr_to_txt.py` | 436 | `reportAttributeAccessIssue` | Same pattern — `importlib.import_module("pdomain_ops.gpu.doctr_batch")` cast to `object`. The outer `cast` resolves the callable type; the suppress covers the intermediate attribute access. |
+| `pdomain_ocr_cli/ocr_to_txt.py` | 429 | `reportAttributeAccessIssue` | `module` is the result of `importlib.import_module("pdomain_ops.gpu.device")` cast to `object`. Basedpyright cannot resolve attributes on `object`; the `cast` on the same line completes the type for downstream callers. |
+| `pdomain_ocr_cli/ocr_to_txt.py` | 452 | `reportAttributeAccessIssue` | Same pattern — `importlib.import_module("pdomain_ops.gpu.doctr_batch")` cast to `object`. The outer `cast` resolves the callable type; the suppress covers the intermediate attribute access. |
 
 ## `noqa` suppressions with structural rationale
 
@@ -50,7 +50,7 @@ suppression needs extra explanation:
 
 | File | Line | Rule | Rationale |
 |------|------|------|-----------|
-| `pdomain_ocr_cli/ocr_to_txt.py` | 991 | `TRY301` | `raise ValueError(...)` is inside a `try` block. TRY301 suggests abstracting the raise to an inner function, but here it is intentional: the outer `except Exception` (line 994) unifies all per-image decode failures — both the explicit ValueError and any unexpected cv2 error — through a single error-reporting path. Abstracting would require duplicating that handler. |
+| `pdomain_ocr_cli/ocr_to_txt.py` | 1069 | `TRY301` | `raise ValueError(...)` is inside a `try` block. TRY301 suggests abstracting the raise to an inner function, but here it is intentional: the outer `except Exception` (line 1075) unifies all per-image decode failures — both the explicit ValueError and any unexpected cv2 error — through a single error-reporting path. Abstracting would require duplicating that handler. |
 
 Other inline and configured suppressions are outside this decision's historical
 inventory. `docs/conventions/lint-deviations.md` is the authoritative catalogue.

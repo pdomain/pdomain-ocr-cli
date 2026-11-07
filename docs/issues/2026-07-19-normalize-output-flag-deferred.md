@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Low — feature not implemented; blocked on upstream
 - **Affected version:** pdomain-ocr-cli master @ 3a818aa (docs baseline)
@@ -23,6 +23,9 @@ Level: I1
 - **Relates to:** [usage future proposal](../usage/cli-usage.md)
 
 ## Summary
+
+**Update 2026-11-07:** Still deferred. `pdomain-book-tools` 0.30.1 has no
+shared `normalize_text` or glyph map.
 
 Add `--normalize-output {none|ascii|...}` (default none) only after pdomain-book-tools provides shared normalization logic and a glyph map. CLI owns flag name, help, defaults, and applying normalization between reorg and text output.
 

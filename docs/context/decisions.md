@@ -15,6 +15,19 @@ Kind: context
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
 
+### 2026-11-07 Retired: Weekly dep-refresh branches and pull requests accumulate instead of landing
+
+- Old path: `docs/issues/2026-08-08-dep-refresh-cannot-auto-land.md`
+- Outcome: resolved. Commit `7041179` removed `dep-refresh.yml` and `ci.yml`
+  on 2026-09-13, and branch protection is off. On 2026-11-07 the owner
+  approved closing the leftovers: pull requests #58 to #66 were closed and all
+  13 `dep-refresh/*` branches on origin were deleted.
+- Superseded by: `docs/architecture/cli-orchestration.md` (Release boundary)
+- Removal commit: (fill after commit)
+- Rationale kept: GitHub runs no workflows for this repository; the release
+  boundary section says so.
+- Remaining work: none
+
 ### 2026-11-07 — Remaining-work docs pass after v0.9.0 and v0.9.1
 
 - **Context:** v0.9.0 (`c325c13`) and v0.9.1 (`7af73fc`) shipped most of the

@@ -21,7 +21,7 @@ v0.9.1 is released and published to the pdomain pip index. It ships
 rotation-aligned layout and crops, installer index and digest checks, image
 limits, output rollback, the pinned `v0.7` model, update-check diagnostics, and
 dependency bounds. No product work is in the Now tier. The open items are one
-blocked fix, two owner decisions, and deferred output normalization; see
+test to add, one owner decision, and deferred output normalization; see
 [`docs/roadmap.md`](../roadmap.md).
 
 These docs describe current behavior:
@@ -53,12 +53,11 @@ installing the declared PowerShell prerequisite through
 
 ## Risks
 
-- Model checkpoints still deserialize without a safe-load mode; that fix is
-  blocked upstream (former GH #15).
-- Nine stale dep-refresh pull requests (#58 to #66) remain open on GitHub.
+- No test here fails if `pdomain-book-tools` drops `weights_only=True` from
+  its checkpoint loader (former GH #15).
 
 Predictor batch-size defaults now live upstream. Only benchmarking or CLI
 exposure remains deferred.
 
 Open governed reports live under [`docs/issues/`](../issues/README.md)
-(4 active); see intent-map Open issues.
+(3 active); see intent-map Open issues.

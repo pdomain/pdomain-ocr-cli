@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-14
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: process
 ---
 
@@ -16,22 +16,22 @@ reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 
 | target | does |
 |---|---|
-| `make setup AI=1` | dev venv + pre-commit hooks (pinned `pdomain-book-tools` tag) |
+| `make setup AI=1` | dev venv + pre-commit hooks (exact `pdomain-book-tools` pin from `pdomain-index-pip`) |
 | `make local-setup` | clone any missing sibling pd-* repos into the workspace |
 | `make local-dev` | switch to local-dev mode (editable `../pdomain-book-tools` + marker) |
 | `make local-check` | print local-dev mode + per-sibling resolution |
 | `make local-upgrade-deps` | upgrade deps then restore editable siblings (local-mode only) |
 | `make local-install` / `local-uninstall` | `uv tool install` with editable siblings / uninstall |
-| `make local-run` | run `pdomain-ocr` against local-dev workspace (local-mode only) |
+| `make local-run` | broken: `scripts/local-run.sh` calls `make run`, which the Makefile lacks |
 | `make local-test` | run fast test suite against editable local-dev siblings (local-mode only) |
 | `make local-test-slow` | run full test suite incl. slow integration tests against editable local-dev siblings (local-mode only) |
-| `make update-pdomain-deps` | bump pd-* sibling deps to registry latest; leaves diff for review |
+| `make update-pdomain-deps` | bump `>=` pins of pd-* sibling deps to `pdomain-index-pip` latest; leaves diff for review |
 | `make test AI=1` | fast suite (`uv run pytest -n auto`; skips `@pytest.mark.slow`) |
 | `make test-slow AI=1` | full suite incl. real-model integration tests |
 | `make lint AI=1` / `make format AI=1` | ruff |
 | `make build AI=1` | sdist + wheel into `dist/` |
-| `make ci AI=1` | setup → pre-commit → test → build |
-| `make upgrade-pdomain-book-tools` | bump pin to latest GitHub tag |
+| `make ci AI=1` | setup → pre-commit → format-check → typecheck → coverage → installer-test → build → wheel-smoke |
+| `make upgrade-pdomain-book-tools` | deprecated alias for `make update-pdomain-deps` |
 | `make release-{patch,minor,major}` | run the `make ci-slow` preflight, create and push the tag, then build and create the GitHub Release locally |
 | `make refresh-version` | re-derive `pdomain-ocr --version` after tag changes (hatch-vcs) |
 
@@ -56,12 +56,12 @@ Full target list: `make help`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md
 - Never silently drop OCR words. Reorg, caption suppression, and all output paths must preserve every word — roles may change, words may not disappear.
 - `--no-illustration-placeholders` suppresses the placeholder block, not caption text. Caption words must survive in the output.
 - `pdomain-book-tools` is upstream for OCR/layout/image primitives. Coordinate with that agent before adding logic that belongs in the library.
-- `pdomain-book-tools` is pinned in `pyproject.toml`. Upgrade it with `make upgrade-pdomain-book-tools`.
+- `pdomain-book-tools` is pinned exactly (`==`) in `pyproject.toml`, in both `dependencies` and the `gpu` extra. `make update-pdomain-deps` rewrites only `>=` pins, so bump this pin by hand, then run `uv lock`.
 - `hatch-vcs` derives the version from git tags, so `pyproject.toml` carries no hardcoded version.
 
 ## Sibling repos
 
-- `../pdomain-book-tools/` — upstream dependency. Side-by-side editing: `make local-setup` + `make dev-local`.
+- `../pdomain-book-tools/` — upstream dependency. Side-by-side editing: `make local-setup` + `make local-dev`.
 
 ## Docs
 
@@ -89,8 +89,9 @@ When shipping a plan task:
 ## docs/ folder
 
 This repo follows the workspace docs/ template — see [`docs/README.md`](docs/README.md). Active
-folders: `architecture/`, `context/`, `conventions/`, `decisions/`, `process/`,
-`research/`, `specs/`, `templates/`, and `usage/`.
+folders: `architecture/`, `context/`, `conventions/`, `decisions/`, `issues/`,
+`plans/`, `process/`, `research/`, `runbooks/`, `specs/`, `templates/`, and
+`usage/`.
 
 **Superpowers redirect.** This repo has no `docs/superpowers/` subdirectory.
 So when a superpowers skill (e.g. `brainstorming`, `writing-plans`) tells you
