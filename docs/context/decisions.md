@@ -28,7 +28,7 @@ Kind: context
   reverted frozen SHAs to tags; `pdomain-ocr-labeler-spa` lost three of its six
   frozen pins that way in `a7965c95`.
 - Superseded by: `docs/architecture/cli-orchestration.md` (Dependency bounds)
-- Removal commit: (fill after commit)
+- Removal commit: `6071bc5`
 - Rationale kept: the architecture section and this entry.
 - Remaining work: none
 
