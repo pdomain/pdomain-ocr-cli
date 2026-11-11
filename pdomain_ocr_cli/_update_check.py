@@ -55,6 +55,12 @@ def _report_failure(exc: Exception) -> None:
         print(f"update check failed: {type(exc).__name__}: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
 
 
+def _report_diagnostic(reason: str) -> None:
+    """Write a fixed reason to stderr when ``PD_OCR_DEBUG`` is set; never response data."""
+    if _env_truthy("PD_OCR_DEBUG"):
+        print(f"update check failed: {reason}", file=sys.stderr)  # noqa: T201  # CLI output
+
+
 def _parse_stable_tag(version: str) -> tuple[int, int, int] | None:
     """Parse strict stable tags like v1.2.3 or 1.2.3."""
     match = _STABLE_TAG_RE.match(version.strip())
@@ -143,13 +149,16 @@ def check_for_update() -> None:
         # update-check machinery degrades cleanly instead of silently dying.
         tags = _parse_tag_payload(payload)
         if tags is None:
+            _report_diagnostic("GitHub did not return a usable tag list")
             return
         latest_stable = _latest_stable_tag(tags)
         if latest_stable is None:
+            _report_diagnostic("no stable release tag")
             return
 
         current = _parse_release_prefix(VERSION)
         if current is None:
+            _report_diagnostic("cannot parse installed version")
             return
 
         latest_tag_name, latest = latest_stable

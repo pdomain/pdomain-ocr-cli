@@ -334,3 +334,29 @@ def test_tags_request_sets_explicit_user_agent(monkeypatch):
     )
     assert "pdomain-ocr-cli" in ua, f"User-Agent must identify pdomain-ocr-cli (got: {ua!r})"
     assert "0.5.0" in ua, f"User-Agent must include the package version (got: {ua!r})"
+
+
+def test_debug_reports_non_list_response_without_its_body(monkeypatch, capsys):
+    monkeypatch.setattr(_update_check, "VERSION", "1.0.0")
+    monkeypatch.setenv("PD_OCR_DEBUG", "1")
+    with patch("urllib.request.urlopen", _fake_urlopen({"message": "API rate limit exceeded"})):
+        _update_check.check_for_update()
+    err = capsys.readouterr().err
+    assert "update check failed:" in err
+    assert "rate limit" not in err
+
+
+def test_debug_reports_no_stable_tag(monkeypatch, capsys):
+    monkeypatch.setattr(_update_check, "VERSION", "1.0.0")
+    monkeypatch.setenv("PD_OCR_DEBUG", "1")
+    with patch("urllib.request.urlopen", _fake_urlopen([{"name": "v2.0.0-rc1"}])):
+        _update_check.check_for_update()
+    assert "update check failed: no stable release tag" in capsys.readouterr().err
+
+
+def test_debug_reports_unparseable_current_version(monkeypatch, capsys):
+    monkeypatch.setattr(_update_check, "VERSION", "not-a-version")
+    monkeypatch.setenv("PD_OCR_DEBUG", "1")
+    with patch("urllib.request.urlopen", _fake_urlopen([{"name": "v1.0.0"}])):
+        _update_check.check_for_update()
+    assert "update check failed: cannot parse installed version" in capsys.readouterr().err
