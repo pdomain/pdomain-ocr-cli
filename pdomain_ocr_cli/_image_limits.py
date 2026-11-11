@@ -20,6 +20,9 @@ if TYPE_CHECKING:
 
 MAX_IMAGE_BYTES = 100 * 1024 * 1024
 MAX_IMAGE_PIXELS = 100_000_000
+# What the default --batch-pages of 4 could already hold at the per-image cap,
+# about 1.2 GB decoded. Only larger --batch-pages values are affected.
+MAX_CHUNK_PIXELS = 4 * MAX_IMAGE_PIXELS
 
 
 class ImageLimitError(ValueError):
@@ -47,3 +50,8 @@ def validate_pixel_count(path: Path, dimensions: tuple[int, int]) -> None:
     pixels = dimensions[0] * dimensions[1]
     if pixels > MAX_IMAGE_PIXELS:
         raise ImageLimitError(f"{path}: {pixels} pixels exceeds the {MAX_IMAGE_PIXELS}-pixel limit")
+
+
+def exceeds_chunk_budget(chunk_pixels: int, dimensions: tuple[int, int]) -> bool:
+    """True when adding the image would overrun the chunk; a first image always fits."""
+    return chunk_pixels > 0 and chunk_pixels + dimensions[0] * dimensions[1] > MAX_CHUNK_PIXELS

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from pdomain_ocr_cli import _image_limits
 from pdomain_ocr_cli._image_limits import (
     MAX_IMAGE_BYTES,
     MAX_IMAGE_PIXELS,
@@ -39,3 +40,13 @@ def test_validate_pixel_count_rejects_one_pixel_over_limit() -> None:
         match=rf"page\.png: 100000001 pixels exceeds .*{MAX_IMAGE_PIXELS}",
     ):
         validate_pixel_count(path, (100_000_001, 1))
+
+
+def test_chunk_budget_always_admits_the_first_image() -> None:
+    assert not _image_limits.exceeds_chunk_budget(0, (20_000, 20_000))
+
+
+def test_chunk_budget_boundary() -> None:
+    budget = _image_limits.MAX_CHUNK_PIXELS
+    assert not _image_limits.exceeds_chunk_budget(budget - 100, (10, 10))
+    assert _image_limits.exceeds_chunk_budget(budget - 100, (101, 1))

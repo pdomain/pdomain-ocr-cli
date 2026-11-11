@@ -9,9 +9,12 @@ These tests verify:
 
 from __future__ import annotations
 
-import pytest
+from pathlib import Path
 
-from pdomain_ocr_cli import ocr_to_txt
+import pytest
+from PIL import Image, UnidentifiedImageError
+
+from pdomain_ocr_cli import _image_limits, ocr_to_txt
 
 
 def test_batch_pages_chunking_calls_run_doctr_batch_with_correct_chunk_sizes(
@@ -164,3 +167,78 @@ def test_main_rejects_flat_output_collision_before_model_resolution(
     err = capsys.readouterr().err
     assert "output path collision" in err
     assert str(out / "page.txt") in err
+
+
+def _title_image_pixels(path) -> int:
+    with Image.open(path) as header:
+        return header.size[0] * header.size[1]
+
+
+def test_chunk_is_split_when_decoded_pixels_exceed_the_budget(
+    mock_heavy_deps, run_main, make_images, tmp_path, monkeypatch
+):
+    imgs = make_images(3)
+    out = tmp_path / "out"
+    monkeypatch.setattr(_image_limits, "MAX_CHUNK_PIXELS", 2 * _title_image_pixels(imgs[0]))
+    ns = mock_heavy_deps(texts=["T0", "T1", "T2"])
+
+    run_main(
+        "--no-update-check",
+        "--layout-model",
+        "none",
+        "--batch-pages",
+        "3",
+        "-o",
+        str(out),
+        *[str(i) for i in imgs],
+    )
+
+    assert [c["chunk_size"] for c in ns.batch_calls] == [2, 1]
+    for i, img in enumerate(imgs):
+        assert (out / f"{img.stem}.txt").read_text() == f"T{i}"
+
+
+def test_chunk_is_split_for_images_only_cv2_can_read(
+    mock_heavy_deps, run_main, make_images, tmp_path, monkeypatch
+):
+    imgs = make_images(2)
+    out = tmp_path / "out"
+    monkeypatch.setattr(_image_limits, "MAX_CHUNK_PIXELS", _title_image_pixels(imgs[0]))
+    ns = mock_heavy_deps(texts=["T0", "T1"])
+
+    def unreadable(_path):
+        raise UnidentifiedImageError
+
+    monkeypatch.setattr(Image, "open", unreadable)
+
+    run_main(
+        "--no-update-check",
+        "--layout-model",
+        "none",
+        "--batch-pages",
+        "2",
+        "-o",
+        str(out),
+        *[str(i) for i in imgs],
+    )
+
+    assert [c["chunk_size"] for c in ns.batch_calls] == [1, 1]
+
+
+def test_file_that_grows_past_the_byte_limit_is_rejected_after_reading(
+    mock_heavy_deps, run_main, make_images, tmp_path, monkeypatch, capsys
+):
+    imgs = make_images(1)
+    out = tmp_path / "out"
+    size = imgs[0].stat().st_size
+    monkeypatch.setattr(_image_limits, "MAX_IMAGE_BYTES", size)
+    real_read_bytes = Path.read_bytes
+    monkeypatch.setattr(Path, "read_bytes", lambda self: real_read_bytes(self) + b"x")
+    ns = mock_heavy_deps()
+
+    with pytest.raises(SystemExit) as excinfo:
+        run_main("--no-update-check", "--layout-model", "none", "-o", str(out), str(imgs[0]))
+
+    assert excinfo.value.code == 1
+    assert f"{size + 1} bytes exceeds" in capsys.readouterr().err
+    assert ns.batch_calls == []

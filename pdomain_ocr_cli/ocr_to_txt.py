@@ -76,6 +76,7 @@ import subprocess as _subprocess
 import sys
 import threading
 import warnings
+from collections import deque
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -86,6 +87,7 @@ from typing import TYPE_CHECKING, Protocol, cast
 from pdomain_ocr_cli._image_limits import (
     MAX_IMAGE_PIXELS,
     ImageLimitError,
+    exceeds_chunk_budget,
     validate_byte_size,
     validate_pixel_count,
 )
@@ -1018,13 +1020,13 @@ def main() -> None:
 
     outer_break = False
     jobs = batch_plan.jobs
+    pending = deque(jobs)
+    batch_number = 0
     # Scanned once, before this run stages anything, so its own files are never
     # mistaken for leftovers and a large directory is not rescanned per page.
     stale_outputs = find_stale_outputs(job.dest_dir for job in jobs)
-    for chunk_start in range(0, len(jobs), chunk_size):
-        if outer_break:
-            break
-        chunk = jobs[chunk_start : chunk_start + chunk_size]
+    while pending and not outer_break:
+        batch_number += 1
 
         # Decode each image in the chunk individually so that a corrupt image
         # is caught here — as a per-image error — rather than inside
@@ -1033,7 +1035,11 @@ def main() -> None:
         survivor_jobs: list[PageJob] = []
         survivor_arrays: list[object] = []
         survivor_ids: list[str] = []
-        for job in chunk:
+        survivor_pixels = 0
+        slots = chunk_size
+        while pending and slots:
+            job = pending.popleft()
+            slots -= 1
             img_path = job.image_path
             try:
                 # Reject oversized inputs before decode: byte size from stat,
@@ -1058,7 +1064,12 @@ def main() -> None:
                     dimensions = None
                 if dimensions is not None:
                     validate_pixel_count(img_path, dimensions)
+                    if exceeds_chunk_budget(survivor_pixels, dimensions):
+                        pending.appendleft(job)
+                        break
                 raw = img_path.read_bytes()
+                # The file can grow between the stat above and this read.
+                validate_byte_size(img_path, len(raw))
                 try:
                     arr = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
                 except cv2.error as exc:
@@ -1077,7 +1088,11 @@ def main() -> None:
                     )
                 if dimensions is None:
                     height, width, _channels = cast("tuple[int, int, int]", arr.shape)
-                    validate_pixel_count(img_path, (width, height))
+                    dimensions = (width, height)
+                    validate_pixel_count(img_path, dimensions)
+                    if exceeds_chunk_budget(survivor_pixels, dimensions):
+                        pending.appendleft(job)
+                        break
             except Exception as e:  # noqa: BLE001  # per-image decode error: catch all, report, continue
                 # Print the "Processing X ..." prefix here (for decode failures)
                 # so that each failed image's output stays on its own terminated
@@ -1091,6 +1106,7 @@ def main() -> None:
             survivor_jobs.append(job)
             survivor_arrays.append(arr)
             survivor_ids.append(img_path.name)
+            survivor_pixels += dimensions[0] * dimensions[1]
 
         if not survivor_arrays:
             # Every image in this chunk failed at decode; skip the batch call.
@@ -1103,7 +1119,7 @@ def main() -> None:
             )
         except BatchRuntimeError as exc:
             print(  # noqa: T201  # CLI output
-                f"ERROR processing batch {chunk_start // chunk_size + 1}: {exc}",
+                f"ERROR processing batch {batch_number}: {exc}",
                 file=sys.stderr,
             )
             errors += len(survivor_jobs)
