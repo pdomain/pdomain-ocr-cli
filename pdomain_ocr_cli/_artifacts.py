@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 from uuid import uuid4
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable, Sequence
     from pathlib import Path
+
+_LEFTOVER_NAME_RE = re.compile(r"\.(?P<name>.+)\.[0-9a-f]{32}\.(?:bak|stage)")
 
 
 def _open_staged(path: Path, *, suffix: str = ".tmp") -> tuple[int, Path]:
@@ -128,6 +131,46 @@ def atomic_write_json_document(path: Path, doc: JsonDocumentLike) -> None:
         raise
 
 
+def find_stale_outputs(directories: Iterable[Path]) -> dict[Path, list[Path]]:
+    """Map each destination to the transaction files a killed run left beside it."""
+    stale: dict[Path, list[Path]] = {}
+    for directory in set(directories):
+        # An unreadable or absent directory surfaces as a per-page write error.
+        entries: list[Path] = []
+        with contextlib.suppress(OSError):
+            entries = list(directory.iterdir())
+        for entry in entries:
+            match = _LEFTOVER_NAME_RE.fullmatch(entry.name)
+            if match:
+                stale.setdefault(directory / match["name"], []).append(entry)
+    return stale
+
+
+def recover_stale_outputs(destination: Path, leftovers: Sequence[Path]) -> list[str]:
+    """Restore or remove what a killed run left for *destination*; return warnings.
+
+    With no destination the newest backup is the last complete artifact, so it
+    goes back. Anything else is superseded: unpromoted staging, an empty
+    reservation, or an older copy of a destination that still exists.
+    """
+    to_restore: Path | None = None
+    if not destination.exists():
+        backups = [leftover for leftover in leftovers if leftover.suffix == ".bak"]
+        to_restore = max(backups, key=lambda backup: backup.stat().st_mtime_ns, default=None)
+    notes: list[str] = []
+    for leftover in leftovers:
+        try:
+            if leftover == to_restore:
+                _ = leftover.replace(destination)
+                notes.append(f"restored {destination} from a backup left by an interrupted run")
+            else:
+                leftover.unlink()
+                notes.append(f"removed {leftover} left by an interrupted run")
+        except OSError as exc:
+            notes.append(f"could not clean up {leftover}: {exc}")
+    return notes
+
+
 @dataclass
 class PageOutputTransaction:
     """Stage new page artifacts, then promote or roll them all back together.
@@ -145,6 +188,11 @@ class PageOutputTransaction:
     _backups: list[tuple[Path, Path]] = field(default_factory=list, init=False, repr=False)
     _promoted: list[Path] = field(default_factory=list, init=False, repr=False)
     _committed: bool = field(default=False, init=False, repr=False)
+    cleanup_warnings: list[str] = field(default_factory=list, init=False)
+
+    @property
+    def destinations(self) -> list[Path]:
+        return [destination for destination, _staged in self._staged]
 
     def add_bytes(self, path: Path, data: bytes) -> None:
         """Stage *data* for *path* without touching *path* itself."""
@@ -212,15 +260,16 @@ class PageOutputTransaction:
         for destination, _staged in self._staged:
             if destination.exists():
                 backup = _reserve_sibling_path(destination, suffix=".bak")
-                _ = destination.replace(backup)
+                # Recorded before the rename so an interrupt straight after it
+                # cannot strand the old artifact in the backup.
                 self._backups.append((destination, backup))
+                _ = destination.replace(backup)
 
     def _promote(self, destination: Path, staged: Path) -> None:
-        _ = staged.replace(destination)
-        # Record the destination immediately after the rename, before the
-        # parent-dir fsync. If fsync fails, rollback still knows to remove
-        # the file that already landed.
+        # Recorded before the rename so an interrupt or fsync failure after it
+        # still removes the new file. Before the rename the name is empty.
         self._promoted.append(destination)
+        _ = staged.replace(destination)
         _fsync_parent_dir(destination)
 
     def _rollback(self) -> list[Exception]:
@@ -232,7 +281,12 @@ class PageOutputTransaction:
                 errors.append(exc)
         for destination, backup in reversed(self._backups):
             try:
-                _ = backup.replace(destination)
+                # A destination still in place and not promoted means its backup
+                # rename never ran, so the backup is only the empty reservation.
+                if destination.exists() and destination not in self._promoted:
+                    backup.unlink()
+                else:
+                    _ = backup.replace(destination)
             except Exception as exc:  # noqa: BLE001  # rollback must not mask the original failure
                 errors.append(exc)
         errors.extend(self._discard_staged())
@@ -250,8 +304,10 @@ class PageOutputTransaction:
         return errors
 
     def _discard_backups(self) -> None:
-        # The page already promoted successfully. A failure discarding a
-        # backup must not turn that page into a reported error.
+        # The page already promoted successfully, so a leftover backup is a
+        # warning for the caller and not a page error.
         for _destination, backup in self._backups:
-            with contextlib.suppress(OSError):
-                backup.unlink()
+            try:
+                backup.unlink(missing_ok=True)
+            except OSError as exc:
+                self.cleanup_warnings.append(f"could not remove old backup {backup}: {exc}")

@@ -13,6 +13,8 @@ from pdomain_ocr_cli._artifacts import (
     PageOutputTransaction,
     atomic_write_json_document,
     atomic_write_text,
+    find_stale_outputs,
+    recover_stale_outputs,
 )
 
 
@@ -413,3 +415,167 @@ def test_page_output_transaction_discard_staged_survives_non_oserror_failure(
     assert isinstance(group.exceptions[0], OSError)
     assert str(group.exceptions[0]) == "forced"
     assert any(isinstance(exc, RuntimeError) for exc in group.exceptions[1:])
+
+
+def _replace_then_raise(
+    monkeypatch: pytest.MonkeyPatch, source_suffix: str, target_suffix: str
+) -> None:
+    """Interrupt the first matching rename just after it lands on disk."""
+    real_replace = Path.replace
+
+    def replace(self: Path, target: Path) -> Path:
+        result = real_replace(self, target)
+        if self.name.endswith(source_suffix) and Path(target).name.endswith(target_suffix):
+            raise KeyboardInterrupt
+        return result
+
+    monkeypatch.setattr(Path, "replace", replace)
+
+
+def test_commit_removes_reserved_backup_when_backup_rename_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "page.txt"
+    _ = target.write_text("old", encoding="utf-8")
+    real_replace = Path.replace
+
+    def replace(self: Path, other: Path) -> Path:
+        if Path(other).name.endswith(".bak"):
+            raise OSError("no rename")
+        return real_replace(self, other)
+
+    monkeypatch.setattr(Path, "replace", replace)
+    transaction = PageOutputTransaction()
+    transaction.add_text(target, "new")
+
+    with pytest.raises(OSError, match="no rename"):
+        transaction.commit()
+
+    assert target.read_text(encoding="utf-8") == "old"
+    assert [path.name for path in tmp_path.iterdir()] == ["page.txt"]
+
+
+def test_commit_restores_destination_interrupted_right_after_backup_rename(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "page.txt"
+    _ = target.write_text("old", encoding="utf-8")
+    transaction = PageOutputTransaction()
+    transaction.add_text(target, "new")
+    _replace_then_raise(monkeypatch, "page.txt", ".bak")
+
+    with pytest.raises(KeyboardInterrupt):
+        transaction.commit()
+
+    assert target.read_text(encoding="utf-8") == "old"
+    assert [path.name for path in tmp_path.iterdir()] == ["page.txt"]
+
+
+def test_commit_removes_new_file_interrupted_right_after_promotion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "page.txt"
+    transaction = PageOutputTransaction()
+    transaction.add_text(target, "new")
+    _replace_then_raise(monkeypatch, ".stage", "page.txt")
+
+    with pytest.raises(KeyboardInterrupt):
+        transaction.commit()
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_commit_reports_backup_it_could_not_remove(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "page.txt"
+    _ = target.write_text("old", encoding="utf-8")
+    real_unlink = Path.unlink
+
+    def unlink(self: Path, *, missing_ok: bool = False) -> None:
+        if self.name.endswith(".bak"):
+            raise PermissionError("locked")
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", unlink)
+    transaction = PageOutputTransaction()
+    transaction.add_text(target, "new")
+
+    transaction.commit()
+
+    assert target.read_text(encoding="utf-8") == "new"
+    assert len(transaction.cleanup_warnings) == 1
+    assert ".bak" in transaction.cleanup_warnings[0]
+    assert "locked" in transaction.cleanup_warnings[0]
+
+
+def _leftover(destination: Path, kind: str, content: str = "x", digit: str = "a") -> Path:
+    leftover = destination.parent / f".{destination.name}.{digit * 32}.{kind}"
+    _ = leftover.write_text(content, encoding="utf-8")
+    return leftover
+
+
+def test_find_stale_outputs_maps_leftovers_to_their_destination(tmp_path: Path) -> None:
+    destination = tmp_path / "page.001.txt"
+    backup = _leftover(destination, "bak")
+    staged = _leftover(destination, "stage")
+    _ = (tmp_path / ".page.txt.short.bak").write_text("not ours", encoding="utf-8")
+    _ = (tmp_path / "page.txt").write_text("real", encoding="utf-8")
+
+    stale = find_stale_outputs([tmp_path, tmp_path / "missing"])
+
+    assert set(stale) == {destination}
+    assert set(stale[destination]) == {backup, staged}
+
+
+def test_recover_stale_outputs_restores_newest_backup_when_destination_is_missing(
+    tmp_path: Path,
+) -> None:
+    destination = tmp_path / "page.txt"
+    older = _leftover(destination, "bak", "older", digit="a")
+    newer = _leftover(destination, "bak", "newer", digit="b")
+    staged = _leftover(destination, "stage")
+    os.utime(older, (1, 1))
+    os.utime(newer, (2, 2))
+
+    notes = recover_stale_outputs(destination, [older, newer, staged])
+
+    assert destination.read_text(encoding="utf-8") == "newer"
+    assert [path.name for path in tmp_path.iterdir()] == ["page.txt"]
+    assert any("restored" in note for note in notes)
+    assert sum("removed" in note for note in notes) == 2
+
+
+def test_recover_stale_outputs_removes_superseded_backup_when_destination_exists(
+    tmp_path: Path,
+) -> None:
+    destination = tmp_path / "page.txt"
+    _ = destination.write_text("current", encoding="utf-8")
+    backup = _leftover(destination, "bak", "older")
+
+    notes = recover_stale_outputs(destination, [backup])
+
+    assert destination.read_text(encoding="utf-8") == "current"
+    assert not backup.exists()
+    assert len(notes) == 1
+    assert str(backup) in notes[0]
+
+
+def test_recover_stale_outputs_reports_what_it_cannot_remove(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    destination = tmp_path / "page.txt"
+    _ = destination.write_text("current", encoding="utf-8")
+    staged = _leftover(destination, "stage")
+
+    def unlink(self: Path, *, missing_ok: bool = False) -> None:
+        del self, missing_ok
+        raise PermissionError("locked")
+
+    monkeypatch.setattr(Path, "unlink", unlink)
+
+    notes = recover_stale_outputs(destination, [staged])
+
+    assert len(notes) == 1
+    assert str(staged) in notes[0]
+    assert "locked" in notes[0]

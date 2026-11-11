@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from _fakes import FakePage
 
@@ -266,3 +268,43 @@ def test_main_plain_no_reorg_skips_default_layout_loading(
     run_main("--no-update-check", "--no-reorg", "-o", str(out), str(img))
 
     assert (out / "page.txt").read_text() == "FAKE OCR TEXT"
+
+
+def test_main_recovers_output_left_by_an_interrupted_run(
+    mock_heavy_deps, run_main, single_image, capsys
+):
+    mock_heavy_deps()
+    img, out = single_image
+    out.mkdir()
+    backup = out / f".page.txt.{'a' * 32}.bak"
+    backup.write_text("old", encoding="utf-8")
+
+    run_main("--no-update-check", "--layout-model", "none", "-o", str(out), str(img))
+
+    err = capsys.readouterr().err
+    assert "WARNING: restored" in err
+    assert (out / "page.txt").read_text(encoding="utf-8") == "FAKE OCR TEXT"
+    assert sorted(path.name for path in out.iterdir()) == ["page.txt"]
+
+
+def test_main_warns_when_old_backup_cannot_be_removed(
+    mock_heavy_deps, run_main, single_image, capsys, monkeypatch
+):
+    mock_heavy_deps()
+    img, out = single_image
+    out.mkdir()
+    (out / "page.txt").write_text("old", encoding="utf-8")
+    real_unlink = Path.unlink
+
+    def unlink(self: Path, *, missing_ok: bool = False) -> None:
+        if self.name.endswith(".bak"):
+            raise PermissionError("locked")
+        real_unlink(self, missing_ok=missing_ok)
+
+    monkeypatch.setattr(Path, "unlink", unlink)
+
+    run_main("--no-update-check", "--layout-model", "none", "-o", str(out), str(img))
+
+    err = capsys.readouterr().err
+    assert "WARNING: could not remove old backup" in err
+    assert (out / "page.txt").read_text(encoding="utf-8") == "FAKE OCR TEXT"

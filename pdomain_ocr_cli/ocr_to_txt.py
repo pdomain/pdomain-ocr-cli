@@ -95,7 +95,11 @@ os.environ["OPENCV_IO_MAX_IMAGE_PIXELS"] = os.environ.get(
 )
 
 from pdomain_ocr_cli import _startup_notices
-from pdomain_ocr_cli._artifacts import PageOutputTransaction
+from pdomain_ocr_cli._artifacts import (
+    PageOutputTransaction,
+    find_stale_outputs,
+    recover_stale_outputs,
+)
 from pdomain_ocr_cli._batch_plan import (
     BatchPlanError,
     build_batch_plan,
@@ -1014,6 +1018,9 @@ def main() -> None:
 
     outer_break = False
     jobs = batch_plan.jobs
+    # Scanned once, before this run stages anything, so its own files are never
+    # mistaken for leftovers and a large directory is not rescanned per page.
+    stale_outputs = find_stale_outputs(job.dest_dir for job in jobs)
     for chunk_start in range(0, len(jobs), chunk_size):
         if outer_break:
             break
@@ -1287,8 +1294,15 @@ def main() -> None:
                 # promoting any earlier sidecar rolls the whole transaction
                 # back and leaves no orphan ``.txt``.
                 transaction.add_text(out_path, text)
+                for destination in transaction.destinations:
+                    for note in recover_stale_outputs(
+                        destination, stale_outputs.pop(destination, [])
+                    ):
+                        print(f"WARNING: {note}", file=sys.stderr)  # noqa: T201  # CLI output
                 transaction.commit()
                 committed = True
+                for warning in transaction.cleanup_warnings:
+                    print(f"WARNING: {warning}", file=sys.stderr)  # noqa: T201  # CLI output
 
                 tag = " (no-reorg)" if args.no_reorg else ""
                 if extra_paths:
