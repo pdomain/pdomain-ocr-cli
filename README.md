@@ -193,8 +193,8 @@ how to remove the cache.
 
 OCR and layout model checkpoints are trusted inputs. The default model
 source is maintained by this project, and the default `--model-version`
-is pinned to the tag `v0.7`. Tags and branch names can move; a commit
-SHA cannot. Pass a commit SHA with `--model-version` for an immutable pin. Custom `--hf-repo`, local `--detection` / `--recognition`,
+is pinned to the commit behind the tag `v0.7`. Tags and branch names can
+move; a commit SHA cannot. Custom `--hf-repo`, local `--detection` / `--recognition`,
 and `--layout-checkpoint` values should only come from sources you
 trust.
 

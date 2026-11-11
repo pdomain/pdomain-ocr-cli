@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: architecture
 ---
 
@@ -85,6 +85,9 @@ is skipped without a warning.
 The batch OCR path does not report an angle. It relies on `pdomain-book-tools`
 storing the upright page buffer. If a batch page has no stored buffer, layout
 and crops read the on-disk file, rotated or not, and no error is raised.
+`test_pinned_batch_ocr_stashes_the_upright_image` fails if the pinned library
+stops storing that buffer. An explicit batch angle needs `pdomain-book-tools`
+to report the angle it chooses.
 
 On the sideways fixture `tests/fixtures/rotated_page.png`, layout reports 0
 regions at the default confidence of 0.5. That is correct. An offline run of
@@ -165,7 +168,9 @@ consumes layout output:
   (`test_rotated_page_layout_and_crops_use_upright_image`,
   `test_unrotated_page_keeps_on_disk_layout_and_crops`,
   `test_kept_angle_orients_layout_when_no_buffer_is_stashed`,
-  `test_upright_layout_source_rejects_non_quarter_turn`),
+  `test_upright_layout_source_rejects_non_quarter_turn`,
+  `test_angle_only_crop_takes_the_marked_corner_from_real_pixels`,
+  `test_pinned_batch_ocr_stashes_the_upright_image`),
   `tests/test_default_layout_word_preservation.py`
   (`test_default_layout_preserves_every_ocr_word`), `tests/test_artifacts.py`.
 - History: commit `c325c13` (v0.9.0, `pdomain-book-tools==0.30.1`) and

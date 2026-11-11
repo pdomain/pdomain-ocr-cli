@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: context
 ---
 
@@ -14,6 +14,26 @@ Kind: context
 - **Status:** active
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
+
+### 2026-11-10 — Spec review follow-ups implemented on a branch
+
+- **Context:** The 2026-11-07 spec reviews listed nine follow-ups in the intent
+  map. Each was checked against the code before work started, and all were
+  still open, so none needed retiring.
+- **Decision:** Implement seven in full and one in part on
+  `fix/spec-review-followups`. Leave the normalize-output contract deferred, as
+  the owner asked. Pin the default model to commit
+  `8b7f9b31d55015d16febaa99ae1d42960904028c`, which the Hugging Face refs API
+  and the local cache both report as the target of `v0.7`.
+- **Rationale:** A chunk limit of 400,000,000 decoded pixels matches what the
+  default `--batch-pages 4` already allowed at the per-image limit. The sweep of
+  files left by a killed run restores a backup only when the destination is
+  missing, and it warns about every file it touches, so no older artifact goes
+  silently.
+- **Evidence:** Commits `ddf6f3f` to `211708f`; `make ci-slow` with 537 tests passed
+  at 100% coverage on CPU.
+- **Remaining work:** The explicit batch rotation angle needs
+  `pdomain-book-tools` to report it. The branch is not merged or released.
 
 ### 2026-11-07 Retired: Pre-commit hook revisions use mutable version tags
 

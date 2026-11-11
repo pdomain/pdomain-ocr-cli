@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: architecture
 Supersedes:
   - docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md
@@ -54,7 +54,15 @@ Files over 100 MiB or 100,000,000 decoded pixels are rejected as a per-image
 error, and the rest of the batch continues. `ocr_to_txt` sets
 `OPENCV_IO_MAX_IMAGE_PIXELS` on import, before anything loads cv2, unless the
 caller already set it. A cv2 error that names `CV_IO_MAX_IMAGE_PIXELS` becomes
-`ImageLimitError`, which names the path and the limit.
+`ImageLimitError`, which names the path and the limit. The byte limit is
+checked again on the bytes actually read, and the read stops one byte past the
+limit, so a file that grew after the `stat` is rejected without loading it all.
+
+A chunk holds at most 400,000,000 decoded pixels, about 1.2 GB. That is what
+the default `--batch-pages 4` could already hold at the per-image limit, so
+only larger `--batch-pages` values change. An image that would overrun the
+chunk starts the next chunk instead. The first image in a chunk is always
+admitted.
 
 `PageOutputTransaction` stages the JSON sidecar, illustration crops, and the
 final text file as exclusive temporary files, then promotes them. The text
@@ -66,20 +74,32 @@ stays a `KeyboardInterrupt`, and its rollback notes print before the interrupt
 summary. Diagnostic snapshots and the layout-debug report stay outside the
 transaction.
 
-The transaction covers failures inside the running process only. A crash,
-`SIGKILL`, or power loss mid-commit can leave hidden `.bak` and `.stage` files
-next to the outputs, and the next run does not restore them. Stale sidecars
-or crops from an earlier run with other flags are not removed. Concurrent runs
-writing to the same output directory are not locked against each other.
+A crash, `SIGKILL`, or power loss mid-commit can leave hidden `.bak` and
+`.stage` files next to the outputs. A later run scans each output directory
+once, before it stages anything, and handles the leftovers for each file it is
+about to write. If the destination is missing, the newest backup with content
+is restored.
+Every other leftover is superseded and removed. The run prints a warning for
+each file it restores, removes, or cannot clean up. A backup that a successful
+commit cannot delete also prints a warning, and the page still counts as
+written.
+
+Leftovers for a file the later run does not write stay in place. Stale
+sidecars or crops from an earlier run with other flags are not removed.
+Concurrent runs writing to the same output directory are not locked against
+each other. Two runs writing the same page can remove each other's staged
+files.
 
 ## Trust and network boundaries
 
 OCR and layout checkpoints are trusted inputs. The default OCR model is
-`pdomain/pdomain-ocr-models` at the tag `v0.7`. A Hugging Face tag can be moved
-by the repository owner, so this pin is stable but not immutable; only a commit
-SHA is. Only an unset revision or `latest` counts as mutable, and an explicit
-`latest` still prints a trust warning. Branch names such as `main` do not
-warn. Custom checkpoint paths or repositories also print a warning. The CLI
+`pdomain/pdomain-ocr-models` at commit
+`8b7f9b31d55015d16febaa99ae1d42960904028c`, the commit behind the tag `v0.7`.
+A tag can be moved by the repository owner; a commit cannot. An unset revision
+or `latest` prints a trust warning. So does any other name that is neither a
+commit hash nor version-shaped, such as `main`, because a branch can move. Tags
+and branches cannot be told apart offline, so a version-shaped name counts as
+pinned. Custom checkpoint paths or repositories also print a warning. The CLI
 does not sandbox model deserialization itself. `pdomain-book-tools` loads
 DocTR checkpoints with `torch.load(..., weights_only=True)` and rejects any
 checkpoint that is not a plain state dict of tensors.
@@ -92,9 +112,10 @@ The startup-notice seam owns update and GPU notices, including the environment
 and CLI opt-outs. The update check stays silent on failure unless
 `PD_OCR_DEBUG` is set. Then an exception prints
 `update check failed: {type}: {message}` to stderr, without a traceback. The
-message is the exception's own text and is not scrubbed. Three failures stay
-silent even in debug mode: a response that is not a list, such as a rate-limit
-reply; no stable tag; and an unparseable current version.
+message is the exception's own text and is not scrubbed. Three failures print
+`update check failed: {reason}` with a fixed reason and no response data: a
+response that is not a usable tag list, such as a rate-limit reply; no stable
+tag; and an unparseable installed version.
 
 The POSIX and PowerShell installers install the wheel from the latest GitHub
 Release. They pass the pdomain index to `uv` as a named `--index` with
@@ -102,7 +123,11 @@ Release. They pass the pdomain index to `uv` as a named `--index` with
 as `pdomain-book-tools`, cannot resolve from another index. PyPI stays in the
 index list, so a name the pdomain index does not list can still come from PyPI. Before download, each installer requires the release asset's
 digest to be a lowercase `sha256:` plus 64 hex characters. After download, it
-refuses the wheel if the bytes do not match. `install.sh` reads the digest
+refuses the wheel if the bytes do not match. If `gh` reports no digest,
+`install.sh` asks the REST API before failing closed, and it leaves the
+caller's `TMPDIR` set for `uv`. `install.ps1` enables TLS 1.2 before its first
+web request, for Windows PowerShell 5.1; no real 5.1 host has run it.
+`install.sh` reads the digest
 from the wheel's own asset record, so a CR or CRLF between assets cannot apply
 the sdist digest to the wheel. Piped PowerShell installation stays
 self-contained, and Windows PowerShell 5.1 skips the Unix file-mode step.
@@ -115,7 +140,9 @@ the wheel's dependencies.
 Every direct runtime dependency has an upper bound or an exact pin.
 `pdomain-book-tools` is pinned exactly at `==0.30.1`. The build backends are
 pinned exactly at `hatchling==1.33.0` and `hatch-vcs==0.5.0`.
-`tests/test_dependency_metadata.py` enforces both rules.
+`tests/test_dependency_metadata.py` enforces both rules, including every
+optional extra. It parses each requirement, so an environment marker cannot
+stand in for a version cap.
 
 Every external pre-commit hook is pinned to a full commit SHA, with a
 `# frozen: vX.Y.Z` comment naming the version. The local
@@ -153,5 +180,6 @@ and tests. The v0.9.1 release preflight `make ci-slow` passed with 468 tests.
 - History: commits `87f066a`, `bcf8807`, `a0c2054`, `0287e2c`, `1c3993c`,
   and `9e8b089`; workflow removal `7041179`; installer checks `23f263e`;
   update-check diagnostics `b9e1f02`; dependency bounds `7b0f4f7`; model pin,
-  image limits, and rollback `7af73fc`. Upstream predictor defaults landed in
+  image limits, and rollback `7af73fc`; spec review fixes on branch
+  `fix/spec-review-followups` (`ddf6f3f` to `211708f`). Upstream predictor defaults landed in
   `pdomain-book-tools` commit `5585d27`.

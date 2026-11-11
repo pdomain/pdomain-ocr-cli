@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: context
 ---
 
@@ -40,29 +40,23 @@ Kind: context
 
 ## Spec review follow-ups (2026-11-07)
 
-Each spec's `## Adversarial Review` section has the evidence. Highest value
-first:
+Each spec's `## Adversarial Review` section has the evidence. These follow-ups
+landed on branch `fix/spec-review-followups`, which is not on master yet: the
+commit-pinned default model and branch-name warning, requirement parsing in the
+bounds test, the output-transaction gaps, the three silent update-check
+failures, the installer digest fallback and TLS 1.2 and `TMPDIR` fixes, 180° and
+270° crop tests on real pixels, the slow real-model word-preservation test with
+its overlap, caption and two-column cases, and the chunk pixel limit with the
+post-read size check. Two remain:
 
-- Pin the default OCR model to the commit SHA behind `v0.7`, and warn on
-  branch names such as `main` ([model provenance](../specs/2026-07-21-model-provenance-design.md)).
-- Make `tests/test_dependency_metadata.py` parse requirements, so a marker
-  cannot hide an unbounded one ([dependency provenance](../specs/2026-07-21-dependency-provenance-design.md)).
-- Close the output-transaction gaps: backup bookkeeping before the rename,
-  reported backup-cleanup errors, and a sweep of stale `.bak`/`.stage` files
-  ([output transaction](../specs/2026-07-21-output-transaction-design.md)).
-- Report the three update-check failures that stay silent in debug mode
-  ([update-check diagnostics](../specs/2026-07-21-update-check-diagnostics-design.md)).
-- Fall back to the REST API when the `gh` path has no digest, force TLS 1.2
-  on Windows PowerShell 5.1, and stop overwriting `TMPDIR` in `install.sh`
-  ([installer trust](../specs/2026-07-21-installer-trust-design.md)).
-- Give the batch OCR path an explicit rotation angle, and test 180° and 270°
-  crops on real pixels ([rotation](../specs/2026-07-21-rotation-propagation-design.md)).
-- Add a slow real-model word-preservation test with `--validate-reorg`, plus
-  overlap, caption and two-column cases ([word preservation](../specs/2026-07-21-default-layout-word-preservation-design.md)).
-- Bound decoded memory per chunk and re-check file size after reading
-  ([image limits](../specs/2026-07-21-image-resource-limits-design.md)).
+- Give the batch OCR path an explicit rotation angle
+  ([rotation](../specs/2026-07-21-rotation-propagation-design.md)). See Blocked.
 - Settle the normalize-output contract before upstream work starts
-  ([normalize output](../specs/2026-07-21-normalize-output-design.md)).
+  ([normalize output](../specs/2026-07-21-normalize-output-design.md)). Deferred
+  with the flag.
+
+Findings in those review sections that were not on this list, mostly low
+severity, stay recorded there and are not scheduled.
 
 ## Rejected directions
 
@@ -77,6 +71,11 @@ first:
 
 - Output normalization waits on a shared `normalize_text` in
   `pdomain-book-tools`; version 0.30.1 has none.
+- An explicit rotation angle on the batch OCR path waits on
+  `pdomain-book-tools`. In version 0.30.1 and on its master at `f1f0ecb`,
+  `Document.from_images_ocr_via_doctr` picks an angle and discards it, and the
+  spec rules out inferring it again in the CLI. Until then
+  `tests/test_upright_layout.py` guards the upright buffer the CLI relies on.
 
 ## Open issues
 
@@ -91,9 +90,10 @@ Standing priority order remains in [`docs/roadmap.md`](../roadmap.md).
 - Name the `--normalize-output` mode: `typographic` in the spec and plan, `ascii`
   in the issue and usage doc. The review favors `ascii`.
 - Six implemented specs now have review records, so the doc-retirer rules allow
-  retiring them. Each was implemented with deviations, and the open deviations
-  are listed under the spec review follow-ups above. Decide whether to retire
-  them now or keep them until those follow-ups land:
+  retiring them. Each was implemented with deviations. The listed follow-ups
+  are on `fix/spec-review-followups`, except the batch rotation angle. Decide
+  whether to retire them once that branch lands or keep them for the findings
+  still open in their review sections:
   [rotation](../specs/2026-07-21-rotation-propagation-design.md),
   [word preservation](../specs/2026-07-21-default-layout-word-preservation-design.md),
   [installer trust](../specs/2026-07-21-installer-trust-design.md),

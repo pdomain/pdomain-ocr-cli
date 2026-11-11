@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: usage
 ---
 
@@ -59,6 +59,10 @@ Every candidate image is checked before it joins an OCR batch:
   100,000,000 pixels are rejected before they enter a batch. This guards
   against decompression-bomb-style inputs whose small compressed size hides
   a huge decoded footprint.
+
+The file size is checked again after the file is read. One OCR batch holds at
+most 400,000,000 decoded pixels. A larger `--batch-pages` value can therefore
+produce smaller batches than you asked for on very large pages.
 
 A rejected image is reported through the same per-image error channel as
 any other OCR failure: the CLI prints `ERROR processing <path>: ...` naming
@@ -128,7 +132,7 @@ step) without duplication.
 
 By default, `pdomain-ocr` downloads fine-tuned weights from
 `pdomain/pdomain-ocr-models` on Hugging Face the first time it runs, pinned
-to the tag `v0.7`. Pass `--model-version <tag>` to
+to the commit behind the tag `v0.7`. Pass `--model-version <tag>` to
 use a different release.
 
 ```sh
@@ -154,9 +158,10 @@ files exist next to them, they're picked up automatically.
 
 Treat OCR and layout model checkpoints as trusted inputs. This project
 maintains the default model source and pins the default `--model-version` to
-the tag `v0.7`. A Hugging Face tag can be moved by the repository owner. For an
-immutable pin, pass a 40-character commit SHA with `--model-version`. Branch
-names such as `main` move and do not print a warning.
+commit `8b7f9b31d55015d16febaa99ae1d42960904028c`, the commit behind the tag
+`v0.7`. A Hugging Face tag can be moved by the repository owner, so a commit
+SHA is the only immutable pin. Branch names such as `main` move, and they print
+a warning.
 Use custom `--hf-repo`, local `--detection` / `--recognition`, and
 `--layout-checkpoint` values only from sources you trust.
 
@@ -294,7 +299,7 @@ supported Python version.
 | `PD_OCR_NO_UPDATE_CHECK=1` | Skip the background GitHub-tag upgrade-notice request (same as `--no-update-check`). |
 | `PD_OCR_NO_GPU_NUDGE=1` | Silence the one-line "GPU detected but installed CPU-only" message printed on startup when `nvidia-smi` is on `PATH` but the `[gpu]` extra wasn't installed. See the FAQ in [README.md](../../README.md#faq) for details. |
 | `PD_OCR_INSTALL_PYTHON` | Installer-only override for the Python version passed to `uv tool install --python`; defaults to `3.13`. |
-| `PD_OCR_DEBUG=1` | On per-image processing errors, also print the full traceback to stderr. If the background update check fails, print `update check failed: {type}: {message}`. |
+| `PD_OCR_DEBUG=1` | On per-image processing errors, also print the full traceback to stderr. If the background update check fails, print `update check failed: {type}: {message}` or `update check failed: {reason}`. |
 | `PD_OCR_REORGANIZE_STRICT=1` | Read by `pdomain-book-tools`'s `reorganize_page()`. When set, words dropped during reorganize raise `ReorganizeDroppedWordsError` instead of being re-added with a warning. Useful in CI to fail loudly on pipeline regressions. |
 | `HF_HOME`, `HF_HUB_CACHE` | Override the Hugging Face model cache location (default `~/.cache/huggingface/hub`). Honored by the upstream `huggingface_hub` library — pdomain-ocr-cli does not read these directly. |
 
@@ -331,7 +336,7 @@ treating it as fatal. The current set:
 | Flag | Short | Default | Purpose |
 | --- | --- | --- | --- |
 | `--hf-repo REPO_ID` | | `pdomain/pdomain-ocr-models` | HF Hub repo for OCR models. |
-| `--model-version TAG` | | `v0.7` | HF revision / tag. |
+| `--model-version TAG` | | commit behind `v0.7` | HF revision / tag. |
 | `--det-filename PATH` | | `detection/pdomain-all-detection-model-finetuned.pt` | Detection-model path within the HF repo. |
 | `--reco-filename PATH` | | `recognition/pdomain-all-recognition-model-finetuned.pt` | Recognition-model path within the HF repo. |
 | `--detection PT_FILE` | `-d` | — | Local detection `.pt`; requires `--recognition` too. |

@@ -3,7 +3,7 @@ kind: plan
 status: active
 owner: CT
 created: 2026-05-19
-last_verified: 2026-11-07
+last_verified: 2026-11-10
 disposition: Standing roadmap for CLI-owned work.
 ---
 
@@ -53,8 +53,12 @@ surfacing (flag name, help text, defaults, docs) and any caller-side glue.
 
 ## Remaining work
 
-- **Next:** fixes from the 2026-11-07 spec reviews, highest value first.
+- **Next:** review and land branch `fix/spec-review-followups`, which holds the
+  fixes from the 2026-11-07 spec reviews.
   [`docs/context/intent-map.md`](context/intent-map.md) (Spec review follow-ups)
+- **Blocked:** an explicit rotation angle on the batch OCR path, until
+  `pdomain-book-tools` reports the angle it chooses.
+  [`docs/context/intent-map.md`](context/intent-map.md) (Blocked)
 - **Later:** `--normalize-output`, after `pdomain-book-tools` ships shared
   normalization and a glyph map.
   [`docs/issues/2026-07-19-normalize-output-flag-deferred.md`](issues/2026-07-19-normalize-output-flag-deferred.md),

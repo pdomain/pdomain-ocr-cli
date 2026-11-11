@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: architecture
 Supersedes:
   - docs/specs/2026-05-28-test-suite-reorganization-design.md
@@ -80,10 +80,16 @@ runs default reorganization, and asserts that every OCR word survives. A second 
 `--experimental-drop-layout-words` may drop figure-internal words, so that flag
 is the only exception.
 
-That test covers one synthetic page with one figure region. It uses a fixed
-fake layout, not the real `pp-doclayout-plus-l` model, and it does not enable
-`--validate-reorg`. It does not cover partly overlapping words, words outside
-every region, captions, or multi-column pages.
+The same module runs overlapping regions, a figure with a caption, and two
+columns through the real `Page.reorganize_page` and the real validator under
+`--validate-reorg`. Those cases compare each word's text and position, so an
+altered or moved word fails as well as a dropped one. They use fixed fake
+layouts. They do not cover words outside every region.
+
+The slow test `test_ocr_default_layout_keeps_every_word_on_two_column_page`
+runs real OCR and the real `pp-doclayout-plus-l` model on
+`tests/fixtures/two_column_page.png` with `--validate-reorg`. It compares a
+multiset of word text from before and after reorganization.
 
 ## Implementation deviations
 
@@ -110,8 +116,8 @@ Verified against the repository on 2026-07-13.
 - Fast behavior: `tests/test_main_flag_wiring.py` and
   `tests/test_main_happy.py`.
 - Slow behavior: `tests/test_pipeline_integration.py`.
-- Default-layout word preservation (fast, mocked):
-  `tests/test_default_layout_word_preservation.py`.
+- Default-layout word preservation: `tests/test_default_layout_word_preservation.py`
+  (fast, mocked) and `tests/test_pipeline_integration.py` (slow, real models).
 - Installer contracts: `tests/test_install_ps1_cuda.py`,
   `tests/test_install_ps1.py`, and `tests/test_install_sh.py`.
 - Dependency metadata: `tests/test_dependency_metadata.py`.

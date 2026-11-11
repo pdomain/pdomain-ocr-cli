@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: context
 ---
 
@@ -20,9 +20,11 @@ Kind: context
 v0.9.1 is released and published to the pdomain pip index. It ships
 rotation-aligned layout and crops, installer index and digest checks, image
 limits, output rollback, the pinned `v0.7` model, update-check diagnostics, and
-dependency bounds. No product work is in the Now tier. The open items are one
-test to add, one owner decision, and deferred output normalization; see
-[`docs/roadmap.md`](../roadmap.md).
+dependency bounds. The fixes from the 2026-11-07 spec reviews are on branch
+`fix/spec-review-followups`, not on master and not released. The open items are
+landing that branch, the batch rotation angle that waits on
+`pdomain-book-tools`, the owner decisions in the intent map, and deferred output
+normalization; see [`docs/roadmap.md`](../roadmap.md).
 
 These docs describe current behavior:
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
@@ -41,15 +43,22 @@ Former issue numbers are provenance tags only; see
 
 ## In-flight work
 
-None. GitHub runs no workflows for this repository; releases run locally
-through `make release-{patch,minor,major}`.
+Branch `fix/spec-review-followups` waits for review. GitHub runs no workflows
+for this repository; releases run locally through
+`make release-{patch,minor,major}`.
 
 ## Test state
 
 The v0.9.1 release preflight `make ci-slow` passed on 2026-11-07 with 468
-tests and 100% coverage. The fast suite runs with `make test AI=1` after
+tests and 100% coverage. On branch `fix/spec-review-followups`, `make ci-slow`
+passed on 2026-11-10 with 537 tests and 100% coverage, on CPU with
+`CUDA_VISIBLE_DEVICES=""`. The fast suite runs with `make test AI=1` after
 installing the declared PowerShell prerequisite through
 `scripts/ensure-pwsh.sh`.
+
+`make ci` installs the GPU dependencies three times for its wheel smoke test,
+and on 2026-11-10 that exceeded the quota on `/tmp`. Set `TMPDIR` to a directory
+on a larger disk if it fails with `Disk quota exceeded`.
 
 ## Risks
 
@@ -57,4 +66,4 @@ Predictor batch-size defaults now live upstream. Only benchmarking or CLI
 exposure remains deferred.
 
 Open governed reports live under [`docs/issues/`](../issues/README.md)
-(3 active); see intent-map Open issues.
+(1 active); see intent-map Open issues.
