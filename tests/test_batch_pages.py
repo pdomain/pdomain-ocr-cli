@@ -9,6 +9,8 @@ These tests verify:
 
 from __future__ import annotations
 
+import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -231,14 +233,23 @@ def test_file_that_grows_past_the_byte_limit_is_rejected_after_reading(
     imgs = make_images(1)
     out = tmp_path / "out"
     size = imgs[0].stat().st_size
-    monkeypatch.setattr(_image_limits, "MAX_IMAGE_BYTES", size)
-    real_read_bytes = Path.read_bytes
-    monkeypatch.setattr(Path, "read_bytes", lambda self: real_read_bytes(self) + b"x")
+    monkeypatch.setattr(_image_limits, "MAX_IMAGE_BYTES", size - 1)
+    real_stat = Path.stat
+
+    def stale_stat(self, *, follow_symlinks=True):
+        result = real_stat(self, follow_symlinks=follow_symlinks)
+        if self != imgs[0]:
+            return result
+        fields = list(result)
+        fields[stat.ST_SIZE] = 1
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(Path, "stat", stale_stat)
     ns = mock_heavy_deps()
 
     with pytest.raises(SystemExit) as excinfo:
         run_main("--no-update-check", "--layout-model", "none", "-o", str(out), str(imgs[0]))
 
     assert excinfo.value.code == 1
-    assert f"{size + 1} bytes exceeds" in capsys.readouterr().err
+    assert f"{size} bytes exceeds" in capsys.readouterr().err
     assert ns.batch_calls == []

@@ -579,3 +579,29 @@ def test_recover_stale_outputs_reports_what_it_cannot_remove(
     assert len(notes) == 1
     assert str(staged) in notes[0]
     assert "locked" in notes[0]
+
+
+def test_recover_stale_outputs_prefers_real_backup_over_newer_empty_reservation(
+    tmp_path: Path,
+) -> None:
+    destination = tmp_path / "page.txt"
+    real = _leftover(destination, "bak", "real", digit="a")
+    reservation = _leftover(destination, "bak", "", digit="b")
+    os.utime(real, (1, 1))
+    os.utime(reservation, (2, 2))
+
+    _ = recover_stale_outputs(destination, [real, reservation])
+
+    assert destination.read_text(encoding="utf-8") == "real"
+    assert [path.name for path in tmp_path.iterdir()] == ["page.txt"]
+
+
+def test_recover_stale_outputs_survives_a_backup_that_vanished(tmp_path: Path) -> None:
+    destination = tmp_path / "page.txt"
+    real = _leftover(destination, "bak", "real", digit="a")
+    vanished = tmp_path / f".page.txt.{'b' * 32}.bak"
+
+    notes = recover_stale_outputs(destination, [vanished, real])
+
+    assert destination.read_text(encoding="utf-8") == "real"
+    assert any(str(vanished) in note for note in notes)

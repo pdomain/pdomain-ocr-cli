@@ -52,6 +52,14 @@ def validate_pixel_count(path: Path, dimensions: tuple[int, int]) -> None:
         raise ImageLimitError(f"{path}: {pixels} pixels exceeds the {MAX_IMAGE_PIXELS}-pixel limit")
 
 
+def read_capped(path: Path) -> bytes:
+    """Read ``path``, stopping one byte past ``MAX_IMAGE_BYTES`` so growth cannot exhaust memory."""
+    with path.open("rb") as handle:
+        data = handle.read(MAX_IMAGE_BYTES + 1)
+    validate_byte_size(path, len(data))
+    return data
+
+
 def exceeds_chunk_budget(chunk_pixels: int, dimensions: tuple[int, int]) -> bool:
     """True when adding the image would overrun the chunk; a first image always fits."""
     return chunk_pixels > 0 and chunk_pixels + dimensions[0] * dimensions[1] > MAX_CHUNK_PIXELS

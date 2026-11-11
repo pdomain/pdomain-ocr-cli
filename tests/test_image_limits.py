@@ -50,3 +50,22 @@ def test_chunk_budget_boundary() -> None:
     budget = _image_limits.MAX_CHUNK_PIXELS
     assert not _image_limits.exceeds_chunk_budget(budget - 100, (10, 10))
     assert _image_limits.exceeds_chunk_budget(budget - 100, (101, 1))
+
+
+def test_read_capped_returns_a_file_at_the_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "page.png"
+    _ = path.write_bytes(b"12345")
+    monkeypatch.setattr(_image_limits, "MAX_IMAGE_BYTES", 5)
+    assert _image_limits.read_capped(path) == b"12345"
+
+
+def test_read_capped_stops_one_byte_past_the_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "page.png"
+    _ = path.write_bytes(b"1234567890")
+    monkeypatch.setattr(_image_limits, "MAX_IMAGE_BYTES", 5)
+    with pytest.raises(ImageLimitError, match="6 bytes exceeds"):
+        _ = _image_limits.read_capped(path)

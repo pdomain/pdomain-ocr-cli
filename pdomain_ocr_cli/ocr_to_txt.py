@@ -88,6 +88,7 @@ from pdomain_ocr_cli._image_limits import (
     MAX_IMAGE_PIXELS,
     ImageLimitError,
     exceeds_chunk_budget,
+    read_capped,
     validate_byte_size,
     validate_pixel_count,
 )
@@ -1067,9 +1068,8 @@ def main() -> None:
                     if exceeds_chunk_budget(survivor_pixels, dimensions):
                         pending.appendleft(job)
                         break
-                raw = img_path.read_bytes()
                 # The file can grow between the stat above and this read.
-                validate_byte_size(img_path, len(raw))
+                raw = read_capped(img_path)
                 try:
                     arr = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
                 except cv2.error as exc:

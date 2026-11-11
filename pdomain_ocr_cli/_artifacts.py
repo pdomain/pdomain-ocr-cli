@@ -146,6 +146,15 @@ def find_stale_outputs(directories: Iterable[Path]) -> dict[Path, list[Path]]:
     return stale
 
 
+def _backup_rank(backup: Path) -> tuple[bool, int]:
+    """Rank real content above an empty reservation, then newest first."""
+    try:
+        info = backup.stat()
+    except OSError:
+        return False, -1
+    return info.st_size > 0, info.st_mtime_ns
+
+
 def recover_stale_outputs(destination: Path, leftovers: Sequence[Path]) -> list[str]:
     """Restore or remove what a killed run left for *destination*; return warnings.
 
@@ -156,7 +165,7 @@ def recover_stale_outputs(destination: Path, leftovers: Sequence[Path]) -> list[
     to_restore: Path | None = None
     if not destination.exists():
         backups = [leftover for leftover in leftovers if leftover.suffix == ".bak"]
-        to_restore = max(backups, key=lambda backup: backup.stat().st_mtime_ns, default=None)
+        to_restore = max(backups, key=_backup_rank, default=None)
     notes: list[str] = []
     for leftover in leftovers:
         try:
