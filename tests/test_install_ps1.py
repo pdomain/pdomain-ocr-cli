@@ -231,3 +231,13 @@ def test_install_ps1_temp_dir_has_restrictive_permissions(tmp_path: Path) -> Non
     assert result.returncode == 0, result.stderr + result.stdout
     assert perm_log.exists(), "fake uv never observed the wheel file's temp dir"
     assert perm_log.read_text(encoding="utf-8").strip() == "700"
+
+
+def test_install_ps1_enables_tls12_before_any_web_request() -> None:
+    """Windows PowerShell 5.1 may default to TLS versions GitHub refuses."""
+    lines = (REPO / "install.ps1").read_text(encoding="utf-8").splitlines()
+    code = [line.strip() for line in lines if not line.strip().startswith("#")]
+    tls = next(i for i, line in enumerate(code) if "[Net.SecurityProtocolType]::Tls12" in line)
+    web = next(i for i, line in enumerate(code) if "irm " in line or "Invoke-" in line)
+    assert "-bor" in code[tls]
+    assert tls < web

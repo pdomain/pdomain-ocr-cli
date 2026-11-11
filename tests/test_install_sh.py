@@ -77,7 +77,8 @@ def _write_fake_bin(
     bin_dir.mkdir()
 
     _ = (bin_dir / "uv").write_text(
-        f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {uv_log}\nexit 0\n",
+        f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {uv_log}\n"
+        f"printf '%s' \"$TMPDIR\" > {uv_log}.tmpdir\nexit 0\n",
         encoding="utf-8",
     )
     (bin_dir / "uv").chmod(0o755)
@@ -148,6 +149,7 @@ def _run_install_sh(
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
     env["PD_OCR_INSTALL_PYTHON"] = "3.12"
+    env["TMPDIR"] = str(tmp_path)
     result = subprocess.run(
         ["sh", str(REPO / "install.sh")],
         cwd=tmp_path,
@@ -339,3 +341,35 @@ def test_install_sh_gh_path_aborts_on_wrong_digest(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert not uv_log.exists()
+
+
+def test_install_sh_gh_path_without_digest_falls_back_to_rest_api(tmp_path: Path) -> None:
+    gh_json = _gh_release_json(sdist_digest_clause="", wheel_digest_clause="")
+    rest_json = _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",')
+
+    result, uv_log = _run_install_sh(tmp_path, rest_json, gh_release_json=gh_json)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "via GitHub API" in result.stdout
+    assert "Digest verified" in result.stdout
+    assert "pdomain_ocr_cli-9.9.9-py3-none-any.whl" in uv_log.read_text(encoding="utf-8")
+
+
+def test_install_sh_aborts_when_gh_and_rest_api_both_lack_a_digest(tmp_path: Path) -> None:
+    gh_json = _gh_release_json(sdist_digest_clause="", wheel_digest_clause="")
+
+    result, uv_log = _run_install_sh(tmp_path, _release_json(), gh_release_json=gh_json)
+
+    assert result.returncode != 0
+    assert "did not report a digest" in result.stderr
+    assert not uv_log.exists()
+
+
+def test_install_sh_leaves_callers_tmpdir_for_uv(tmp_path: Path) -> None:
+    rest_json = _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",')
+
+    result, uv_log = _run_install_sh(tmp_path, rest_json)
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    recorded = Path(f"{uv_log}.tmpdir").read_text(encoding="utf-8")
+    assert recorded == str(tmp_path)

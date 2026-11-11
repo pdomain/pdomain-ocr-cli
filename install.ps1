@@ -13,6 +13,10 @@
 
 $ErrorActionPreference = "Stop"
 
+# Windows PowerShell 5.1 can default to TLS versions GitHub refuses. -bor keeps
+# whatever else the session already allows.
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
 function Get-CudaVersion {
     if ($env:CUDA_VERSION) {
         return $env:CUDA_VERSION

@@ -141,7 +141,9 @@ if command -v gh >/dev/null 2>&1 && command gh auth status >/dev/null 2>&1; then
     fi
 fi
 
-if [ -z "$WHEEL_URL" ]; then
+# A gh build whose asset JSON has no digest would otherwise fail closed below;
+# the REST API reports one.
+if [ -z "$WHEEL_URL" ] || [ -z "$WHEEL_DIGEST" ]; then
     echo "Resolving latest release via GitHub API..."
     RELEASE_JSON=$(curl -sSfL "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null || true)
     if [ -z "$RELEASE_JSON" ]; then
@@ -198,11 +200,11 @@ echo "pdomain-index-pip:       ${PD_INDEX_URL}"
 # ---------------------------------------------------------------------------
 # Download the wheel to a temp dir and install.
 # ---------------------------------------------------------------------------
-TMPDIR=$(mktemp -d)
+WHEEL_DIR=$(mktemp -d)
 # shellcheck disable=SC2064
-trap "rm -rf '$TMPDIR'" EXIT
+trap "rm -rf '$WHEEL_DIR'" EXIT
 
-WHEEL_FILE="$TMPDIR/$(basename "$WHEEL_URL")"
+WHEEL_FILE="$WHEEL_DIR/$(basename "$WHEEL_URL")"
 echo "Downloading wheel..."
 # `gh release view --json assets` asset objects carry two different URLs:
 # `apiUrl` (api.github.com/repos/.../assets/<id>, needs an Accept header to
