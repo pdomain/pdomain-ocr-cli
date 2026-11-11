@@ -12,6 +12,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from _fakes import FakeArray, FakePage
+from PIL import Image
 
 from pdomain_ocr_cli import ocr_to_txt
 from pdomain_ocr_cli._runtime import DefaultRuntimeSession
@@ -299,3 +300,92 @@ def test_single_image_compat_keeps_rotation_degrees(monkeypatch: pytest.MonkeyPa
 
     assert result == [page]
     assert getattr(page, "ocr_rotation_degrees", None) == 90
+
+
+@pytest.mark.parametrize(
+    ("angle", "upright_row", "upright_column"),
+    [(90, 0, 19), (180, 19, 39), (270, 39, 0)],
+)
+def test_angle_only_crop_takes_the_marked_corner_from_real_pixels(
+    mock_heavy_deps: object,
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: object,
+    tmp_path: Path,
+    angle: int,
+    upright_row: int,
+    upright_column: int,
+) -> None:
+    """The crop oracle is the hand-computed corner, not ``rotate_image``."""
+    assert callable(mock_heavy_deps)
+    assert callable(run_main)
+    mock_heavy_deps()
+    pixels = np.zeros((20, 40, 3), dtype=np.uint8)
+    pixels[0, 0] = (255, 255, 255)
+    image = tmp_path / "page.png"
+    Image.fromarray(pixels).save(image)
+
+    _install_page(monkeypatch, lambda _source: _rotated_page(angle))
+    top = max(0, upright_row - 1)
+    left = max(0, upright_column - 1)
+    region = SimpleNamespace(type="figure", confidence=0.9, T=top, B=top + 2, L=left, R=left + 2)
+    detector = _RecordingDetector(SimpleNamespace(regions=[region], inference_ms=1))
+    monkeypatch.setattr(ocr_to_txt, "_load_layout_detector", lambda _args, _device: detector)
+    cv2_fake = _Cv2(image=None)
+    monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", lambda: (cv2_fake, {"figure"}))
+
+    run_main(
+        "--no-update-check",
+        "--layout-model",
+        "pp-doclayout-plus-l",
+        "--extract-illustrations",
+        "-o",
+        str(tmp_path / "out"),
+        str(image),
+    )
+
+    assert cv2_fake.imread_paths == []
+    crop = cv2_fake.encoded[0]
+    assert isinstance(crop, np.ndarray)
+    assert crop.shape == (2, 2, 3)
+    white = np.argwhere(crop.all(axis=2))
+    assert white.tolist() == [[upright_row - top, upright_column - left]]
+
+
+def _rotated_page(angle: int) -> FakePage:
+    page = FakePage(text="ANGLE ONLY")
+    page.ocr_rotation_degrees = angle
+    return page
+
+
+def test_pinned_batch_ocr_stashes_the_upright_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Batch OCR reports no angle, so the CLI depends on this upright buffer."""
+    from pdomain_book_tools.ocr import rotation as rotation_module
+    from pdomain_book_tools.ocr.document import Document
+    from pdomain_book_tools.ocr.page import Page
+
+    source = np.zeros((2, 3, 3), dtype=np.uint8)
+    source[0, 0] = (255, 255, 255)
+
+    class _Result:
+        pages = (SimpleNamespace(render=lambda: ""),)
+
+        @staticmethod
+        def export() -> dict[str, object]:
+            return {"pages": [{"dimensions": (2, 3), "blocks": []}], "metadata": {}}
+
+    best = Document(
+        source_lib="doctr",
+        source_path=None,
+        pages=[Page(width=2, height=3, page_index=0, blocks=[])],
+    )
+    monkeypatch.setattr(
+        rotation_module, "detect_best_rotation", lambda *_args, **_kwargs: (180, best, ())
+    )
+
+    document = Document.from_images_ocr_via_doctr(
+        images=[source], predictor=lambda _images: _Result(), source_identifiers=["page.png"]
+    )
+
+    stashed = document.pages[0].cv2_numpy_page_image
+    assert isinstance(stashed, np.ndarray)
+    assert np.argwhere(stashed.all(axis=2)).tolist() == [[1, 2]]
