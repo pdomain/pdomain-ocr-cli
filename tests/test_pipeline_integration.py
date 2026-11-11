@@ -20,16 +20,19 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from pdomain_book_tools.ocr.page import Page
 
 from pdomain_ocr_cli import ocr_to_txt
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 TITLE_IMAGE = FIXTURES_DIR / "title_page_001.png"
 TITLE_EXPECTED = FIXTURES_DIR / "title_page_001.expected.txt"
+TWO_COLUMN_IMAGE = FIXTURES_DIR / "two_column_page.png"
 
 # Pin to a specific tag on the default HF repo so OCR output is reproducible.
 # Shares its value with the CLI's own pinned ``--model-version`` default so
@@ -230,6 +233,34 @@ def test_ocr_default_layout_model_runs_successfully(
     assert "Layout model loaded:" in captured.out
     assert "layout:" in captured.out
     assert (tmp_path / "title_page_001.txt").exists()
+
+
+def test_ocr_default_layout_keeps_every_word_on_two_column_page(
+    tmp_path: Path, shared_predictor, monkeypatch, capsys
+):
+    """Real OCR and the real default layout model, with ``--validate-reorg`` on."""
+    real_reorganize = Page.reorganize_page
+    counts: list[tuple[Counter[str], Counter[str]]] = []
+
+    def recording_reorganize(self: Page, *args: object, **kwargs: object) -> object:
+        before = Counter(word.text for word in self.words)
+        result = real_reorganize(self, *args, **kwargs)
+        counts.append((before, Counter(word.text for word in self.words)))
+        return result
+
+    monkeypatch.setattr(Page, "reorganize_page", recording_reorganize)
+
+    rc = _invoke_main_default_layout(
+        monkeypatch, shared_predictor, TWO_COLUMN_IMAGE, tmp_path, "--validate-reorg"
+    )
+
+    captured = capsys.readouterr()
+    assert rc == 0, captured.out + captured.err
+    assert "reorganize dropped" not in captured.err
+    assert len(counts) == 1
+    before, after = counts[0]
+    assert before
+    assert after == before
 
 
 def test_ocr_default_layout_debug_writes_report(

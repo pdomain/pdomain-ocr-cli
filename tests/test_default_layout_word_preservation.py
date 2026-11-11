@@ -5,6 +5,7 @@ DocTR and PP-DocLayout are mocked. A drop is allowed only when
 """
 
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -108,6 +109,7 @@ def _run(
     out: Path,
     page: Page,
     *extra_args: str,
+    layout: PageLayout | None = None,
 ) -> None:
     assert callable(run_main)
 
@@ -123,7 +125,7 @@ def _run(
 
     session = DefaultRuntimeSession(predictor=object(), device="cpu", runner=runner)
     monkeypatch.setattr(ocr_to_txt, "_create_runtime_session", lambda _det, _reco: session)
-    detector = _FixedLayout(_figure_layout())
+    detector = _FixedLayout(layout if layout is not None else _figure_layout())
     monkeypatch.setattr(ocr_to_txt, "_load_layout_detector", lambda _args, _device: detector)
     run_main("--no-update-check", *extra_args, "-o", str(out), str(image))
     assert detector.calls == 1
@@ -182,3 +184,100 @@ def test_experimental_drop_layout_words_may_drop_figure_words(
     assert "cat" not in written
     assert "body" in written
     assert "text" in written
+
+
+def _region(kind: RegionType, left: int, top: int, right: int, bottom: int) -> LayoutRegion:
+    return LayoutRegion(type=kind, L=left, R=right, T=top, B=bottom, confidence=0.95)
+
+
+def _layout(*regions: LayoutRegion) -> PageLayout:
+    return PageLayout(
+        regions=list(regions), image_width=_PAGE_W, image_height=_PAGE_H, detector="test"
+    )
+
+
+def _page(*lines: list[Word]) -> Page:
+    return Page(
+        width=_PAGE_W,
+        height=_PAGE_H,
+        page_index=0,
+        blocks=[_paragraph([_line(words)]) for words in lines],
+    )
+
+
+def _overlapping_regions() -> tuple[Page, PageLayout]:
+    page = _page(
+        [_word("shared", 100, 500, 200, 530), _word("shared", 210, 500, 300, 530)],
+        [_word("edge", 390, 500, 450, 530)],
+    )
+    layout = _layout(
+        _region(RegionType.text, 50, 450, 410, 600),
+        _region(RegionType.text, 380, 450, 700, 600),
+    )
+    return page, layout
+
+
+def _figure_with_caption() -> tuple[Page, PageLayout]:
+    page = _page(
+        [_word("inside", 120, 200, 220, 230)],
+        [_word("Fig.", 120, 420, 170, 450), _word("one", 180, 420, 240, 450)],
+        [_word("body", 120, 800, 220, 830)],
+    )
+    layout = _layout(
+        _region(RegionType.figure, 100, 150, 500, 400),
+        _region(RegionType.caption, 100, 410, 500, 460),
+        _region(RegionType.text, 100, 780, 500, 900),
+    )
+    return page, layout
+
+
+def _two_columns() -> tuple[Page, PageLayout]:
+    page = _page(
+        [_word("left", 100, 200, 200, 230), _word("same", 210, 200, 300, 230)],
+        [_word("right", 600, 200, 700, 230), _word("same", 710, 200, 800, 230)],
+        [_word("lower", 100, 600, 200, 630)],
+        [_word("end", 600, 600, 700, 630)],
+    )
+    layout = _layout(
+        _region(RegionType.text, 80, 150, 450, 900),
+        _region(RegionType.text, 560, 150, 950, 900),
+    )
+    return page, layout
+
+
+def _word_identities(page: Page) -> Counter[tuple[str, float, float, float, float]]:
+    return Counter(
+        (
+            word.text,
+            word.bounding_box.top_left.x,
+            word.bounding_box.top_left.y,
+            word.bounding_box.bottom_right.x,
+            word.bounding_box.bottom_right.y,
+        )
+        for word in page.words
+    )
+
+
+@pytest.mark.parametrize("scene", [_overlapping_regions, _figure_with_caption, _two_columns])
+def test_default_layout_keeps_text_and_position_of_every_word(
+    mock_heavy_deps: object,
+    monkeypatch: pytest.MonkeyPatch,
+    run_main: object,
+    single_image: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+    scene: Callable[[], tuple[Page, PageLayout]],
+) -> None:
+    assert callable(mock_heavy_deps)
+    real_validator = ocr_to_txt._load_validate_word_preservation
+    mock_heavy_deps()
+    monkeypatch.setattr(ocr_to_txt, "_load_validate_word_preservation", real_validator)
+    image, out = single_image
+    page, layout = scene()
+    before = _word_identities(page)
+
+    _run(monkeypatch, run_main, image, out, page, "--validate-reorg", layout=layout)
+
+    assert _word_identities(page) == before
+    assert "reorganize dropped" not in capsys.readouterr().err
+    written = Counter((out / "page.txt").read_text(encoding="utf-8").split())
+    assert written == Counter(identity[0] for identity in before.elements())
