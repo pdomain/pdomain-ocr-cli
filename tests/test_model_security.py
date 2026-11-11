@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from pdomain_ocr_cli._hf_models import DEFAULT_HF_REPO
 from pdomain_ocr_cli._model_security import model_security_warnings
 
@@ -31,6 +33,25 @@ def test_warns_when_explicit_revision_is_latest() -> None:
 def test_pinned_default_revision_has_no_mutable_warning() -> None:
     warnings = model_security_warnings(_args(model_version="v0.7"))
     assert not any("mutable latest OCR model revision" in warning for warning in warnings)
+
+
+@pytest.mark.parametrize("revision", ["main", "master", "dev", "refs/pr/1"])
+def test_warns_when_revision_looks_like_a_branch(revision: str) -> None:
+    warnings = model_security_warnings(_args(model_version=revision))
+    assert any(f"{revision!r} looks like a branch name" in warning for warning in warnings)
+
+
+@pytest.mark.parametrize(
+    "revision",
+    ["8b7f9b31d55015d16febaa99ae1d42960904028c", "8b7f9b3", "v0.7", "0.5", "v1.2.3-rc1"],
+)
+def test_commit_and_version_tag_revisions_do_not_warn(revision: str) -> None:
+    assert model_security_warnings(_args(model_version=revision)) == ()
+
+
+def test_branch_warning_is_skipped_for_custom_repo() -> None:
+    warnings = model_security_warnings(_args(hf_repo="someone/model", model_version="main"))
+    assert not any("looks like a branch name" in warning for warning in warnings)
 
 
 def test_warns_for_custom_hf_repo() -> None:

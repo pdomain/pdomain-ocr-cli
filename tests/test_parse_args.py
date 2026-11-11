@@ -43,6 +43,7 @@ def test_defaults_with_single_input():
     assert args.layout_confidence == 0.5
     assert args.hf_repo == DEFAULT_HF_REPO
     assert args.model_version == DEFAULT_MODEL_REVISION
+    assert DEFAULT_MODEL_REVISION == "8b7f9b31d55015d16febaa99ae1d42960904028c"
     assert args.det_filename == DEFAULT_DET_FILENAME
     assert args.reco_filename == DEFAULT_RECO_FILENAME
     assert args.detection is None

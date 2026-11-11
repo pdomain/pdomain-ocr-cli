@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Protocol
 
 from pdomain_ocr_cli._hf_models import DEFAULT_HF_REPO
@@ -11,6 +12,9 @@ from pdomain_ocr_cli._hf_models import DEFAULT_HF_REPO
 # ``--model-version`` default is pinned (see ``ocr_to_txt.DEFAULT_MODEL_REVISION``)
 # and is therefore never one of these.
 _MUTABLE_MODEL_REVISIONS = (None, "latest")
+# Tags cannot be told from branches offline, so a commit hash or a
+# version-shaped name counts as pinned and any other name as a branch.
+_PINNED_REVISION_RE = re.compile(r"[0-9a-f]{7,40}|v?\d+(\.\d+)*([-.+]\w+)*")
 
 
 class ModelSecurityArgs(Protocol):
@@ -32,6 +36,17 @@ def model_security_warnings(args: ModelSecurityArgs) -> tuple[str, ...]:
         warnings.append(
             "warning: using mutable latest OCR model revision; for reproducible and safer runs, "
             + "pass --model-version pinned to a trusted tag or commit."
+        )
+    elif (
+        args.hf_repo == DEFAULT_HF_REPO
+        and args.model_version is not None
+        and not uses_local_ocr_checkpoints
+        and not _PINNED_REVISION_RE.fullmatch(args.model_version)
+    ):
+        warnings.append(
+            f"warning: OCR model revision {args.model_version!r} looks like a branch name, which "
+            + "can move; for reproducible and safer runs, pass --model-version pinned to a "
+            + "trusted tag or commit."
         )
     if args.hf_repo != DEFAULT_HF_REPO:
         warnings.append(

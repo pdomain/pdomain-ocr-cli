@@ -606,9 +606,8 @@ def _positive_batch_pages(s: str) -> int:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
-# Pinned so a default run is reproducible. Only None and "latest" are treated
-# as mutable revisions, so this value does not trigger the trust warning.
-DEFAULT_MODEL_REVISION = "v0.7"
+# The commit behind the Hugging Face tag v0.7. A tag can be moved; a commit cannot.
+DEFAULT_MODEL_REVISION = "8b7f9b31d55015d16febaa99ae1d42960904028c"
 
 
 def parse_args() -> argparse.Namespace:
