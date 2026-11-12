@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-10
+Last verified: 2026-11-12
 Kind: architecture
 Supersedes:
   - docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md
@@ -14,8 +14,8 @@ Supersedes:
 
 - **Kind:** architecture
 - **Status:** active
-- **Read when:** changing CLI execution flow, batching, runtime setup, output planning, artifact writes, image limits, model pins, installers, dependency bounds, startup notices, or releases.
-- **Search terms:** CLI orchestration, RunPolicy, BatchPlan, RuntimeSession, PageOutputTransaction, batch errors, output collisions, rollback, image limits, installer digest, first-index, dependency bounds, release preflight.
+- **Read when:** changing CLI execution flow, batching, runtime setup, output planning, artifact writes, image limits, model pins, installers, dependency bounds, startup notices, releases, or the boundary with sibling repositories.
+- **Search terms:** CLI orchestration, RunPolicy, BatchPlan, RuntimeSession, PageOutputTransaction, batch errors, output collisions, rollback, image limits, installer digest, first-index, dependency bounds, release preflight, repository boundary.
 
 ## Ownership and data flow
 
@@ -62,7 +62,8 @@ A chunk holds at most 400,000,000 decoded pixels, about 1.2 GB. That is what
 the default `--batch-pages 4` could already hold at the per-image limit, so
 only larger `--batch-pages` values change. An image that would overrun the
 chunk starts the next chunk instead. The first image in a chunk is always
-admitted.
+admitted. The CLI does not time out a page. Stopping native OCR mid-call
+would need a separate process, and this command does not do that.
 
 `PageOutputTransaction` stages the JSON sidecar, illustration crops, and the
 final text file as exclusive temporary files, then promotes them. The text
@@ -142,7 +143,9 @@ Every direct runtime dependency has an upper bound or an exact pin.
 pinned exactly at `hatchling==1.33.0` and `hatch-vcs==0.5.0`.
 `tests/test_dependency_metadata.py` enforces both rules, including every
 optional extra. It parses each requirement, so an environment marker cannot
-stand in for a version cap.
+stand in for a version cap. `pillow` is `>=11.0,<13`. `pdomain-book-contracts`
+and `pdomain-ops` are `0.x` packages capped at `<1`. Those three ranges are
+wider than one next-major step. No decision records why.
 
 Every external pre-commit hook is pinned to a full commit SHA, with a
 `# frozen: vX.Y.Z` comment naming the version. The local
@@ -150,6 +153,21 @@ Every external pre-commit hook is pinned to a full commit SHA, with a
 runs `pre-commit autoupdate --freeze`, which bumps hooks and keeps SHA pins;
 plain `autoupdate` would write tags back. The third-party `pre-commit-update`
 hook was removed because it can only write tags.
+
+## Repository boundary
+
+This repository owns the `pdomain-ocr` command and the scripts that install
+and release that command. `pdomain-book-tools` owns OCR, layout,
+reorganization, the rotation angle, and checkpoint loading.
+`pdomain-book-contracts` owns the shared curly-quote and em-dash helpers in
+`pdomain_book_contracts.text.text_normalize`. This CLI still has a private
+copy of those two helpers in `pdomain_ocr_cli/_text_normalize.py`.
+`pdomain-index-pip` publishes the wheel. `pdomain-ops` is the suite library
+for registry, GPU dispatch, and desktop plumbing. It is not on the OCR path.
+
+No long-s or ligature normalizer exists in this repository or in
+`pdomain-book-tools` 0.30.1. Open work, including a shared installer, is on
+the [roadmap](../roadmap.md).
 
 ## Release boundary
 
@@ -165,6 +183,10 @@ command, `./scripts/publish-index.sh`, in `pdomain-index-pip`.
 
 Verified against the repository at `7af73fc` on 2026-11-07, by reading code
 and tests. The v0.9.1 release preflight `make ci-slow` passed with 468 tests.
+The image-limit, transaction, model-pin, installer, and dependency sections
+were re-read on 2026-11-12 against `fix/spec-review-followups` at `211708f`.
+That branch's `make ci-slow` passed on 2026-11-10 with 537 tests. This docs
+pass did not re-run it.
 
 - Sources: `pdomain_ocr_cli/ocr_to_txt.py`, `_policy.py`, `_batch_plan.py`,
   `_runtime.py`, `_artifacts.py`, `_image_limits.py`, `_model_security.py`,

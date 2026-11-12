@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-11-10
+Last verified: 2026-11-12
 Kind: usage
 ---
 
@@ -118,15 +118,19 @@ Flag shape: `--normalize-output {none|ascii|...}`, default `none`.
 Mode names are an open extension point for future locale-specific
 profiles (e.g. a `gaelic` profile that also handles dotted consonants).
 
-**Dependency.** The actual normalization logic + glyph map live in
-`pdomain-book-tools` as `pdomain_book_tools.text.normalize` (to be added). The
-CLI is a thin pass-through that runs the normalizer between
-reorganize and disk write. This keeps the same map reusable from
-`pdomain-ocr-labeler` (page-scope action) and `pdomain-prep-for-pgdp` (export
-step) without duplication.
+**Dependency.** No long-s or ligature map exists yet. Curly-quote and em-dash
+cleanup already live in `pdomain-book-contracts`, and this command still has
+a private copy of those two helpers. A glyph map should land beside them,
+not in a new repository and not as a private table in this CLI. Decision
+D-025 in `pdomain-ocr-labeler-spa` (`specs/17-decisions.md`, 2026-05-06)
+named `pdomain_book_tools.text.normalize`. That module was never added. On
+2026-09-18 the labeler removed its probe and does not offer the feature.
+The open contract, including the mode name, is on the
+[roadmap](../roadmap.md).
 
-**Cross-refs.** Mirrors decision D-025 in the sibling repository path
-`pdomain-ocr-labeler-spa/specs/17-decisions.md`.
+**Cross-refs.** [Roadmap](../roadmap.md),
+[spec](../specs/2026-07-21-normalize-output-design.md), and
+[deferred issue](../issues/2026-07-19-normalize-output-flag-deferred.md).
 
 ## Model selection
 

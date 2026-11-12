@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-10
+Last verified: 2026-11-12
 Kind: context
 ---
 
@@ -19,12 +19,13 @@ Kind: context
 
 v0.9.1 is released and published to the pdomain pip index. It ships
 rotation-aligned layout and crops, installer index and digest checks, image
-limits, output rollback, the pinned `v0.7` model, update-check diagnostics, and
-dependency bounds. The fixes from the 2026-11-07 spec reviews are on branch
-`fix/spec-review-followups`, not on master and not released. The open items are
-landing that branch, the batch rotation angle that waits on
-`pdomain-book-tools`, the owner decisions in the intent map, and deferred output
-normalization; see [`docs/roadmap.md`](../roadmap.md).
+limits, output rollback, the `v0.7` model pin, update-check diagnostics, and
+dependency bounds. The 2026-11-07 spec-review fixes are on
+`fix/spec-review-followups`, not on master and not released. Docs
+consolidation is on `docs/consolidate-architecture-roadmap`, stacked on that
+branch. The open product items are on [`docs/roadmap.md`](../roadmap.md):
+call the shared quote and dash helpers, the batch rotation angle, and
+long-s normalization. Owner decisions are listed there and in the intent map.
 
 These docs describe current behavior:
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
@@ -43,8 +44,8 @@ Former issue numbers are provenance tags only; see
 
 ## In-flight work
 
-Branch `fix/spec-review-followups` waits for review. GitHub runs no workflows
-for this repository; releases run locally through
+`fix/spec-review-followups` waits for review. It is not merged. GitHub runs
+no workflows for this repository; releases run locally through
 `make release-{patch,minor,major}`.
 
 ## Test state
@@ -62,8 +63,12 @@ on a larger disk if it fails with `Disk quota exceeded`.
 
 ## Risks
 
-Predictor batch-size defaults now live upstream. Only benchmarking or CLI
-exposure remains deferred.
+Predictor batch-size defaults now live upstream. Benchmarking and any CLI
+exposure stay on the roadmap.
+
+The CLI still keeps a private copy of the curly-quote and em-dash helpers
+that `pdomain-book-contracts` already provides. Replacing that copy is the
+next roadmap item. No long-s or ligature normalizer exists.
 
 Open governed reports live under [`docs/issues/`](../issues/README.md)
 (1 active); see intent-map Open issues.

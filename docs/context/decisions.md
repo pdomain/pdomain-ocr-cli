@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-10
+Last verified: 2026-11-12
 Kind: context
 ---
 
@@ -14,6 +14,50 @@ Kind: context
 - **Status:** active
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
+
+### 2026-11-12 Retired: shipped design specs and plans
+
+The owner asked to move shipped design into the architecture docs and to
+keep one backlog. These files were deleted. Git history keeps the review
+text. Low findings that were not scheduled stay unscheduled. The
+normalize-output spec, plan, and issue stay, because that flag is not built.
+
+- Old path: `docs/specs/2026-07-21-rotation-propagation-design.md`
+  Outcome: implemented. Superseded by: `docs/architecture/layout-aware-ocr.md`
+  (Page rotation). Remaining work: the batch angle, on the roadmap, blocked
+  on `pdomain-book-tools`.
+- Old path: `docs/specs/2026-07-21-default-layout-word-preservation-design.md`
+  Outcome: implemented. Superseded by: `docs/architecture/test-suite.md`
+  (Word preservation). Remaining work: none scheduled.
+- Old path: `docs/specs/2026-07-21-installer-trust-design.md`
+  Outcome: implemented. Superseded by: `docs/architecture/cli-orchestration.md`
+  (Trust and network boundaries). Remaining work: a shared installer is a
+  roadmap proposal, not a gap in this command.
+- Old path: `docs/specs/2026-07-21-image-resource-limits-design.md`
+  Outcome: implemented. Superseded by: `docs/architecture/cli-orchestration.md`
+  (Execution invariants). Remaining work: none scheduled. Page timeouts stay
+  out of scope.
+- Old path: `docs/specs/2026-07-21-update-check-diagnostics-design.md`
+  Outcome: implemented. Superseded by: `docs/architecture/cli-orchestration.md`
+  (Trust and network boundaries). Remaining work: none scheduled.
+- Old path: `docs/specs/2026-07-21-output-transaction-design.md`
+  Outcome: implemented. Superseded by: `docs/architecture/cli-orchestration.md`
+  (Execution invariants). Remaining work: none scheduled.
+- Old path: `docs/specs/2026-07-21-model-provenance-design.md` and
+  `docs/plans/2026-07-21-model-provenance.md`
+  Outcome: implemented. Superseded by: `docs/architecture/cli-orchestration.md`
+  (Trust and network boundaries). The 2026-11-07 tombstone below still says
+  the remaining work is to pin the commit behind `v0.7`. That closed in
+  `ddf6f3f`: the default revision is
+  `8b7f9b31d55015d16febaa99ae1d42960904028c`.
+- Old path: `docs/specs/2026-07-21-dependency-provenance-design.md` and
+  `docs/plans/2026-07-21-dependency-provenance.md`
+  Outcome: implemented. Superseded by: `docs/architecture/cli-orchestration.md`
+  (Dependency bounds). The parser test landed in `dd6bc95`. The wider
+  `pillow`, `pdomain-book-contracts`, and `pdomain-ops` caps are recorded
+  there. No decision says why they are wider than one next-major step.
+- Removal commit: (fill after commit)
+- Rationale kept: the architecture docs and this entry.
 
 ### 2026-11-10 — Spec review follow-ups implemented on a branch
 

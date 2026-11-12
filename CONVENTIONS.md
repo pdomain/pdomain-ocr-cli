@@ -108,22 +108,19 @@ fast (<200 ms warm) and always selects the project venv.
 
 ## Rule: Design spec files live in `docs/specs/` until the milestone ships
 
-**The rule.** A design spec file produced by `/spec-from-issue` lives at
-`docs/specs/<date>-<topic>-design.md` while the milestone's chore issues are open.
-When the milestone's last chore closes and the implementation lands, move the file to
-`docs/architecture/` in a housekeeping commit:
+**The rule.** A design spec lives at `docs/specs/<date>-<topic>-design.md`
+while it is still the instruction for unbuilt work. When the behavior has
+shipped, write the present-tense behavior into `docs/architecture/`, point
+inbound links at that doc, delete the spec, and append a tombstone to
+`docs/context/decisions.md`. Do not `git mv` the spec file into
+`architecture/`. A spec is future tense and an architecture doc is current
+behavior. The same rule covers an implementation plan once its tasks have
+shipped. Open backlog stays on `docs/roadmap.md`, not in a second copy of
+the spec.
 
-```bash
-git mv docs/specs/<date>-<topic>-design.md docs/architecture/
-git commit -m "docs: promote <topic> spec to architecture/ (milestone shipped)"
-```
-
-Update any `Spec: docs/specs/...` pointers in still-open issues after the move.
-
-**Why.** `docs/specs/` is the active working area. Implementing agents follow `Spec:`
-pointers to find their instructions. `docs/architecture/` is the permanent design record
-for shipped features. Mixing shipped and in-progress specs in one directory makes it
-unclear which specs are still authoritative for ongoing work.
+**Why.** `docs/specs/` is the active working area. `docs/architecture/` is
+how the system works today. Leaving a shipped spec in `docs/specs/`, or
+moving that file unchanged into `architecture/`, makes both directories lie.
 
 **Common high-confidence violations** (bot auto-fix candidates)
 
