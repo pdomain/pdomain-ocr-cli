@@ -56,7 +56,7 @@ normalize-output spec, plan, and issue stay, because that flag is not built.
   (Dependency bounds). The parser test landed in `dd6bc95`. The wider
   `pillow`, `pdomain-book-contracts`, and `pdomain-ops` caps are recorded
   there. No decision says why they are wider than one next-major step.
-- Removal commit: (fill after commit)
+- Removal commit: `637570a`
 - Rationale kept: the architecture docs and this entry.
 
 ### 2026-11-10 — Spec review follow-ups implemented on a branch
