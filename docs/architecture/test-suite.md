@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-10
+Last verified: 2026-11-13
 Kind: architecture
 Supersedes:
   - docs/specs/2026-05-28-test-suite-reorganization-design.md
@@ -52,9 +52,16 @@ replace slow tests of production OCR and reorganization.
 The fast gate runs the default pytest suite without tests marked `slow`. The
 slow gate adds model-backed integration tests for real OCR and default layout.
 
-Both paths use branch coverage, with `fail_under=100` for production code.
-Reachable behavior receives a test. Coverage exclusions are limited to
-genuinely unexecutable code and require a short reason.
+Both paths use branch coverage. The configured floor is 100, and the
+`COV_FAIL_UNDER` and `COV_FAIL_UNDER_SLOW` environment variables can override
+the recipe floors. The percentage applies after the exclusions in
+`pyproject.toml`, rather than to every reachable production statement.
+
+Those exclusions include `__main__` guards, `NotImplementedError`, and explicit
+coverage pragmas. They also exclude reachable `_load_*`, `_pick_device`, and
+`_run_doctr_batch` helper bodies used as fast-test seams. Slow tests can still
+execute those bodies against real dependencies. The exclusion rationale lives
+beside the configuration; a 100% result does not establish real OCR accuracy.
 
 ## PowerShell and installer coverage
 
@@ -65,6 +72,10 @@ skip installer tests.
 `tests/test_install_ps1_cuda.py` invokes the real CUDA-detection helpers.
 `tests/test_install_ps1.py` exercises the top-level `install.ps1` contract,
 including piped invocation and package-index behavior.
+
+The installer checks use real PowerShell processes on this Linux test host.
+The TLS 1.2 line was exercised on PowerShell 7.6, not on a real Windows
+PowerShell 5.1 host. That compatibility check remains unverified.
 
 ## Word preservation
 
@@ -124,3 +135,9 @@ Verified against the repository on 2026-07-13.
 - History: commits `24c889f`, `8f4b7e8`, `6823f1e`, `47e8653`, `cf36030`,
   and `d887fc0`; multiset word preservation in `c325c13`.
 - Re-verified 2026-11-07 against `7af73fc`.
+
+The 2026-11-13 pass checked these coverage boundaries against
+`pyproject.toml` and the `coverage`, `coverage-slow`, `ci`, and `ci-slow`
+recipes in `justfile`. The baseline `just test` run at `10cbac7` passed
+522 tests, skipped 16 slow tests, and reached 100% configured coverage.
+That run did not execute real-model slow tests or verify Windows PowerShell 5.1.

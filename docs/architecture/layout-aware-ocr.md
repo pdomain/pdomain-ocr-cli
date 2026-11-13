@@ -112,8 +112,10 @@ orientation's strongest box, a title, at 0.472. No test records that number.
 
 The CLI writes JSON sidecars, illustration crops, and the final `.txt` file
 through one transaction: exclusive temporary files, then promotion together.
-The text file is promoted last. Presence of `<image>.txt` is the completeness
-signal for that page's requested artifacts. If promotion fails, the transaction
+The text file is promoted last, after the successfully staged artifacts.
+A crop source or encoding failure can warn and skip a crop while text still
+commits. Presence of `<image>.txt` does not guarantee every requested crop.
+If promotion fails, the transaction
 removes the new files and restores the previous ones. Diagnostic snapshots and
 the layout-debug report stay outside that transaction.
 
@@ -180,3 +182,9 @@ consumes layout output:
   `7af73fc` (v0.9.1).
 - Verified: 2026-11-07, by reading the code and tests at `7af73fc`. The
   v0.9.1 release preflight `make ci-slow` passed with 468 tests.
+
+The 2026-11-13 source review checked the warning-and-skip crop path against
+`tests/test_main_errors.py::test_main_extract_illustrations_imencode_returns_false_no_tmp_swallows_unlink`.
+The pinned batch contract test in `tests/test_upright_layout.py` exercises
+`pdomain-book-tools` with a mocked predictor and rotation choice; it does not
+directly exercise the `pdomain-ops` batch wrapper.

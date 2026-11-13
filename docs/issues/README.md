@@ -81,7 +81,7 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 
 ## Open issues
 
-- [Deferred: --normalize-output flag after upstream glyph map](2026-07-19-normalize-output-flag-deferred.md): waits on `pdomain-book-tools`
+- [Deferred: --normalize-output flag after upstream glyph map](2026-07-19-normalize-output-flag-deferred.md): waits on a shared glyph-normalization contract and the owner's package choice
 
 Resolved reports are deleted, so this index tracks open work only. Past
 resolutions live in the `docs/context/decisions.md` tombstones and in git

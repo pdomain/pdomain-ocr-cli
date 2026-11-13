@@ -137,3 +137,12 @@ GITHUB ISSUE MIGRATION MANIFEST
   GitHub issues remaining: 0 open, 0 closed
   GitHub Issues feature enabled: yes (empty tracker)
 ```
+
+## Cross-repository routing update, 2026-11-13
+
+The historical cutover record above is unchanged. Current repository guidance
+in [`AGENTS.md`](../../AGENTS.md) and [`docs/README.md`](../README.md) routes
+cross-repository reports to `pdomain-book-tools/docs/issues/`. The former
+`ConcaveTrillion/ocr-container-meta` tracker is no longer used. This current
+routing supersedes only the old cross-cut destination stated above; the
+in-repo backlog and empty GitHub tracker policy remain unchanged.

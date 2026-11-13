@@ -67,7 +67,9 @@ would need a separate process, and this command does not do that.
 
 `PageOutputTransaction` stages the JSON sidecar, illustration crops, and the
 final text file as exclusive temporary files, then promotes them. The text
-file is promoted last, so its presence signals a complete artifact set. If
+file is promoted last, after the other successfully staged artifacts. Crop
+source or encoding failures can warn and omit an illustration while text still
+commits. Text presence alone does not prove that every requested crop exists. If
 promotion fails, the transaction removes new files and restores the ones it
 replaced. Files staged before a failed commit are removed. When rollback also
 fails, the CLI reports the affected paths. A `KeyboardInterrupt` during commit
@@ -78,8 +80,8 @@ transaction.
 A crash, `SIGKILL`, or power loss mid-commit can leave hidden `.bak` and
 `.stage` files next to the outputs. A later run scans each output directory
 once, before it stages anything, and handles the leftovers for each file it is
-about to write. If the destination is missing, the newest backup with content
-is restored.
+about to write. If the destination is missing, recovery prefers the newest nonempty backup.
+If every backup is empty, it restores the newest empty backup instead.
 Every other leftover is superseded and removed. The run prints a warning for
 each file it restores, removes, or cannot clean up. A backup that a successful
 commit cannot delete also prints a warning, and the page still counts as
@@ -163,8 +165,9 @@ reorganization, the rotation angle, and checkpoint loading.
 `pdomain_book_contracts.text.text_normalize`. `apply_text_normalizations` in
 `pdomain_ocr_cli/_pipeline.py` calls those helpers before the page text is
 written. This repository does not keep a second implementation. The two
-flags stay off unless the user passes them. No long-s or ligature map runs
-on that path.
+flags stay off unless the user passes them. Cleanup changes the text output
+only; it does not mutate the page used for JSON. No long-s or ligature map
+runs on that path.
 
 `pdomain-index-pip` publishes the wheel. The batch OCR path calls
 `pdomain_ops.gpu.doctr_batch.run_doctr_batch`. `pdomain-ops` 0.12.2 sets
@@ -172,9 +175,34 @@ on that path.
 0.31.0 returns. This CLI does not call `from_images_ocr_via_doctr` a second
 time.
 
+A specific compatibility fallback handles a missing
+`Document.from_images_ocr_via_doctr` attribute: `_run_doctr_batch` retries via
+`_run_doctr_batch_single_image_compat`. That path retains each page's rotation
+degrees. Other backend errors keep their normal error path.
+
 No long-s or ligature normalizer exists in this repository or in
 `pdomain-book-tools` 0.31.0. Open work, including a shared installer, is on
 the [roadmap](../roadmap.md).
+
+## Task automation
+
+The standalone `justfile` owns the task recipes. `ci` runs these steps in order:
+
+1. Setup and pre-commit.
+2. Read-only format and lint checks.
+3. Type checking and fast coverage.
+4. Installer tests, build, and wheel smoke.
+5. Strict docgraph checks.
+
+Wheel smoke checks Python 3.11, 3.12, and 3.13 by default. `ci-slow` runs
+`ci` and then `coverage-slow`; it does not replace coverage with a plain test
+run.
+
+`AI=1` writes the full recipe log to `.ci-ai.log` and prints one result line.
+Both coverage floors default to 100 and accept environment overrides. The
+Makefile shim was removed in `10cbac7`; scripts now call `just` directly.
+The existing `local-run` recipe still delegates to a missing `run` recipe.
+`UV_NO_SYNC=1 uv run pdomain-ocr …` remains the documented local CLI command.
 
 ## Release boundary
 
@@ -213,3 +241,10 @@ were updated for `pdomain-book-tools` 0.31.0 and `pdomain-ops` 0.12.2.
   image limits, and rollback `7af73fc`; spec review fixes on branch
   `fix/spec-review-followups` (`ddf6f3f` to `211708f`). Upstream predictor defaults landed in
   `pdomain-book-tools` commit `5585d27`.
+
+The 2026-11-13 architecture pass checked crop failure handling against
+`test_main_extract_illustrations_imencode_returns_false_no_tmp_swallows_unlink`
+in `tests/test_main_errors.py`, recovery ranking in `_artifacts.py`, and
+`test_single_image_compat_keeps_rotation_degrees` in
+`tests/test_upright_layout.py`. The worktree baseline at `10cbac7` passed
+`just test` with 522 tests, 16 skipped, and 100% configured coverage.

@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-31
-Last verified: 2026-11-07
+Last verified: 2026-11-13
 Kind: process
 ---
 
@@ -135,9 +135,9 @@ Private modules follow internal convention and need no docstrings.
 
 ### 17. `T201` — print-found (ruff)
 
-**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (38 occurrences), `_batch_plan.py`
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (40 occurrences), `_batch_plan.py`
 (3), `_hf_models.py` (2), `_pipeline.py` (1), `_startup_notices.py` (1), and
-`_update_check.py` (2).
+`_update_check.py` (3).
 
 **Suppression form:** `# noqa: T201  # CLI output` inline.
 
@@ -150,8 +150,8 @@ that review still flags any *accidental* debug `print`.
 ### 18. `BLE001` — blind-except (ruff)
 
 **Files:** `pdomain_ocr_cli/_startup_notices.py` (lines 58, 79, 100),
-`_update_check.py` (line 172), `ocr_to_txt.py` (lines 926, 940, 1075,
-1320), and `_artifacts.py` (lines 231, 236, 248).
+`_update_check.py` (line 181), `ocr_to_txt.py` (lines 932, 946, 1096,
+1349), and `_artifacts.py` (lines 289, 299, 311).
 
 **Suppression form:** `# noqa: BLE001` (sometimes `# noqa: BLE001 S110`)
 inline, each with a trailing rationale.
@@ -180,7 +180,7 @@ must not interrupt OCR when an optional dependency or subprocess fails.
 
 ### 20. `S310` — suspicious-url-open (ruff)
 
-**Files:** `pdomain_ocr_cli/_update_check.py` (line 133).
+**Files:** `pdomain_ocr_cli/_update_check.py` (line 139).
 
 **Suppression form:** `# noqa: S310` inline on the `urlopen` call.
 
@@ -211,7 +211,7 @@ update-check gate kept beside the tests that exercise it.
 
 ### 23. `TRY301` — raise-within-try (ruff)
 
-**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 1069).
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 1086).
 
 **Suppression form:** `# noqa: TRY301` inline.
 
@@ -221,7 +221,7 @@ split that single error-reporting path.
 
 ### 24. `B010` — set-attr-with-constant (ruff)
 
-**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 513).
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 520).
 
 **Suppression form:** `# noqa: B010` inline.
 
@@ -246,7 +246,7 @@ available.
 
 ### 26. `reportAttributeAccessIssue` — basedpyright
 
-**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (lines 429 and 452).
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (lines 436 and 459).
 
 **Suppression form:** `# pyright: ignore[reportAttributeAccessIssue]` inline.
 
@@ -278,6 +278,6 @@ the public CLI boundary.
   a subprocess. Ruff does not lint string contents, so these are not active
   suppressions.
 - `# pragma: no cover` coverage exclusions appear in
-  `pdomain_ocr_cli/_update_check.py` (line 15) and `_artifacts.py` (lines 29
-  and 34), each with a trailing reason.
+  `pdomain_ocr_cli/_update_check.py` (line 15) and `_artifacts.py` (lines 32
+  and 37), each with a trailing reason.
 - No `scripts/*.py` file carries an inline suppression.

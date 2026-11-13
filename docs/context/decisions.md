@@ -476,3 +476,19 @@ normalize-output spec, plan, and issue stay, because that flag is not built.
   API ownership, and CLI exposure as separate unresolved questions.
 - **Remaining work:** Benchmark and choose ownership only if the roadmap
   prioritizes explicit tuning.
+
+### 2026-11-13 — Architecture pass and completed handoff retirement
+
+- **Context:** Fresh source-based analyses checked all 22 indexed docs and the
+  unindexed spec-review handoff against implementation, tests, and commits.
+- **Decision:** Retire the completed handoff; keep the unimplemented
+  normalize-output spec, plan, and issue. Prior owner choices remain open.
+- **Rationale:** The handoff's implementation commits are ancestors of
+  `10cbac7`; current architecture and context preserve its durable behavior
+  and verification limits. Crop skips and coverage exclusions are now explicit.
+- **Evidence:** [Retirement receipt](../decisions/2026-11-13-spec-followups-handoff-retirement.md),
+  [CLI orchestration](../architecture/cli-orchestration.md),
+  [test-suite architecture](../architecture/test-suite.md), and commits
+  `211708f`, `637570a`, `4b50f8d`, `9a9abd7`, and `10cbac7`.
+- **Remaining work:** The four owner choices, real Windows PowerShell 5.1
+  verification, and coordinated release publication remain open.

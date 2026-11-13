@@ -54,3 +54,13 @@ suppression needs extra explanation:
 
 Other inline and configured suppressions are outside this decision's historical
 inventory. `docs/conventions/lint-deviations.md` is the authoritative catalogue.
+
+## Source-location update, 2026-11-13
+
+The historical table above remains unchanged. The live inventory in
+[`lint-deviations.md`](../conventions/lint-deviations.md) now records the
+dynamic-module accesses at `ocr_to_txt.py` lines 436 and 459 and the `TRY301`
+site at line 1086. Its shared per-image decode handler is at line 1096.
+The optional CuPy import remains at `_startup_notices.py` line 53. Source
+inspection confirmed the same structural rationale; this update does not
+change the suppression policy or resolve the owner's consolidation question.

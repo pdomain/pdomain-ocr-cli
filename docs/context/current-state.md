@@ -17,15 +17,17 @@ Kind: context
 
 ## What matters now
 
-v0.9.1 is released and published to the pdomain pip index. It ships
-rotation-aligned layout and crops, installer index and digest checks, image
-limits, output rollback, the `v0.7` model pin, update-check diagnostics, and
-dependency bounds. The 2026-11-07 spec-review fixes and the docs
-consolidation are on local master and are not released. The open product
-item on [`docs/roadmap.md`](../roadmap.md) is long-s normalization. The
-batch path reads `page.ocr_rotation_degrees` from `pdomain-ops` 0.12.2.
-Quote and dash cleanup calls `pdomain-book-contracts`. Owner decisions are
-listed there and in the intent map.
+v0.9.1 remains the published release. Local master adds the spec-review
+fixes (`ddf6f3f` through `211708f`), shared quote/dash cleanup, batch-angle
+propagation, and the task-runner migration (`9a9abd7`, `10cbac7`). Those local
+changes are not released. The proposed patch release is v0.9.2; publication
+is held for the coordinated dependency review.
+
+The open product item on the [roadmap](../roadmap.md) is long-s normalization.
+The batch path reads `page.ocr_rotation_degrees` from `pdomain-ops` 0.12.2.
+Quote and dash cleanup calls `pdomain-book-contracts`. The current lock uses
+book-tools 0.31.0, contracts 0.3.1, and ops 0.12.2; those wheels are published
+on the pdomain pip index. Pins and lock were not changed by this docs pass.
 
 These docs describe current behavior:
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
@@ -44,9 +46,13 @@ Former issue numbers are provenance tags only; see
 
 ## In-flight work
 
-No feature branch is open. Local master pins `pdomain-book-tools==0.31.0`
-and is not released. GitHub runs no workflows for this repository; releases
-run locally through `just release-{patch,minor,major}`.
+The completed spec-review handoff is
+[retired](../decisions/2026-11-13-spec-followups-handoff-retirement.md).
+The architecture pass preserves the four unresolved owner choices in the
+[intent map](intent-map.md). Local master keeps the exact
+`pdomain-book-tools==0.31.0` pin. No newer upstream NumPy/CuPy changes enter
+this CLI release through that pin. GitHub runs no workflows for this
+repository; releases run locally through `just release-{patch,minor,major}`.
 
 ## Test state
 
@@ -56,6 +62,10 @@ passed on 2026-11-10 with 537 tests and 100% coverage, on CPU with
 `CUDA_VISIBLE_DEVICES=""`. The fast suite runs with `AI=1 just test` after
 installing the declared PowerShell prerequisite through
 `scripts/ensure-pwsh.sh`.
+
+The isolated worktree baseline at `10cbac7` passed `just test` on
+2026-11-13: 522 passed, 16 slow tests skipped, and 100% configured coverage.
+That fast run does not establish real-model or Windows PowerShell 5.1 coverage.
 
 `just ci` installs the GPU dependencies three times for its wheel smoke test,
 and on 2026-11-10 that exceeded the quota on `/tmp`. Set `TMPDIR` to a directory

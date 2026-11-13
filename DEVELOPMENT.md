@@ -167,7 +167,9 @@ point is `pdomain_ocr_cli.ocr_to_txt:main` (wired via `[project.scripts]`).
 ## Release
 
 Releases are driven by `just release-patch`, `just release-minor`, or `just release-major`.
-The release script requires a clean, up-to-date `master`. It then runs
+The release script requires a clean `master` that is neither behind nor
+diverged from `origin/master`. Local commits ahead of the remote are allowed
+and will be pushed. It then runs
 `just ci-slow`, creates an annotated `vX.Y.Z` tag, and pushes `master` and the
 tag. Finally it builds the artifacts and creates the GitHub Release itself,
 attaching everything under `dist/`. The workflows were removed on 2026-09-13,

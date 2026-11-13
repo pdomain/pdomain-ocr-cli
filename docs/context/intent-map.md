@@ -103,3 +103,17 @@ Standing priority order remains in [`docs/roadmap.md`](../roadmap.md).
   Repository-specific link and command rules remain in `CONVENTIONS.md`.
   Upstream predictor defaults and current architecture preserve shipped
   behavior. Deferred intent preserves every unresolved tuning question.
+
+## Architecture pass, 2026-11-13
+
+Fresh source-based analyses retained the live normalize-output spec, plan, and
+issue. The flag is still absent; shared quote/dash cleanup does not implement
+it. The completed spec-review handoff is
+[retired](../decisions/2026-11-13-spec-followups-handoff-retirement.md).
+Its real Windows PowerShell 5.1 verification gap remains in
+[test-suite architecture](../architecture/test-suite.md#powershell-and-installer-coverage).
+The four owner choices above remain unresolved. Their sources are the
+[normalization spec](../specs/2026-07-21-normalize-output-design.md),
+[deferred issue](../issues/2026-07-19-normalize-output-flag-deferred.md),
+[roadmap owner choices](../roadmap.md), and
+[suppression decision](../decisions/type-suppressions.md).

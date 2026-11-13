@@ -119,8 +119,9 @@ Mode names are an open extension point for future locale-specific
 profiles (e.g. a `gaelic` profile that also handles dotted consonants).
 
 **Dependency.** No long-s or ligature map exists yet. Curly-quote and em-dash
-cleanup already live in `pdomain-book-contracts`, and this command still has
-a private copy of those two helpers. A glyph map should land beside them,
+cleanup already live in `pdomain-book-contracts`, and this command delegates
+to those helpers. It no longer keeps a private copy. The roadmap recommends
+placing a glyph map beside them,
 not in a new repository and not as a private table in this CLI. Decision
 D-025 in `pdomain-ocr-labeler-spa` (`specs/17-decisions.md`, 2026-05-06)
 named `pdomain_book_tools.text.normalize`. That module was never added. On
