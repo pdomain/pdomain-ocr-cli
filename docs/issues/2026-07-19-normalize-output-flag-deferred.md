@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-11-12
+Last verified: 2026-11-13
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-11-12
+- **Last verified:** 2026-11-13
 - **Resolution:** Open
 - **Severity:** Low — feature not implemented; blocked on upstream
 - **Affected version:** pdomain-ocr-cli master @ 3a818aa (docs baseline)
@@ -24,8 +24,8 @@ Level: I1
 
 ## Summary
 
-**Update 2026-11-12:** Still deferred. No long-s or ligature function exists
-in `pdomain-book-tools` 0.30.1. Quote and dash cleanup already lives in
+**Update 2026-11-13:** Still deferred. No long-s or ligature function exists
+in `pdomain-book-tools` 0.31.0. Quote and dash cleanup already lives in
 `pdomain-book-contracts`. The roadmap is the backlog, and it recommends
 that library as the home for a glyph map. The mode name is still open.
 

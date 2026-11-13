@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-12
+Last verified: 2026-11-13
 Kind: context
 ---
 
@@ -28,18 +28,19 @@ Kind: context
 
 ## Deferred work
 
-The open lines live on the [roadmap](../roadmap.md). They are the batch
-rotation angle, long-s normalization, predictor batch-size benchmarking, and
-a later split of the large test modules. Quote and dash cleanup now calls
-`pdomain-book-contracts`.
+The open lines live on the [roadmap](../roadmap.md). They are long-s
+normalization, predictor batch-size benchmarking, and a later split of the
+large test modules. The batch path reads `page.ocr_rotation_degrees`. Quote
+and dash cleanup calls `pdomain-book-contracts`.
 
 ## Spec review follow-ups (2026-11-07)
 
-The listed follow-ups landed on `fix/spec-review-followups` (`ddf6f3f` through
-`211708f`), except the batch rotation angle, which stays blocked on
-`pdomain-book-tools`. On 2026-11-12 the shipped specs and their plans were
-retired into the architecture docs. Low findings that were not on that list
-are not scheduled. Git history keeps the review text.
+The listed follow-ups are on local master (`ddf6f3f` through `211708f`).
+`pdomain-book-tools` 0.31.0 returns one clockwise degree per page, and
+`pdomain-ops` 0.12.2 stores it on the page. This CLI reads that field and
+does not infer the angle. On 2026-11-12 the shipped specs and their plans
+were retired into the architecture docs. Low findings that were not on that
+list are not scheduled. Git history keeps the review text.
 
 ## Rejected directions
 
@@ -58,14 +59,9 @@ are not scheduled. Git history keeps the review text.
 
 - Long-s and ligature normalization waits on a shared function. Decision
   D-025 named `pdomain_book_tools.text.normalize`. That module has never
-  existed, including in `pdomain-book-tools` 0.30.1. The labeler removed its
+  existed, including in `pdomain-book-tools` 0.31.0. The labeler removed its
   probe on 2026-09-18. The roadmap recommends `pdomain-book-contracts`
   instead, next to the quote and dash helpers.
-- An explicit rotation angle on the batch OCR path waits on
-  `pdomain-book-tools`. In version 0.30.1 and on its master at `f1f0ecb`,
-  `Document.from_images_ocr_via_doctr` picks an angle and discards it. The
-  retired rotation spec rules out inferring it again in the CLI. Until then
-  `tests/test_upright_layout.py` guards the upright buffer the CLI relies on.
 
 ## Open issues
 

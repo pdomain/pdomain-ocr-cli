@@ -42,7 +42,7 @@ function Get-BookToolsExtras {
     } catch {
         return ""
     }
-    if ($Version.Major -gt 12 -or ($Version.Major -eq 12 -and $Version.Minor -ge 4)) {
+    if ($Version.Major -ge 13) {
         return "[gpu]"
     }
     return ""

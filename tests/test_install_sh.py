@@ -73,6 +73,7 @@ def _write_fake_bin(
     release_json: str,
     gh_release_json: str | None = None,
     cuda: bool = False,
+    cuda_version: str = "12.4",
 ) -> None:
     bin_dir.mkdir()
 
@@ -126,7 +127,10 @@ exit 1
         # install.sh parses the PLAIN `nvidia-smi` header line (colon
         # immediately after "Version", unlike the padded `nvidia-smi -q`
         # form), e.g.: "| ... Driver Version: 550.54.15  CUDA Version: 12.4 |"
-        smi_line = "| NVIDIA-SMI 550.54.15   Driver Version: 550.54.15   CUDA Version: 12.4    |"
+        smi_line = (
+            "| NVIDIA-SMI 550.54.15   Driver Version: 550.54.15   "
+            f"CUDA Version: {cuda_version}    |"
+        )
         _ = (bin_dir / "nvidia-smi").write_text(
             f"#!/bin/sh\nprintf '%s\\n' '{smi_line}'\nexit 0\n",
             encoding="utf-8",
@@ -141,10 +145,11 @@ def _run_install_sh(
     release_json: str,
     gh_release_json: str | None = None,
     cuda: bool = False,
+    cuda_version: str = "12.4",
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     bin_dir = tmp_path / "bin"
     uv_log = tmp_path / "uv.log"
-    _write_fake_bin(bin_dir, uv_log, release_json, gh_release_json, cuda)
+    _write_fake_bin(bin_dir, uv_log, release_json, gh_release_json, cuda, cuda_version)
 
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
@@ -186,10 +191,24 @@ def test_install_sh_pdomain_index_precedes_cuda_extra_index(tmp_path: Path) -> N
     args = uv_log.read_text(encoding="utf-8")
     assert "--index\npdomain=https://pdomain.github.io/pdomain-index-pip/simple/" in args
     assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu124" in args
-    assert "--with\npdomain-book-tools[gpu]" in args
+    assert "--with\npdomain-book-tools[gpu]" not in args
     # The pdomain index must be listed (and therefore checked, under
     # first-index) before the CUDA/PyTorch extra index.
     assert args.index("pdomain=") < args.index("pytorch-cuda=")
+
+
+def test_install_sh_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
+    result, uv_log = _run_install_sh(
+        tmp_path,
+        _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'),
+        cuda=True,
+        cuda_version="13.0",
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    args = uv_log.read_text(encoding="utf-8")
+    assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu130" in args
+    assert "--with\npdomain-book-tools[gpu]" in args
 
 
 def test_install_sh_uses_first_index_strategy() -> None:

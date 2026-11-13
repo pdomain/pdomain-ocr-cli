@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-12
+Last verified: 2026-11-13
 Kind: context
 ---
 
@@ -20,12 +20,12 @@ Kind: context
 v0.9.1 is released and published to the pdomain pip index. It ships
 rotation-aligned layout and crops, installer index and digest checks, image
 limits, output rollback, the `v0.7` model pin, update-check diagnostics, and
-dependency bounds. The 2026-11-07 spec-review fixes are on
-`fix/spec-review-followups`, not on master and not released. Docs
-consolidation is on `docs/consolidate-architecture-roadmap`, stacked on that
-branch. The open product items are on [`docs/roadmap.md`](../roadmap.md):
-the batch rotation angle and long-s normalization. Quote and dash cleanup
-now calls `pdomain-book-contracts`. Owner decisions are listed there and in the intent map.
+dependency bounds. The 2026-11-07 spec-review fixes and the docs
+consolidation are on local master and are not released. The open product
+item on [`docs/roadmap.md`](../roadmap.md) is long-s normalization. The
+batch path reads `page.ocr_rotation_degrees` from `pdomain-ops` 0.12.2.
+Quote and dash cleanup calls `pdomain-book-contracts`. Owner decisions are
+listed there and in the intent map.
 
 These docs describe current behavior:
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
@@ -44,9 +44,9 @@ Former issue numbers are provenance tags only; see
 
 ## In-flight work
 
-`fix/spec-review-followups` waits for review. It is not merged. GitHub runs
-no workflows for this repository; releases run locally through
-`make release-{patch,minor,major}`.
+No feature branch is open. Local master pins `pdomain-book-tools==0.31.0`
+and is not released. GitHub runs no workflows for this repository; releases
+run locally through `make release-{patch,minor,major}`.
 
 ## Test state
 

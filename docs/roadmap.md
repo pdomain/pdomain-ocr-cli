@@ -3,7 +3,7 @@ kind: plan
 status: active
 owner: CT
 created: 2026-05-19
-last_verified: 2026-11-12
+last_verified: 2026-11-13
 disposition: Standing roadmap for CLI-owned work.
 ---
 
@@ -17,7 +17,7 @@ disposition: Standing roadmap for CLI-owned work.
 - **Status:** active
 - **Read when:** deciding what to work on next in `pdomain-ocr-cli`.
 - **Search terms:** roadmap, backlog, now next later, open priorities, shared installer, text normalization, batch rotation
-- **Last verified:** 2026-11-12
+- **Last verified:** 2026-11-13
 
 This is the only backlog for work this repository owns.
 
@@ -58,7 +58,7 @@ caller-side glue.
 
 The command wraps `pdomain-book-tools` for OCR and layout.
 
-It uses `pdomain-ops` for suite plumbing that is not on the OCR path.
+The batch path calls `pdomain_ops.gpu.doctr_batch.run_doctr_batch`.
 
 [CLI orchestration](architecture/cli-orchestration.md) documents the
 boundary, the image limits, the installers, and the release flow.
@@ -69,7 +69,7 @@ Python 3.11 through 3.13.
 
 Hatchling `1.33.0` and hatch-vcs `0.5.0` build the package.
 
-Runtime dependencies are `pdomain-book-tools==0.30.1`,
+Runtime dependencies are `pdomain-book-tools==0.31.0`,
 `pdomain-book-contracts`, `pdomain-ops`, `huggingface_hub`, and `pillow`.
 
 Development uses `uv`, pytest, Ruff, and basedpyright.
@@ -89,16 +89,6 @@ Where a feature is a thin pass-through, the library work is tracked in
 
 ## Remaining work
 
-- **Blocked:** pass the batch OCR path the rotation angle that
-  `pdomain-book-tools` chooses.
-
-  Version 0.30.1 picks an angle and discards it.
-
-  This CLI must not infer the angle again.
-
-  Until the library reports it, the batch path uses the upright buffer the
-  library stores. See
-  [layout-aware OCR](architecture/layout-aware-ocr.md#page-rotation).
 - **Later:** `--normalize-output` for long-s and ligatures, after a shared
   function exists.
 
@@ -127,7 +117,7 @@ Where a feature is a thin pass-through, the library work is tracked in
 
   JSON output is not in the proposal.
 
-  `pdomain-book-tools` 0.30.1 has neither function.
+  `pdomain-book-tools` 0.31.0 has neither function.
 
   [Issue](issues/2026-07-19-normalize-output-flag-deferred.md),
   [spec](specs/2026-07-21-normalize-output-design.md),
@@ -200,6 +190,11 @@ Current behavior, with evidence, lives in these docs:
   `pdomain_book_contracts.text.text_normalize` and does not keep a second
   copy. See
   [CLI orchestration](architecture/cli-orchestration.md#repository-boundary).
+- Batch OCR rotation. `pdomain-book-tools` 0.31.0 returns one clockwise
+  degree per page. `pdomain-ops` 0.12.2 writes it to
+  `page.ocr_rotation_degrees`. This CLI reads that field after
+  `run_doctr_batch` and does not call `from_images_ocr_via_doctr` again.
+  See [layout-aware OCR](architecture/layout-aware-ocr.md#page-rotation).
 - Rotation-aligned layout and crops, and the word-preservation tests:
   [layout-aware OCR](architecture/layout-aware-ocr.md),
   [test suite](architecture/test-suite.md).

@@ -9,10 +9,9 @@ set -e
 # public GitHub Releases API via curl.
 #
 # GPU auto-enable:
-#   The CUDA >= 12.4 branch below passes `--with pdomain-book-tools[gpu]` to
-#   pull in the optional CuPy + opencv-cuda extras.  That extra exists only
-#   in pdomain-book-tools >= v0.11.0 (the release that moved those heavy deps
-#   from mandatory into an optional [gpu] group).
+#   The CUDA >= 13 branch below passes `--with pdomain-book-tools[gpu]` to
+#   pull in cupy-cuda13x. pdomain-book-tools 0.31.0 makes that extra CUDA 13
+#   only. CUDA 12 still gets the matching PyTorch wheel, without the extra.
 #
 # pdomain-book-tools is published on a self-hosted PEP 503 index (pdomain-index-pip) so
 # the wheel's Requires-Dist entry resolves automatically when we bind that
@@ -54,18 +53,15 @@ if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
         EXTRA_INDEX="https://download.pytorch.org/whl/${CUDA_TAG}"
         echo "Detected CUDA ${CUDA_VER} — will install PyTorch with ${CUDA_TAG} support."
 
-        # CuPy (cupy-cuda12x) requires CUDA >= 12.4. Only opt into the
-        # pdomain-book-tools[gpu] extra when that minimum is satisfied;
-        # otherwise the [gpu] resolve fails with a CuPy version error
-        # and a working CPU-only install would have been preferable.
+        # cupy-cuda13x needs CUDA 13. CUDA 12 still gets the matching
+        # PyTorch wheel, without the [gpu] extra.
         # POSIX-sh version compare — no `sort -V`, no `awk`.
         CUDA_MAJOR=${CUDA_VER%.*}
-        CUDA_MINOR=${CUDA_VER#*.}
-        if [ "$CUDA_MAJOR" -gt 12 ] || { [ "$CUDA_MAJOR" -eq 12 ] && [ "$CUDA_MINOR" -ge 4 ]; }; then
+        if [ "$CUDA_MAJOR" -ge 13 ]; then
             PD_BOOK_TOOLS_EXTRAS="[gpu]"
-            echo "CUDA ${CUDA_VER} >= 12.4 — enabling pdomain-book-tools[gpu] (CuPy + opencv-cuda)."
+            echo "CUDA ${CUDA_VER} >= 13 — enabling pdomain-book-tools[gpu] (cupy-cuda13x)."
         else
-            echo "CUDA ${CUDA_VER} < 12.4 — installing CPU-only book-tools (cupy-cuda12x needs >= 12.4)."
+            echo "CUDA ${CUDA_VER} < 13 — installing CPU-only book-tools (cupy-cuda13x needs CUDA 13)."
         fi
     else
         echo "nvidia-smi found but could not detect CUDA version — falling back to CPU."
@@ -250,7 +246,7 @@ echo "Installing pdomain-ocr ${RELEASE_TAG:-} from $(basename "$WHEEL_FILE")..."
 # (GitHub Pages PEP 503 index); bind it via a named `--index` (not the
 # deprecated --extra-index-url) so uv can resolve the Requires-Dist entry
 # that the wheel's METADATA carries, and so a hostile UV_INDEX env var can't
-# outrank it (see the UV_INDEX_STRATEGY comment above). When CUDA >= 12.4
+# outrank it (see the UV_INDEX_STRATEGY comment above). When CUDA >= 13
 # was detected above, $PD_BOOK_TOOLS_EXTRAS is "[gpu]"; we pass --with to
 # pull that extra in. The pdomain --index is always listed before the CUDA
 # extra --index, so it's still checked first under first-index.

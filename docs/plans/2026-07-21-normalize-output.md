@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-11-12
+Last verified: 2026-11-13
 Kind: plan
 ---
 
@@ -34,7 +34,7 @@ GitHub runs no workflows for this repository, so every check here is local.
 
 ## Status
 
-Blocked. On 2026-11-12, `pdomain-book-tools` 0.30.1 still has no
+Blocked. On 2026-11-13, `pdomain-book-tools` 0.31.0 still has no
 `text_normalize.py` and no `normalize_text`, so Task 1's gate fails and Task 2
 must not start. Quote and dash cleanup is a separate, already-shipped helper
 in `pdomain-book-contracts`. The roadmap recommends the glyph map follow it

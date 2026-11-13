@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-12
+Last verified: 2026-11-13
 Kind: architecture
 Supersedes:
   - docs/plans/2026-05-29-pdomain-ocr-cli-review-remediation.md
@@ -139,7 +139,7 @@ the wheel's dependencies.
 ## Dependency bounds
 
 Every direct runtime dependency has an upper bound or an exact pin.
-`pdomain-book-tools` is pinned exactly at `==0.30.1`. The build backends are
+`pdomain-book-tools` is pinned exactly at `==0.31.0`. The build backends are
 pinned exactly at `hatchling==1.33.0` and `hatch-vcs==0.5.0`.
 `tests/test_dependency_metadata.py` enforces both rules, including every
 optional extra. It parses each requirement, so an environment marker cannot
@@ -166,11 +166,14 @@ written. This repository does not keep a second implementation. The two
 flags stay off unless the user passes them. No long-s or ligature map runs
 on that path.
 
-`pdomain-index-pip` publishes the wheel. `pdomain-ops` is the suite library
-for registry, GPU dispatch, and desktop plumbing. It is not on the OCR path.
+`pdomain-index-pip` publishes the wheel. The batch OCR path calls
+`pdomain_ops.gpu.doctr_batch.run_doctr_batch`. `pdomain-ops` 0.12.2 sets
+`page.ocr_rotation_degrees` from the degree list that `pdomain-book-tools`
+0.31.0 returns. This CLI does not call `from_images_ocr_via_doctr` a second
+time.
 
 No long-s or ligature normalizer exists in this repository or in
-`pdomain-book-tools` 0.30.1. Open work, including a shared installer, is on
+`pdomain-book-tools` 0.31.0. Open work, including a shared installer, is on
 the [roadmap](../roadmap.md).
 
 ## Release boundary
@@ -190,7 +193,8 @@ and tests. The v0.9.1 release preflight `make ci-slow` passed with 468 tests.
 The image-limit, transaction, model-pin, installer, and dependency sections
 were re-read on 2026-11-12 against `fix/spec-review-followups` at `211708f`.
 That branch's `make ci-slow` passed on 2026-11-10 with 537 tests. This docs
-pass did not re-run it.
+pass did not re-run it. On 2026-11-13 the pin and the batch-rotation boundary
+were updated for `pdomain-book-tools` 0.31.0 and `pdomain-ops` 0.12.2.
 
 - Sources: `pdomain_ocr_cli/ocr_to_txt.py`, `_policy.py`, `_batch_plan.py`,
   `_runtime.py`, `_artifacts.py`, `_image_limits.py`, `_model_security.py`,

@@ -4,7 +4,7 @@
 #   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 #
 # Manual CUDA override (if auto-detection fails):
-#   $env:CUDA_VERSION = "12.4"   # replace with your version
+#   $env:CUDA_VERSION = "13.0"   # replace with your version
 #   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 #
 # Python override:
@@ -57,7 +57,7 @@ function Get-BookToolsExtras {
     } catch {
         return ""
     }
-    if ($Version.Major -gt 12 -or ($Version.Major -eq 12 -and $Version.Minor -ge 4)) {
+    if ($Version.Major -ge 13) {
         return "[gpu]"
     }
     return ""
@@ -94,9 +94,9 @@ if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
 
         $BookToolsExtras = Get-BookToolsExtras $CudaVer
         if ($BookToolsExtras -eq "[gpu]") {
-            Write-Host "CUDA $CudaVer >= 12.4 -- enabling pdomain-book-tools[gpu] (CuPy + opencv-cuda)."
+            Write-Host "CUDA $CudaVer >= 13 -- enabling pdomain-book-tools[gpu] (cupy-cuda13x)."
         } else {
-            Write-Host "CUDA $CudaVer < 12.4 -- installing CPU-only book-tools (cupy-cuda12x needs >= 12.4)."
+            Write-Host "CUDA $CudaVer < 13 -- installing CPU-only book-tools (cupy-cuda13x needs CUDA 13)."
         }
     } else {
         Write-Host ""
@@ -104,7 +104,7 @@ if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
         Write-Host "         Installing CPU-only build of pdomain-ocr."
         Write-Host ""
         Write-Host "         To install the GPU build instead, re-run with a manual override:"
-        Write-Host "           `$env:CUDA_VERSION = `"12.4`"   # replace with your CUDA version"
+        Write-Host "           `$env:CUDA_VERSION = `"13.0`"   # replace with your CUDA version"
         Write-Host "           irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex"
         Write-Host ""
         Write-Host "         Find your CUDA version by running:  nvidia-smi"

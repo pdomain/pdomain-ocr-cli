@@ -30,7 +30,7 @@ Do the fixes from the 2026-11-07 spec reviews, highest value first.
 
 ## Not done
 
-- The explicit batch rotation angle is blocked: `pdomain-book-tools` picks the angle and discards it, in 0.30.1 and on master, and the spec forbids inferring it in the CLI. A test fails if that library stops storing the upright image.
+- On 2026-11-11 the batch rotation angle was blocked, because `pdomain-book-tools` 0.30.1 picked an angle and discarded it. As of 2026-11-13, version 0.31.0 returns one clockwise degree per page, `pdomain-ops` 0.12.2 stores it on the page, and this CLI reads `page.ocr_rotation_degrees`. The upright-buffer test remains. The CLI still must not infer the angle.
 - `--normalize-output` stays deferred.
 - The TLS 1.2 line ran only on PowerShell 7.6, not on a real Windows PowerShell 5.1 host.
 - The readability editor did not run, because it rewrites whole files. Changed passages were written to the standard by hand.

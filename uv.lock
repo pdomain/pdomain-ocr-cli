@@ -1364,19 +1364,6 @@ wheels = [
 ]
 
 [[package]]
-name = "opencv-cuda"
-version = "0.0.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "opencv-python" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/7f/c6/0f23be26ee049ec3b4e0dbc55d645af3c941063708580dab9e08da1a5e6c/opencv-cuda-0.0.2.tar.gz", hash = "sha256:1719ee0a49d3ca5f80a4992996a251f9ae146e4cde6fdbedf55e10e34fc872bc", size = 2297, upload-time = "2023-10-22T15:29:58.286Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/b9/2d9ada49ae2c0dd31ee5df4889e2c73a7767b2da5b32fa9cd2b71421d3d8/opencv_cuda-0.0.2-py3-none-any.whl", hash = "sha256:d1cf890cdd06c909ef0ffa322c37861de20082de3d3aae5dc29fa71768767401", size = 2749, upload-time = "2023-10-22T15:29:57.001Z" },
-]
-
-[[package]]
 name = "opencv-python"
 version = "5.0.0.93"
 source = { registry = "https://pypi.org/simple" }
@@ -1469,7 +1456,7 @@ wheels = [
 
 [[package]]
 name = "pdomain-book-tools"
-version = "0.30.1"
+version = "0.31.0"
 source = { registry = "https://pdomain.github.io/pdomain-index-pip/simple/" }
 dependencies = [
     { name = "deskew" },
@@ -1495,15 +1482,14 @@ dependencies = [
     { name = "torchvision" },
     { name = "transformers" },
 ]
-sdist = { url = "https://github.com/pdomain/pdomain-book-tools/releases/download/v0.30.1/pdomain_book_tools-0.30.1.tar.gz", hash = "sha256:b86619c3b5ec7231c32bcb8f659acc4ecd9f4a1ef13190230501bc63851eec31" }
+sdist = { url = "https://github.com/pdomain/pdomain-book-tools/releases/download/v0.31.0/pdomain_book_tools-0.31.0.tar.gz", hash = "sha256:d2f5f28571f32245df6253aae735eb1d9f3448dd750938fd30d200d77870b25c" }
 wheels = [
-    { url = "https://github.com/pdomain/pdomain-book-tools/releases/download/v0.30.1/pdomain_book_tools-0.30.1-py3-none-any.whl", hash = "sha256:500b222b75bf4a39b134e31c1e04b3ad570afa431e691b7adf0c597de6524630" },
+    { url = "https://github.com/pdomain/pdomain-book-tools/releases/download/v0.31.0/pdomain_book_tools-0.31.0-py3-none-any.whl", hash = "sha256:c614b2c32cd7a3a0508fe0088795a9249b83c2e4866132a4dddff4d47e92ae9b" },
 ]
 
 [package.optional-dependencies]
 gpu = [
     { name = "cupy-cuda13x" },
-    { name = "opencv-cuda" },
 ]
 
 [[package]]
@@ -1540,9 +1526,9 @@ dev = [
 requires-dist = [
     { name = "huggingface-hub", specifier = ">=1.16,<2" },
     { name = "pdomain-book-contracts", specifier = ">=0.2.0,<1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
-    { name = "pdomain-book-tools", specifier = "==0.30.1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
-    { name = "pdomain-book-tools", extras = ["gpu"], marker = "extra == 'gpu'", specifier = "==0.30.1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
-    { name = "pdomain-ops", specifier = ">=0.11.2,<1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pdomain-book-tools", specifier = "==0.31.0", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pdomain-book-tools", extras = ["gpu"], marker = "extra == 'gpu'", specifier = "==0.31.0", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pdomain-ops", specifier = ">=0.12.2,<1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
     { name = "pillow", specifier = ">=11.0,<13" },
 ]
 provides-extras = ["gpu"]
@@ -1563,7 +1549,7 @@ dev = [
 
 [[package]]
 name = "pdomain-ops"
-version = "0.11.2"
+version = "0.12.2"
 source = { registry = "https://pdomain.github.io/pdomain-index-pip/simple/" }
 dependencies = [
     { name = "eventsourcing" },
@@ -1572,6 +1558,7 @@ dependencies = [
     { name = "httpx" },
     { name = "httpx2" },
     { name = "packaging" },
+    { name = "pdomain-book-contracts" },
     { name = "pdomain-book-tools" },
     { name = "platformdirs" },
     { name = "pydantic" },
@@ -1580,9 +1567,9 @@ dependencies = [
     { name = "tomli-w" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://github.com/pdomain/pdomain-ops/releases/download/v0.11.2/pdomain_ops-0.11.2.tar.gz", hash = "sha256:c0561b4e0a00081078d5204c014d54648bd8446f64ddcbb63f46b45c253a2775" }
+sdist = { url = "https://github.com/pdomain/pdomain-ops/releases/download/v0.12.2/pdomain_ops-0.12.2.tar.gz", hash = "sha256:68c7173077d63b3f739a1ab425ba1f0d0de6eb0c9574b584ce17f4bd09b07065" }
 wheels = [
-    { url = "https://github.com/pdomain/pdomain-ops/releases/download/v0.11.2/pdomain_ops-0.11.2-py3-none-any.whl", hash = "sha256:0d310ef9b78b294fcd29d410cd555149efc1a654eb70bf7a4412a29e7a3602a1" },
+    { url = "https://github.com/pdomain/pdomain-ops/releases/download/v0.12.2/pdomain_ops-0.12.2-py3-none-any.whl", hash = "sha256:00a5cdf4d25df91093e2aac3a335efca032906ad751b7aa90ef5eb970fa646b2" },
 ]
 
 [[package]]

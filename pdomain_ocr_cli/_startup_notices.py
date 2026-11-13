@@ -91,7 +91,7 @@ def maybe_print_gpu_nudge(
             print(  # noqa: T201  # CLI output
                 (
                     "pdomain-ocr: NVIDIA GPU detected but pdomain-ocr was installed CPU-only.\n"
-                    + "        Re-run the install script to switch to GPU (requires CUDA >= 12.4):\n"
+                    + "        Re-run the install script to switch to GPU (requires CUDA >= 13):\n"
                     + "          curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh | sh\n"
                     + "        Set PD_OCR_NO_GPU_NUDGE=1 to silence this message."
                 ),

@@ -22,14 +22,19 @@ def _write_fake_exe(path: Path, body: str) -> None:
 
 
 def _run_install_ps1(
-    tmp_path: Path, digest_property: str
+    tmp_path: Path, digest_property: str, cuda_version: str = "12.4"
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
-    result, uv_log, _perm_log = _run_install_ps1_full(tmp_path, digest_property)
+    result, uv_log, _perm_log = _run_install_ps1_full(
+        tmp_path, digest_property, cuda_version=cuda_version
+    )
     return result, uv_log
 
 
 def _run_install_ps1_full(
-    tmp_path: Path, digest_property: str, umask: int | None = None
+    tmp_path: Path,
+    digest_property: str,
+    umask: int | None = None,
+    cuda_version: str = "12.4",
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """Run install.ps1 through pwsh with mocked GitHub API + uv + nvidia-smi.
 
@@ -67,8 +72,8 @@ exit 0
     )
     _write_fake_exe(
         bin_dir / "nvidia-smi",
-        """#!/bin/sh
-printf '%s\\n' 'CUDA Version                          : 12.4'
+        f"""#!/bin/sh
+printf '%s\\n' 'CUDA Version                          : {cuda_version}'
 exit 0
 """,
     )
@@ -148,7 +153,19 @@ def test_install_ps1_piped_mode_is_self_contained_and_uses_release_wheel(
     # extra index is also present. The pdomain index must be listed (and
     # therefore checked, under first-index) before it.
     assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu124" in args
+    assert "--with" not in args
     assert args.index("pdomain=") < args.index("pytorch-cuda=")
+
+
+def test_install_ps1_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
+    result, uv_log = _run_install_ps1(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', cuda_version="13.0"
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    args = uv_log.read_text(encoding="utf-8")
+    assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu130" in args
+    assert "--with\npdomain-book-tools[gpu]" in args
 
 
 def test_install_ps1_uses_first_index_strategy() -> None:

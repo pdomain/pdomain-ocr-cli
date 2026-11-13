@@ -357,8 +357,10 @@ def _rotated_page(angle: int) -> FakePage:
     return page
 
 
-def test_pinned_batch_ocr_stashes_the_upright_image(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Batch OCR reports no angle, so the CLI depends on this upright buffer."""
+def test_pinned_batch_ocr_returns_degrees_and_the_upright_image(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Batch OCR returns one clockwise degree per page and the upright buffer."""
     from pdomain_book_tools.ocr import rotation as rotation_module
     from pdomain_book_tools.ocr.document import Document
     from pdomain_book_tools.ocr.page import Page
@@ -382,10 +384,22 @@ def test_pinned_batch_ocr_stashes_the_upright_image(monkeypatch: pytest.MonkeyPa
         rotation_module, "detect_best_rotation", lambda *_args, **_kwargs: (180, best, ())
     )
 
-    document = Document.from_images_ocr_via_doctr(
+    document, rotation_degrees = Document.from_images_ocr_via_doctr(
         images=[source], predictor=lambda _images: _Result(), source_identifiers=["page.png"]
     )
+    assert rotation_degrees == [180]
 
     stashed = document.pages[0].cv2_numpy_page_image
     assert isinstance(stashed, np.ndarray)
     assert np.argwhere(stashed.all(axis=2)).tolist() == [[1, 2]]
+
+    upright_document, upright_degrees = Document.from_images_ocr_via_doctr(
+        images=[source],
+        predictor=lambda _images: _Result(),
+        source_identifiers=["page.png"],
+        auto_rotate=False,
+    )
+    assert upright_degrees == [0]
+    upright = upright_document.pages[0].cv2_numpy_page_image
+    assert isinstance(upright, np.ndarray)
+    assert np.argwhere(upright.all(axis=2)).tolist() == [[0, 0]]

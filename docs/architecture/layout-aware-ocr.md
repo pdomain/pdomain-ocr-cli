@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-11-10
+Last verified: 2026-11-13
 Kind: architecture
 ---
 
@@ -69,9 +69,12 @@ The OCR layer can re-read a page at 90°, 180°, or 270° when upright
 recognition confidence is low. It keeps the orientation with the best text.
 
 Layout detection and illustration crops use that same upright image. The
-single-image OCR path keeps the angle on the page as `ocr_rotation_degrees`.
-`upright_layout_source()` in `pdomain_ocr_cli/_pipeline.py` then picks the
-layout source:
+single-image path stores the angle on the page as `ocr_rotation_degrees`.
+The batch path does too. `run_doctr_batch` in `pdomain-ops` 0.12.2 copies the
+degree list from `pdomain-book-tools` 0.31.0 onto each page. This CLI reads
+`page.ocr_rotation_degrees` and does not call `from_images_ocr_via_doctr`
+again. `upright_layout_source()` in `pdomain_ocr_cli/_pipeline.py` then picks
+the layout source:
 
 - If OCR stored an upright page buffer, layout and crops use it.
 - If the angle is 0, layout reads the on-disk file and crops re-read it.
@@ -82,12 +85,12 @@ other than a decoded array raises `TypeError`. Crop boxes come from layout on th
 same upright image; a box that runs past the edge is clamped, and an empty one
 is skipped without a warning.
 
-The batch OCR path does not report an angle. It relies on `pdomain-book-tools`
-storing the upright page buffer. If a batch page has no stored buffer, layout
-and crops read the on-disk file, rotated or not, and no error is raised.
-`test_pinned_batch_ocr_stashes_the_upright_image` fails if the pinned library
-stops storing that buffer. An explicit batch angle needs `pdomain-book-tools`
-to report the angle it chooses.
+`Document.from_images_ocr_via_doctr` returns one clockwise degree per page.
+The degree is 0 when that page stayed upright, and 0 on every page when
+`auto_rotate` is false. The library still stores the upright page buffer.
+`test_pinned_batch_ocr_returns_degrees_and_the_upright_image` fails if that
+buffer or the degree list disappears. A page with no stored buffer and no
+angle still uses the on-disk file, and no error is raised.
 
 On the sideways fixture `tests/fixtures/rotated_page.png`, layout reports 0
 regions at the default confidence of 0.5. That is correct. An offline run of
@@ -170,7 +173,7 @@ consumes layout output:
   `test_kept_angle_orients_layout_when_no_buffer_is_stashed`,
   `test_upright_layout_source_rejects_non_quarter_turn`,
   `test_angle_only_crop_takes_the_marked_corner_from_real_pixels`,
-  `test_pinned_batch_ocr_stashes_the_upright_image`),
+  `test_pinned_batch_ocr_returns_degrees_and_the_upright_image`),
   `tests/test_default_layout_word_preservation.py`
   (`test_default_layout_preserves_every_ocr_word`), `tests/test_artifacts.py`.
 - History: commit `c325c13` (v0.9.0, `pdomain-book-tools==0.30.1`) and

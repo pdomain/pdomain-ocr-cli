@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-11-12
+Last verified: 2026-11-13
 Kind: spec
 ---
 
@@ -20,15 +20,15 @@ The CLI will expose normalization as a default-off enum after `pdomain-book-tool
 
 **Implementation plan:** [normalize-output plan](../plans/2026-07-21-normalize-output.md)
 
-## Status on 2026-11-12
+## Status on 2026-11-13
 
-Still blocked. `pdomain-book-tools` 0.30.1 has no `text_normalize.py` and no
+Still blocked. `pdomain-book-tools` 0.31.0 has no `text_normalize.py` and no
 `normalize_text`. Curly-quote and em-dash helpers already live in
-`pdomain_book_contracts.text.text_normalize`. This CLI still keeps a private
-copy. The [roadmap](../roadmap.md) recommends putting a glyph map in
-`pdomain-book-contracts` as well. The adopted design below still names
-`pdomain-book-tools`, which is what D-025 asked for on 2026-05-06. That
-module was never created. The labeler removed its probe on 2026-09-18 and
+`pdomain_book_contracts.text.text_normalize`. This CLI calls those helpers
+and does not keep a second copy. The [roadmap](../roadmap.md) recommends
+putting a glyph map in `pdomain-book-contracts` as well. The adopted design
+below still names `pdomain-book-tools`, which is what D-025 asked for on
+2026-05-06. That module was never created. The labeler removed its probe on 2026-09-18 and
 does not offer the feature. The mode name is still an owner decision.
 
 ## Adopted design

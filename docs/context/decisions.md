@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-12
+Last verified: 2026-11-13
 Kind: context
 ---
 
@@ -14,6 +14,19 @@ Kind: context
 - **Status:** active
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
+
+### 2026-11-13 — Batch OCR rotation degrees are kept
+
+`pdomain-book-tools` 0.31.0 returns `(Document, list[int])` from
+`Document.from_images_ocr_via_doctr`. Each integer is one clockwise degree.
+It is 0 when that page stayed upright, and 0 for every page when
+`auto_rotate` is false. `pdomain-ops` 0.12.2 writes each degree to
+`page.ocr_rotation_degrees`. This CLI reads that field after
+`run_doctr_batch` and does not call `from_images_ocr_via_doctr` again.
+Version 0.12.1 accepted the tuple and discarded the degrees, so this
+repository requires `pdomain-ops>=0.12.2`. `pdomain-book-tools` 0.31.0 still has no text-normalize
+module. This closes the batch-angle remaining work named in the 2026-11-12
+and 2026-11-10 entries below.
 
 ### 2026-11-12 Retired: shipped design specs and plans
 

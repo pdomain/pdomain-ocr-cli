@@ -53,7 +53,7 @@ it when you're running through a whole book rather than one page.
 > Toolkit and CUDA-flavored PyTorch wheels — roughly 10 GB total. CPU
 > mode is a fine starting point if that's tight.
 
-- **NVIDIA on Linux/Windows** — install the [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (12.4 or newer), then run the install script; it auto-detects CUDA.
+- **NVIDIA on Linux/Windows** — install the [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (13 or newer for the GPU extra), then run the install script; it auto-detects CUDA.
 - **Apple Silicon Mac** — kicks in automatically, nothing to install. *(Unverified — feedback welcome.)*
 - **No GPU** — nothing to do; CPU is the default.
 
@@ -122,8 +122,8 @@ authoritatively.
 ### How do I switch from CPU-only to GPU?
 
 Re-run the install script. It re-detects `nvidia-smi` on every run,
-picks the matching `cuXXX` PyTorch wheels, and (when CUDA ≥ 12.4)
-opts into the `pdomain-book-tools[gpu]` extra (CuPy + opencv-cuda).
+picks the matching `cuXXX` PyTorch wheels, and (when CUDA ≥ 13)
+opts into the `pdomain-book-tools[gpu]` extra (`cupy-cuda13x`).
 `uv tool install --reinstall` swaps the existing install in place.
 
 ```sh
@@ -136,8 +136,8 @@ curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/insta
 irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 ```
 
-CUDA 11.x or 12.0–12.3 still gets the GPU PyTorch wheels, but the
-heavier CuPy stack is skipped (CuPy itself requires CUDA ≥ 12.4).
+CUDA 12 still gets the matching PyTorch wheel, but the CuPy stack is
+skipped (`cupy-cuda13x` requires CUDA 13).
 
 ### Why am I seeing a "GPU detected but installed CPU-only" message?
 
@@ -282,8 +282,8 @@ time to upgrade or to switch between CPU and GPU. They:
 - Use Python 3.13 by default for the uv tool environment. Override with
   `PD_OCR_INSTALL_PYTHON` if you need another supported Python version.
 - Detect NVIDIA CUDA via `nvidia-smi`, pick the matching `cuXXX` PyTorch
-  wheel index, and (when CUDA ≥ 12.4) add `--with 'pdomain-book-tools[gpu]'`
-  for CuPy + opencv-cuda.
+  wheel index, and (when CUDA ≥ 13) add `--with 'pdomain-book-tools[gpu]'`
+  for `cupy-cuda13x`.
 - Run `uv tool install --reinstall <wheel>` with
   `--index-strategy first-index` and a named `--index` for the
   self-hosted `pdomain-index-pip` (for `pdomain-book-tools`), listed
@@ -321,7 +321,7 @@ uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
 ```
 
 NVIDIA GPU install — replace `cuXXX` with your CUDA version (e.g.
-`cu124`, `cu130`; **CUDA 12.4 or later required** for the `[gpu]`
+`cu124`, `cu130`; **CUDA 13 or later required** for the `[gpu]`
 extra):
 
 ```sh
@@ -336,8 +336,8 @@ These are the flags the installers use. A named `--index` with
 `--index-strategy first-index` makes `pdomain-book-tools` resolve only from
 the pdomain index, so another index cannot supply a package with that name.
 
-The `[gpu]` extra on `pdomain-book-tools` opts into `cupy-cuda12x` and
-`opencv-cuda`. Use `nvidia-smi` to read your CUDA version, or the
+The `[gpu]` extra on `pdomain-book-tools` 0.31.0 opts into `cupy-cuda13x`.
+Use `nvidia-smi` to read your CUDA version, or the
 [PyTorch install selector](https://pytorch.org/get-started/locally/).
 Disk / VRAM budgets are below in
 [GPU acceleration mechanics](#gpu-acceleration-mechanics).
@@ -356,7 +356,7 @@ How the pieces fit together when you opt in:
 - **CUDA-enabled PyTorch wheels** — the same PyTorch you'd install
   on CPU, compiled to call into CUDA. The install script chooses
   the wheel matching your installed CUDA: `cu124` for CUDA 12.4,
-  `cu130` for 13.0, etc. (CUDA 12.4 or newer is required for the
+  `cu130` for 13.0, etc. (CUDA 13 or newer is required for the
   `[gpu]` extra.)
 - **OCR / layout model weights** — downloaded on first run; not
   GPU-specific.
