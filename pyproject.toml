@@ -77,6 +77,27 @@ exclude = [
     ".venv-container/**",
 ]
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/.docgraph",
+    "/.worktree",
+    "/.worktrees",
+    "/.venv*",
+    "**/node_modules",
+    "/.ci-ai.log",
+    "/.coverage*",
+    "/coverage.xml",
+    "/htmlcov",
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/.ruff_cache",
+    "**/.mypy_cache",
+    "**/.cache",
+    "/.tox",
+    "/.nox",
+    "/.hypothesis",
+]
+
 [tool.ruff]
 line-length = 100
 
