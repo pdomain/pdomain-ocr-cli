@@ -100,7 +100,7 @@ upgrade-deps:
         echo ""; \
         echo "❌ local-dev install detected (editable siblings present)."; \
         echo "    Running 'uv sync' here would revert the venv to the canonical baseline."; \
-        echo "   Use 'make local-upgrade-deps' to upgrade and restore editable siblings."; \
+        echo "   Use 'just local-upgrade-deps' to upgrade and restore editable siblings."; \
         echo ""; \
         exit 1; \
     fi
@@ -121,7 +121,7 @@ upgrade-pdomain-book-tools:
     #!/usr/bin/env bash
     set -euo pipefail
     if [[ -n "${AI:-}" ]]; then exec just --quiet _ai upgrade-pdomain-book-tools; fi
-    echo "⚠️  upgrade-pdomain-book-tools is deprecated; use 'make update-pdomain-deps' instead."
+    echo "⚠️  upgrade-pdomain-book-tools is deprecated; use 'just update-pdomain-deps' instead."
     just --quiet update-pdomain-deps
 
 lint:

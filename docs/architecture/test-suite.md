@@ -111,7 +111,7 @@ The implementation took five different directions from the original design:
 
 Verified against the repository on 2026-07-13.
 
-- Code and configuration: `tests/_fakes.py`, `tests/conftest.py`, `Makefile`,
+- Code and configuration: `tests/_fakes.py`, `tests/conftest.py`, `justfile`,
   and `pyproject.toml`.
 - Fast behavior: `tests/test_main_flag_wiring.py` and
   `tests/test_main_happy.py`.

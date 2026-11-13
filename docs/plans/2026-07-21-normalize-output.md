@@ -25,7 +25,7 @@ Python, argparse, pytest, pdomain-book-tools
 ## Global Constraints
 
 Never silently drop OCR words. Keep reusable logic in `pdomain-book-tools`.
-Run `make ci AI=1` before committing. Docs, code and tests change together.
+Run `AI=1 just ci` before committing. Docs, code and tests change together.
 GitHub runs no workflows for this repository, so every check here is local.
 
 **Spec:** [normalize output design](../specs/2026-07-21-normalize-output-design.md)
@@ -103,8 +103,8 @@ Add a string containing curly quotes, an em dash, and a mapped glyph. Assert bot
 
 Document both values and the default in `docs/usage/cli-usage.md`.
 
-Run: `uv run pytest -n auto -k 'normalize or parse_args' && make ci AI=1`
-Expected: both commands print `✅`.
+Run: `uv run pytest -n auto -k 'normalize or parse_args' && AI=1 just ci`
+Expected: pytest passes and the CI command prints `PASS: ci`.
 
 - [ ] **Step 7: Commit**
 

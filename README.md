@@ -378,9 +378,9 @@ Rough disk + memory budget for the NVIDIA path:
 ## Development
 
 Working on `pdomain-ocr-cli` itself? See [`DEVELOPMENT.md`](DEVELOPMENT.md) for the full
-developer guide. It covers `make setup`, the editable side-by-side workflow with
-`pdomain-book-tools` / `pdomain-ops` (`make local-setup`,
-`make local-dev`), the project layout, and the release process.
+developer guide. It covers `just setup`, the editable side-by-side workflow with
+`pdomain-book-tools` / `pdomain-ops` (`just local-setup`,
+`just local-dev`), the project layout, and the release process.
 Releases are blocked until all runtime dependencies, including
 `pdomain-ops`, resolve from `pdomain-index-pip` instead of a local path.
 
@@ -389,7 +389,7 @@ Quick start:
 ```sh
 git clone https://github.com/pdomain/pdomain-ocr-cli
 cd pdomain-ocr-cli
-make setup            # regular dev setup against the pinned pdomain-book-tools version
+just setup            # regular dev setup against the pinned pdomain-book-tools version
 # — or —
-make local-dev        # also clones ../pdomain-book-tools and installs it editable
+just local-dev        # also clones ../pdomain-book-tools and installs it editable
 ```

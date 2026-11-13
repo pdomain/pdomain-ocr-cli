@@ -257,7 +257,7 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
-# Floor for the fast suite (`make ci`). The unit tests mock every heavy
+# Floor for the fast suite (`just ci`). The unit tests mock every heavy
 # pdomain_book_tools / cv2 / torch dependency so main() is exercised in fast
 # tests too. The `_load_*` import-trampolines are auto-excluded via the
 # pattern in `exclude_also` below, so 100% is the realistic target —

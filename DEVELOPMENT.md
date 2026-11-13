@@ -16,10 +16,11 @@ install / usage docs live in [`README.md`](README.md).
 - [`uv`](https://docs.astral.sh/uv/) (Python package + tool manager)
 - Python `>=3.11,<3.14` (uv will provision one if needed)
 - `git`
+- `just` on `PATH`
 - For local-dev workflows: `pdomain-book-tools` available as a sibling checkout
-  at `../pdomain-book-tools`. `make local-setup` clones it for you.
+  at `../pdomain-book-tools`. `just local-setup` clones it for you.
 - For local-dev workflows that edit `pdomain-ops` side-by-side: a sibling
-  `../pdomain-ops` checkout. `make local-setup` clones it for you.
+  `../pdomain-ops` checkout. `just local-setup` clones it for you.
 - Optional: NVIDIA GPU + CUDA Toolkit for GPU-accelerated OCR (see README).
 
 ## Quick start
@@ -31,7 +32,7 @@ Two paths depending on what you're doing.
 ```sh
 git clone https://github.com/pdomain/pdomain-ocr-cli.git
 cd pdomain-ocr-cli
-make setup
+just setup
 ```
 
 This syncs the dev deps from `pyproject.toml`, including `pdomain-book-tools`
@@ -44,8 +45,8 @@ pre-commit hooks. You can now run
 ```sh
 git clone https://github.com/pdomain/pdomain-ocr-cli.git
 cd pdomain-ocr-cli
-make local-setup
-make local-dev
+just local-setup
+just local-dev
 ```
 
 `local-setup` clones missing `pdomain-book-tools` and `pdomain-ops` sibling
@@ -54,36 +55,48 @@ repositories. `local-dev` then:
 1. Installs both siblings editably into the canonical checkout's existing
    environment without syncing dependencies.
 2. Writes the shared `.venv/.pdomain-local-mode` marker.
-3. Prompts you to verify sibling resolution with `make local-check`.
+3. Prompts you to verify sibling resolution with `just local-check`.
 
 If you also want pdomain-book-tools' own venv (to run its tests):
 
 ```sh
-(cd ../pdomain-book-tools && make setup)
+(cd ../pdomain-book-tools && just setup)
 ```
 
-## Make targets
+## just recipes
 
-`make help` is authoritative. Highlights:
+`just --list` is authoritative. Pass recipe variables through the environment:
+
+```sh
+AI=1 just ci
+COV_FAIL_UNDER=100 just coverage
+PYTHON_VERSION=3.13 just wheel-smoke-one
+PYTHON_VERSIONS="3.13" just wheel-smoke
+```
+
+Both coverage floors default to 100. `PYTHON_VERSIONS` defaults to
+`3.11 3.12 3.13`. Highlights:
 
 ### General
 
-| Target | Purpose |
+| Recipe | Purpose |
 | --- | --- |
 | `setup` | Install dev deps + pre-commit hooks (uses the exact `pdomain-book-tools` pin from `pdomain-index-pip`). |
 | `refresh-version` | Force-reinstall the editable package so `pdomain-ocr --version` re-derives from current git state (hatch-vcs bakes the version at install time, not at runtime — run this after `git pull` / new local tags). |
 | `install` | Install `pdomain-ocr` as a `uv tool` from local source, auto-detecting CUDA. |
 | `uninstall` | Remove the installed `pdomain-ocr` uv tool. |
 | `lint` | Run ruff (with auto-fix). |
-| `format` | Run ruff format, then lint. |
+| `format` | Run ruff format only. |
+| `format-check` | Check formatting without changing files. |
+| `lint-check` | Check formatting and lint without changing files. |
 | `pre-commit-check` | Run pre-commit on all files. |
 | `test` | Run the pytest suite (`tests/`). |
 | `build` | `uv build` — produce sdist + wheel in `dist/`. |
 | `wheel-smoke` | Build the wheel, install it into isolated Python 3.11 / 3.12 / 3.13 environments, and run `pdomain-ocr --version`. Override with `PYTHON_VERSIONS="3.13"` for a focused local run. |
 | `wheel-smoke-one` | Focused wheel smoke for one interpreter. Set `PYTHON_VERSION=3.11`, `3.12`, or `3.13`. |
 | `check-release-deps` | Fail release if runtime dependencies are path-sourced instead of package-index sourced. |
-| `ci` | `setup` → `pre-commit-check` → `format-check` → `typecheck` → `coverage` → `installer-test` → `build` → `wheel-smoke`. |
-| `ci-slow` | Full release-grade CI including slow integration coverage, build, and wheel smoke. |
+| `ci` | `setup` → `pre-commit-check` → `lint-check` → `typecheck` → `coverage` → `installer-test` → `build` → `wheel-smoke` → `docgraph check --strict`. |
+| `ci-slow` | Run `ci`, then `coverage-slow` for full integration coverage. |
 | `clean` | Remove caches and `dist/`. |
 | `reset` | `clean` + remove `.venv` + `setup`. |
 | `upgrade-deps` | Upgrade the lockfile and sync the venv. Refuses in local-dev mode; use `local-upgrade-deps` instead. |
@@ -95,14 +108,14 @@ If you also want pdomain-book-tools' own venv (to run its tests):
 ### Local-dev
 
 `local-setup` clones missing siblings, and `local-dev` runs it first. The
-other targets except `local-check` and `local-uninstall` are guarded: without
+other recipes except `local-check` and `local-uninstall` are guarded: without
 the local-dev marker they print an error and exit 1.
 
 None of them mutate `pyproject.toml`. Instead, they swap the pinned
 dependency for an editable install in the venv (or in the `uv tool`
 install).
 
-| Target | Purpose |
+| Recipe | Purpose |
 | --- | --- |
 | `local-setup` | Clone any missing sibling pd-* repositories. |
 | `local-dev` | Switch to local-dev mode with editable siblings and the shared marker. |
@@ -110,7 +123,7 @@ install).
 | `local-upgrade-deps` | Upgrade dependencies, then restore editable siblings. |
 | `local-install` | Install `pdomain-ocr` as a `uv tool` with editable `pdomain-book-tools`; direct `pdomain-ops` resolves from the registry. |
 | `local-uninstall` | Remove the `uv tool` install. |
-| `local-run` | Broken today: `scripts/local-run.sh` runs `make run`, which the Makefile does not define. Use `UV_NO_SYNC=1 uv run pdomain-ocr …` instead. |
+| `local-run` | Broken today: `scripts/local-run.sh` runs `just run`, which the justfile does not define. Use `UV_NO_SYNC=1 uv run pdomain-ocr …` instead. |
 | `local-test` | Run the fast suite against editable siblings. |
 | `local-test-slow` | Run the full suite, including slow integration tests, against editable siblings. |
 
@@ -118,7 +131,7 @@ Examples:
 
 ```sh
 UV_NO_SYNC=1 uv run pdomain-ocr page.png --layout-debug
-make local-check
+just local-check
 ```
 
 After `local-install`, run `pdomain-ocr page.png`. The tool tracks this checkout
@@ -127,7 +140,7 @@ and editable `pdomain-book-tools`. Direct `pdomain-ops` uses the registry instea
 To revert to the published version:
 
 ```sh
-make local-uninstall
+just local-uninstall
 curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh | sh
 ```
 
@@ -153,9 +166,9 @@ point is `pdomain_ocr_cli.ocr_to_txt:main` (wired via `[project.scripts]`).
 
 ## Release
 
-Releases are driven by `make release-patch`, `make release-minor`, or `make release-major`.
+Releases are driven by `just release-patch`, `just release-minor`, or `just release-major`.
 The release script requires a clean, up-to-date `master`. It then runs
-`make ci-slow`, creates an annotated `vX.Y.Z` tag, and pushes `master` and the
+`just ci-slow`, creates an annotated `vX.Y.Z` tag, and pushes `master` and the
 tag. Finally it builds the artifacts and creates the GitHub Release itself,
 attaching everything under `dist/`. The workflows were removed on 2026-09-13,
 so the script is the whole path.
@@ -179,11 +192,9 @@ has no hardcoded version.
 
 ## Known quirks
 
-- `Makefile.local` is gitignored. The earlier separate-file pattern is now
-  merged into the main `Makefile`: the `local-*` targets call
-  `scripts/local-*.sh`, and the old `*-local` names are deprecation aliases.
-  The `Makefile` does not include `Makefile.local`; add
-  `-include Makefile.local` yourself for personal additions.
+- The earlier `Makefile.local` pattern was merged into the task runner.
+  The `justfile` now owns the `local-*` recipes, which call
+  `scripts/local-*.sh`. The old `*-local` names remain deprecation aliases.
 - Pylance / Pyright may flag `pdomain_book_tools.layout.adapters.pp_doclayout`
   and `transformers.utils` as unresolved. Those are intentional lazy
   imports (heavy dependencies loaded only when needed). Point your IDE at

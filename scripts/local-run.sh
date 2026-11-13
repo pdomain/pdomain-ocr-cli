@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/local-run.sh — run repo's CLI/server against the local-dev workspace.
 #
-# Requires local-dev mode. Delegates to repo-specific `make run` after the guard.
+# Requires local-dev mode. Delegates to repo-specific `just run` after the guard.
 set -euo pipefail
 
 # uv installs into UV_PROJECT_ENVIRONMENT when that is set and into .venv
@@ -23,11 +23,11 @@ PROJECT_VENV="$(venv_under "$CANONICAL_REPO_ROOT")"
 MARKER="$PROJECT_VENV/.pdomain-local-mode"
 
 if [[ ! -f "$MARKER" ]]; then
-  echo "ERROR: not in local-dev mode. Run 'make local-dev' first." >&2
+  echo "ERROR: not in local-dev mode. Run 'just local-dev' first." >&2
   exit 1
 fi
 
 # Repo-specific run target
-# UV_NO_SYNC=1: keep editable pd-* siblings; a plain `make run` re-syncs and
+# UV_NO_SYNC=1: keep editable pd-* siblings; a plain `just run` re-syncs and
 # reverts them to registry versions, breaking unreleased editable APIs at runtime.
-exec env UV_NO_SYNC=1 make -C "$REPO_ROOT" run
+exec env UV_NO_SYNC=1 just --working-directory "$REPO_ROOT" run

@@ -149,7 +149,7 @@ wider than one next-major step. No decision records why.
 
 Every external pre-commit hook is pinned to a full commit SHA, with a
 `# frozen: vX.Y.Z` comment naming the version. The local
-`require-frozen-hook-revs` hook fails any other `rev:`. `make update-hooks`
+`require-frozen-hook-revs` hook fails any other `rev:`. `just update-hooks`
 runs `pre-commit autoupdate --freeze`, which bumps hooks and keeps SHA pins;
 plain `autoupdate` would write tags back. The third-party `pre-commit-update`
 hook was removed because it can only write tags.
@@ -180,8 +180,8 @@ the [roadmap](../roadmap.md).
 
 Releases run locally; GitHub runs no workflows for this repository. The
 CI, dependency-refresh, and release workflows were removed on 2026-09-13.
-`make release-{patch,minor,major}` calls `scripts/do-release.sh`. It runs the
-`make ci-slow` preflight, creates and pushes the tag, builds the wheel and
+`just release-{patch,minor,major}` calls `scripts/do-release.sh`. It runs the
+`just ci-slow` preflight, creates and pushes the tag, builds the wheel and
 sdist, and creates the GitHub Release with those assets
 (`scripts/release-common.sh`). Publishing the pip index is a separate local
 command, `./scripts/publish-index.sh`, in `pdomain-index-pip`.

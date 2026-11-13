@@ -82,7 +82,7 @@ Output options may change a word's role or suppress a placeholder block.
 
 Caption text and OCR text stay unless the experimental drop flag is on.
 
-Run `make ci AI=1` before committing.
+Run `AI=1 just ci` before committing.
 
 Where a feature is a thin pass-through, the library work is tracked in
 `pdomain-book-tools/docs/plans/roadmap.md`.

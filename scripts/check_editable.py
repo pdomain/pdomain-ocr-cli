@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify pdomain-book-tools resolves to the sibling editable checkout.
 
-Used by the `check-local-editable` Make target. Exits 0 if the imported
+Used by the `check-local-editable` just recipe. Exits 0 if the imported
 `pdomain_book_tools` module lives inside the directory passed as argv[1]
 (the resolved peer-repo path), otherwise exits 1. Diagnostic info is
 printed to stdout in either case so callers can see which copy was

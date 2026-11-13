@@ -46,18 +46,18 @@ Former issue numbers are provenance tags only; see
 
 No feature branch is open. Local master pins `pdomain-book-tools==0.31.0`
 and is not released. GitHub runs no workflows for this repository; releases
-run locally through `make release-{patch,minor,major}`.
+run locally through `just release-{patch,minor,major}`.
 
 ## Test state
 
 The v0.9.1 release preflight `make ci-slow` passed on 2026-11-07 with 468
 tests and 100% coverage. On branch `fix/spec-review-followups`, `make ci-slow`
 passed on 2026-11-10 with 537 tests and 100% coverage, on CPU with
-`CUDA_VISIBLE_DEVICES=""`. The fast suite runs with `make test AI=1` after
+`CUDA_VISIBLE_DEVICES=""`. The fast suite runs with `AI=1 just test` after
 installing the declared PowerShell prerequisite through
 `scripts/ensure-pwsh.sh`.
 
-`make ci` installs the GPU dependencies three times for its wheel smoke test,
+`just ci` installs the GPU dependencies three times for its wheel smoke test,
 and on 2026-11-10 that exceeded the quota on `/tmp`. Set `TMPDIR` to a directory
 on a larger disk if it fails with `Disk quota exceeded`.
 

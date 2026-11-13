@@ -125,8 +125,8 @@ sidecars, corrupt-image handling, and the fixture corpus under
 `tests/fixtures/`. Run it with:
 
 ```sh
-make test-integration
-make test-layout-integration
+just test-integration
+just test-layout-integration
 ```
 
 The fast suite's `tests/test_default_layout_word_preservation.py` mocks DocTR

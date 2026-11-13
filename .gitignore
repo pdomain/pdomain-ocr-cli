@@ -27,7 +27,7 @@ Makefile.local
 .worktrees/
 
 
-# AI=1 make output capture log
+# AI=1 just output capture log
 .ci-ai.log
 
 # local-dev mode marker (written by scripts/local-dev.sh)

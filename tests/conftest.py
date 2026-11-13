@@ -2,7 +2,7 @@
 
 Adds a ``--run-slow`` opt-in so the heavy end-to-end OCR tests (which pull
 a pinned model from Hugging Face the first time they run) stay out of the
-default ``make test`` loop.
+default ``just test`` loop.
 """
 
 import shutil

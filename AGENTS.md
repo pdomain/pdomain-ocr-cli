@@ -14,58 +14,58 @@ reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 
 ## Commands
 
-| target | does |
+| recipe | does |
 |---|---|
-| `make setup AI=1` | dev venv + pre-commit hooks (exact `pdomain-book-tools` pin from `pdomain-index-pip`) |
-| `make local-setup` | clone any missing sibling pd-* repos into the workspace |
-| `make local-dev` | switch to local-dev mode (editable `../pdomain-book-tools` + marker) |
-| `make local-check` | print local-dev mode + per-sibling resolution |
-| `make local-upgrade-deps` | upgrade deps then restore editable siblings (local-mode only) |
-| `make local-install` / `local-uninstall` | `uv tool install` with editable siblings / uninstall |
-| `make local-run` | broken: `scripts/local-run.sh` calls `make run`, which the Makefile lacks |
-| `make local-test` | run fast test suite against editable local-dev siblings (local-mode only) |
-| `make local-test-slow` | run full test suite incl. slow integration tests against editable local-dev siblings (local-mode only) |
-| `make update-pdomain-deps` | bump `>=` pins of pd-* sibling deps to `pdomain-index-pip` latest; leaves diff for review |
-| `make test AI=1` | fast suite (`uv run pytest -n auto`; skips `@pytest.mark.slow`) |
-| `make test-slow AI=1` | full suite incl. real-model integration tests |
-| `make lint AI=1` / `make format AI=1` | ruff |
-| `make build AI=1` | sdist + wheel into `dist/` |
-| `make ci AI=1` | setup → pre-commit → format-check → typecheck → coverage → installer-test → build → wheel-smoke |
-| `make upgrade-pdomain-book-tools` | deprecated alias for `make update-pdomain-deps` |
-| `make release-{patch,minor,major}` | run the `make ci-slow` preflight, create and push the tag, then build and create the GitHub Release locally |
-| `make refresh-version` | re-derive `pdomain-ocr --version` after tag changes (hatch-vcs) |
+| `AI=1 just setup` | dev venv + pre-commit hooks (exact `pdomain-book-tools` pin from `pdomain-index-pip`) |
+| `just local-setup` | clone any missing sibling pd-* repos into the workspace |
+| `just local-dev` | switch to local-dev mode (editable `../pdomain-book-tools` + marker) |
+| `just local-check` | print local-dev mode + per-sibling resolution |
+| `just local-upgrade-deps` | upgrade deps then restore editable siblings (local-mode only) |
+| `just local-install` / `just local-uninstall` | `uv tool install` with editable siblings / uninstall |
+| `just local-run` | broken: `scripts/local-run.sh` calls `just run`, which the justfile lacks |
+| `just local-test` | run fast test suite against editable local-dev siblings (local-mode only) |
+| `just local-test-slow` | run full test suite incl. slow integration tests against editable local-dev siblings (local-mode only) |
+| `just update-pdomain-deps` | bump `>=` pins of pd-* sibling deps to `pdomain-index-pip` latest; leaves diff for review |
+| `AI=1 just test` | fast suite (`uv run pytest -n auto`; skips `@pytest.mark.slow`) |
+| `AI=1 just test-slow` | full suite incl. real-model integration tests |
+| `AI=1 just lint` / `AI=1 just format` | ruff |
+| `AI=1 just build` | sdist + wheel into `dist/` |
+| `AI=1 just ci` | setup → pre-commit → lint-check → typecheck → coverage → installer-test → build → wheel-smoke → docgraph strict |
+| `just upgrade-pdomain-book-tools` | deprecated alias for `just update-pdomain-deps` |
+| `just release-{patch,minor,major}` | run the `just ci-slow` preflight, create and push the tag, then build and create the GitHub Release locally |
+| `just refresh-version` | re-derive `pdomain-ocr --version` after tag changes (hatch-vcs) |
 
-`AI=1` captures verbose output to `.ci-ai.log`. Stdout then shows `✅` on pass,
-or filtered failure sections on error. Remove `AI=1` only if you need full
-verbose output for debugging.
+`AI=1` captures full output to `.ci-ai.log` and prints one `PASS:` line.
+On failure, it prints a `FAIL:` line and filtered failure sections. Omit
+`AI=1` to see the full output directly.
 
 See the workspace-level `docs/process/local-dev.md` for the canonical
 local-dev pattern (spec #362).
 
-Legacy targets `dev-local`, `install-local`, `uninstall-local`,
+Legacy recipes `dev-local`, `install-local`, `uninstall-local`,
 `check-local-editable`, `run-local`, and `upgrade-deps-local` still work; the
 repo keeps them as deprecation aliases.
 
-Full target list: `make help`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md).
+Full recipe list: `just --list`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Rules
 
-- Always run `make ci AI=1` before committing.
-- Make targets first; fall back to `uv run …` only when no target exists.
-- Never `python -m pytest`. Always `uv run pytest -n auto` or `make test`. Bare `python`/`python3`/`.venv/bin/python` miss the venv.
+- Always run `AI=1 just ci` before committing.
+- Use just recipes first; fall back to `uv run …` only when no recipe exists.
+- Never `python -m pytest`. Always `uv run pytest -n auto` or `just test`. Bare `python`/`python3`/`.venv/bin/python` miss the venv.
 - Never silently drop OCR words. Reorg, caption suppression, and all output paths must preserve every word — roles may change, words may not disappear.
 - `--no-illustration-placeholders` suppresses the placeholder block, not caption text. Caption words must survive in the output.
 - `pdomain-book-tools` is upstream for OCR/layout/image primitives. Coordinate with that agent before adding logic that belongs in the library.
-- `pdomain-book-tools` is pinned exactly (`==`) in `pyproject.toml`, in both `dependencies` and the `gpu` extra. `make update-pdomain-deps` rewrites only `>=` pins, so bump this pin by hand, then run `uv lock`.
+- `pdomain-book-tools` is pinned exactly (`==`) in `pyproject.toml`, in both `dependencies` and the `gpu` extra. `just update-pdomain-deps` rewrites only `>=` pins, so bump this pin by hand, then run `uv lock`.
 - `hatch-vcs` derives the version from git tags, so `pyproject.toml` carries no hardcoded version.
 
 ## Sibling repos
 
-- `../pdomain-book-tools/` — upstream dependency. Side-by-side editing: `make local-setup` + `make local-dev`.
+- `../pdomain-book-tools/` — upstream dependency. Side-by-side editing: `just local-setup` + `just local-dev`.
 
 ## Docs
 
-- [`DEVELOPMENT.md`](DEVELOPMENT.md) — dev setup, Make targets, release steps.
+- [`DEVELOPMENT.md`](DEVELOPMENT.md) — dev setup, just recipes, release steps.
 - [`docs/roadmap.md`](docs/roadmap.md) — open priorities, now/next/later.
 - [`docs/architecture/layout-aware-ocr.md`](docs/architecture/layout-aware-ocr.md) — layout-aware OCR behavior.
 - [`docs/usage/cli-usage.md`](docs/usage/cli-usage.md) — end-user usage reference.
@@ -147,7 +147,7 @@ change any step below.
    worktree path + branch, use the `finishing-a-development-branch` skill to
    decide how to integrate.
 9. **TDD.** Write the failing test first where the plan calls for it.
-10. **Verify before committing.** Focused verification plus `make ci`.
+10. **Verify before committing.** Focused verification plus `just ci`.
 11. **Commit locally; do not push** without explicit say-so.
 
 <!-- workspace-process:end -->
@@ -171,8 +171,8 @@ Use the repository's `uv` environment for Python tools:
 - `uv run ruff check` runs lint checks.
 - `uv run ruff format` formats Python.
 - `uv run basedpyright` runs static type checks.
-- `make test` runs the repository test target.
-- `make lint` runs the repository lint target.
+- `just test` runs the repository test recipe.
+- `just lint` runs the repository lint recipe.
 <!-- <<< repo-setup:commands-and-gates -->
 
 <!-- >>> repo-setup:writing-and-review sha256:611871197ede37b1dba3159b2b1c005c88bbe7c69debc375d9381cc9d99ce399 -->

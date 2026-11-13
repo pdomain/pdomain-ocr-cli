@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/local-test-slow.sh — run the full pytest suite (incl. @pytest.mark.slow integration tests) against editable local-dev siblings.
 #
-# Requires local-dev mode. Delegates to repo-specific `make test-slow` after the guard.
+# Requires local-dev mode. Delegates to repo-specific `just test-slow` after the guard.
 set -euo pipefail
 
 # uv installs into UV_PROJECT_ENVIRONMENT when that is set and into .venv
@@ -23,11 +23,11 @@ PROJECT_VENV="$(venv_under "$CANONICAL_REPO_ROOT")"
 MARKER="$PROJECT_VENV/.pdomain-local-mode"
 
 if [[ ! -f "$MARKER" ]]; then
-  echo "ERROR: not in local-dev mode. Run 'make local-dev' first." >&2
+  echo "ERROR: not in local-dev mode. Run 'just local-dev' first." >&2
   exit 1
 fi
 
 # Repo-specific slow test target
-# UV_NO_SYNC=1: keep editable pd-* siblings; a plain `make test-slow` re-syncs and
+# UV_NO_SYNC=1: keep editable pd-* siblings; a plain `just test-slow` re-syncs and
 # reverts them to registry versions, breaking unreleased editable APIs at runtime.
-exec env UV_NO_SYNC=1 make -C "$REPO_ROOT" test-slow
+exec env UV_NO_SYNC=1 just --working-directory "$REPO_ROOT" test-slow
