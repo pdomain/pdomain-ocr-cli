@@ -19,13 +19,11 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 
+from pdomain_book_contracts.text.text_normalize import (
+    apply_text_normalizations as _apply_shared_text_normalizations,
+)
+
 from pdomain_ocr_cli import _artifacts, _batch_plan
-from pdomain_ocr_cli._text_normalize import (
-    normalize_curly_quotes as _normalize_curly_quotes,
-)
-from pdomain_ocr_cli._text_normalize import (
-    normalize_em_dash as _normalize_em_dash,
-)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
@@ -142,13 +140,11 @@ def apply_text_normalizations(
     Tolerates a ``None`` page text (the OCR engine may yield no text on a
     blank page) by returning ``""``.
     """
-    if not text:
-        return ""
-    if straight_quotes:
-        text = _normalize_curly_quotes(text)
-    if em_dash_to_double_hyphen:
-        text = _normalize_em_dash(text)
-    return text
+    return _apply_shared_text_normalizations(
+        text,
+        straight_quotes=straight_quotes,
+        em_dash_to_double_hyphen=em_dash_to_double_hyphen,
+    )
 
 
 # ---------------------------------------------------------------------------

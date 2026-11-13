@@ -144,8 +144,7 @@ pdomain_ocr_cli/
 ├── _startup_notices.py   # update-check and GPU-nudge startup behavior
 ├── _hf_models.py         # argparse adapters around pdomain_book_tools.hf model resolution
 ├── _image_limits.py      # size and pixel-count admission checks for input images
-├── _pipeline.py          # pure pipeline helpers split out of ocr_to_txt.main
-├── _text_normalize.py    # curly-quote and em-dash post-processing
+├── _pipeline.py          # pure pipeline helpers, including quote and dash cleanup
 └── _update_check.py      # background GitHub-tag upgrade-notice check
 ```
 

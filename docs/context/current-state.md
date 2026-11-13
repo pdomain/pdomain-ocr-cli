@@ -24,8 +24,8 @@ dependency bounds. The 2026-11-07 spec-review fixes are on
 `fix/spec-review-followups`, not on master and not released. Docs
 consolidation is on `docs/consolidate-architecture-roadmap`, stacked on that
 branch. The open product items are on [`docs/roadmap.md`](../roadmap.md):
-call the shared quote and dash helpers, the batch rotation angle, and
-long-s normalization. Owner decisions are listed there and in the intent map.
+the batch rotation angle and long-s normalization. Quote and dash cleanup
+now calls `pdomain-book-contracts`. Owner decisions are listed there and in the intent map.
 
 These docs describe current behavior:
 [`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
@@ -66,9 +66,8 @@ on a larger disk if it fails with `Disk quota exceeded`.
 Predictor batch-size defaults now live upstream. Benchmarking and any CLI
 exposure stay on the roadmap.
 
-The CLI still keeps a private copy of the curly-quote and em-dash helpers
-that `pdomain-book-contracts` already provides. Replacing that copy is the
-next roadmap item. No long-s or ligature normalizer exists.
+Quote and dash cleanup calls `pdomain-book-contracts`. No long-s or ligature
+normalizer exists.
 
 Open governed reports live under [`docs/issues/`](../issues/README.md)
 (1 active); see intent-map Open issues.

@@ -19,9 +19,6 @@ disposition: Standing roadmap for CLI-owned work.
 - **Search terms:** roadmap, backlog, now next later, open priorities, shared installer, text normalization, batch rotation
 - **Last verified:** 2026-11-12
 
-The next change is to delete `pdomain_ocr_cli/_text_normalize.py` and call
-`pdomain_book_contracts.text.text_normalize` instead.
-
 This is the only backlog for work this repository owns.
 
 Shipped behavior is in the architecture docs.
@@ -92,13 +89,6 @@ Where a feature is a thin pass-through, the library work is tracked in
 
 ## Remaining work
 
-- **Next:** delete `pdomain_ocr_cli/_text_normalize.py` and call
-  `pdomain_book_contracts.text.text_normalize` instead.
-
-  The contracts module was added so this CLI would not keep its own copy.
-
-  The copy is still here, and the two implementations match. See
-  [CLI orchestration](architecture/cli-orchestration.md#repository-boundary).
 - **Blocked:** pass the batch OCR path the rotation angle that
   `pdomain-book-tools` chooses.
 
@@ -206,6 +196,10 @@ Do not start a repository for any of these:
 
 Current behavior, with evidence, lives in these docs:
 
+- Curly-quote and em-dash cleanup. The CLI calls
+  `pdomain_book_contracts.text.text_normalize` and does not keep a second
+  copy. See
+  [CLI orchestration](architecture/cli-orchestration.md#repository-boundary).
 - Rotation-aligned layout and crops, and the word-preservation tests:
   [layout-aware OCR](architecture/layout-aware-ocr.md),
   [test suite](architecture/test-suite.md).

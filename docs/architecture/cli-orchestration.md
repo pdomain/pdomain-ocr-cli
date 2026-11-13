@@ -160,8 +160,12 @@ This repository owns the `pdomain-ocr` command and the scripts that install
 and release that command. `pdomain-book-tools` owns OCR, layout,
 reorganization, the rotation angle, and checkpoint loading.
 `pdomain-book-contracts` owns the shared curly-quote and em-dash helpers in
-`pdomain_book_contracts.text.text_normalize`. This CLI still has a private
-copy of those two helpers in `pdomain_ocr_cli/_text_normalize.py`.
+`pdomain_book_contracts.text.text_normalize`. `apply_text_normalizations` in
+`pdomain_ocr_cli/_pipeline.py` calls those helpers before the page text is
+written. This repository does not keep a second implementation. The two
+flags stay off unless the user passes them. No long-s or ligature map runs
+on that path.
+
 `pdomain-index-pip` publishes the wheel. `pdomain-ops` is the suite library
 for registry, GPU dispatch, and desktop plumbing. It is not on the OCR path.
 

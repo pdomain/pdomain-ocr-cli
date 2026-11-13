@@ -28,10 +28,10 @@ Kind: context
 
 ## Deferred work
 
-The open lines live on the [roadmap](../roadmap.md). They are the contracts
-call that replaces the private quote and dash helpers, the batch rotation
-angle, long-s normalization, predictor batch-size benchmarking, and a later
-split of the large test modules.
+The open lines live on the [roadmap](../roadmap.md). They are the batch
+rotation angle, long-s normalization, predictor batch-size benchmarking, and
+a later split of the large test modules. Quote and dash cleanup now calls
+`pdomain-book-contracts`.
 
 ## Spec review follow-ups (2026-11-07)
 
