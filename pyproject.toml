@@ -14,7 +14,7 @@ license = { text = "Unlicense" }
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "pdomain-book-tools==0.31.0",
-    "pdomain-book-contracts>=0.2.0,<1",
+    "pdomain-book-contracts>=0.3.1,<1",
     "pdomain-ops>=0.12.2,<1",
     "huggingface_hub>=1.16,<2",
     "pillow>=11.0,<13",
