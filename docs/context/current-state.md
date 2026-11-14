@@ -17,20 +17,21 @@ Kind: context
 
 ## What matters now
 
-v0.9.3 is the published release: tag `v0.9.3` at `c0419de`, on GitHub
-Releases and the pdomain pip index. It includes the spec-review fixes, shared
-quote/dash cleanup, batch-angle propagation and the task-runner migration.
+v0.9.4 is the published release: tag `v0.9.4` at `462c181`, on GitHub
+Releases and the pdomain pip index, wheel SHA256
+`338cc0d5c0eebddfdff5cc53ee41282d462ceb8dcaf9de1f51c4952efc2edfb5`. Its release
+preflight, `just ci-slow`, passed with 587 tests. GitHub now serves the fixed
+installers from `master`.
 
-Local master after `c0419de` adds unreleased installer fixes. Both installers
-fail when `uv` fails and retry uv's network failures twice. The Windows command
-works under the default `Restricted` execution policy.
-`install.ps1` fails when `uv` fails, retries uv's network failures twice and
-checks the Visual C++ runtime, installing it elevated when it is missing or
-old. On 2026-11-13 the installer ran on real Windows PowerShell 5.1 as a
-standard user, including real UAC prompts with the runtime missing and too
-old. Only the restart-required exit codes have not run on Windows; see the
-[Windows proof](../research/2026-11-13-windows-installer-proof.md). Published
-users still get the old `install.ps1` from GitHub until master is pushed.
+v0.9.4 carries the installer fixes. Both installers fail when `uv` fails and
+retry uv's network failures twice. The Windows command works under the default
+`Restricted` execution policy. `install.ps1` checks the Visual C++ runtime and
+installs it elevated when it is missing or old. On 2026-11-13 the installer ran
+on real Windows PowerShell 5.1 as a standard user, including real UAC prompts
+with the runtime missing and too old. On 2026-11-14 the README command,
+`irm .../master/install.ps1 | iex`, installed v0.9.4 from GitHub as that user
+in 28 s. Only the restart-required exit codes have not run on Windows; see the
+[Windows proof](../research/2026-11-13-windows-installer-proof.md).
 
 The open product item on the [roadmap](../roadmap.md) is long-s normalization.
 The batch path reads `page.ocr_rotation_degrees` from `pdomain-ops` 0.12.2.

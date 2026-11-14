@@ -181,6 +181,8 @@ OCR as `pdtest` then exited 0 in 81 seconds with byte-identical output.
   CUDA detection on Windows.
 - OCR ran only after the first install. After the final install, only
   `pdomain-ocr --version` was checked.
-- It used the published 0.9.3 wheel with the fixed installer, read from the
-  shared folder. The `irm` download of the script from GitHub was not used,
-  because the fix is not pushed.
+- These runs used the published 0.9.3 wheel with the fixed installer, read
+  from the shared folder. After v0.9.4 was released, the README's exact
+  `irm` command installed v0.9.4 from GitHub as `pdtest` under the
+  `Restricted` policy, with the runtime check passing; OCR was not rerun
+  after that install.
