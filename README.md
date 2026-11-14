@@ -187,6 +187,24 @@ For the deep mechanics (PyTorch CUDA build selection, what the install
 script does, disk / VRAM budgets), see
 [Technical details](#technical-details).
 
+### On a server or in a container, OCR fails with "libxcb.so.1: cannot open shared object file"
+
+OpenCV, which reads and cleans up the page images, needs a few X11 and
+OpenGL libraries. Every desktop Linux has them. Minimal servers and
+container images often don't. Install them once, as root:
+
+| Distribution | Command |
+|---|---|
+| Ubuntu 24.04+, Debian 13+ | `apt install libgl1 libsm6 libice6 libx11-6 libxext6 libxcb1 libglib2.0-0t64` |
+| Older Ubuntu and Debian | `apt install libgl1 libsm6 libice6 libx11-6 libxext6 libxcb1 libglib2.0-0` |
+| Fedora, AlmaLinux, RHEL | `dnf install mesa-libGL libSM libICE libX11 libXext libxcb glib2` |
+| Arch | `pacman -S libglvnd mesa libsm libice libx11 libxext libxcb glib2` |
+| openSUSE | `zypper in Mesa-libGL1 libSM6 libICE6 libX11-6 libXext6 libxcb1 libglib-2_0-0 libgthread-2_0-0` |
+
+These lists were tested on 2026-11-14 in Ubuntu 24.04 and 22.04, Debian 13,
+Fedora 45, AlmaLinux 9.8, Arch and openSUSE Tumbleweed containers. Alpine is
+not supported, because PyTorch publishes no wheels for it.
+
 ### Why is the first run so slow?
 
 That's the one-time model download (~150 MB) and initialization.

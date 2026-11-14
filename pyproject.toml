@@ -13,7 +13,7 @@ readme = "README.md"
 license = { text = "Unlicense" }
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "pdomain-book-tools==0.31.0",
+    "pdomain-book-tools==0.31.3",
     "pdomain-book-contracts>=0.3.1,<1",
     "pdomain-ops>=0.12.2,<1",
     "huggingface_hub>=1.16,<2",
@@ -28,7 +28,7 @@ dependencies = [
 # This forwards to pdomain-book-tools' own [gpu] extra, which owns the
 # actual CUDA dependency list.
 gpu = [
-    "pdomain-book-tools[gpu]==0.31.0",
+    "pdomain-book-tools[gpu]==0.31.3",
 ]
 
 [project.scripts]
