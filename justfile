@@ -196,7 +196,7 @@ installer-test:
     set -euo pipefail
     if [[ -n "${AI:-}" ]]; then exec just --quiet _ai installer-test; fi
     echo "🧪 Running installer contract tests..."
-    PYTEST_ADDOPTS=--no-cov uv run pytest -n auto tests/test_install_sh.py tests/test_install_ps1.py tests/test_install_ps1_cuda.py -v
+    PYTEST_ADDOPTS=--no-cov uv run pytest -n auto tests/test_install_sh.py tests/test_install_ps1.py tests/test_install_ps1_cuda.py tests/test_install_ps1_vc_runtime.py -v
 
 coverage:
     #!/usr/bin/env bash

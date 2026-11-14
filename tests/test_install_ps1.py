@@ -35,6 +35,7 @@ def _run_install_ps1_full(
     digest_property: str,
     umask: int | None = None,
     cuda_version: str = "12.4",
+    uv_exit_logic: str = "exit 0",
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """Run install.ps1 through pwsh with mocked GitHub API + uv + nvidia-smi.
 
@@ -51,6 +52,11 @@ def _run_install_ps1_full(
     `uv`, holds the octal permission bits of the temp dir holding the wheel
     file at the moment `uv` was invoked (before install.ps1's `finally`
     block deletes it) — the last point at which those permissions matter.
+
+    `uv_exit_logic` is shell code that ends the fake `uv`; it may read
+    `$n`, the 1-based number of this `uv` call. Every call appends its
+    arguments to `uv.log`, separated by a `--call--` line, and the harness
+    logs each `Start-Sleep` delay to `sleep.log` instead of sleeping.
     """
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -60,14 +66,18 @@ def _run_install_ps1_full(
     _write_fake_exe(
         bin_dir / "uv",
         f"""#!/bin/sh
-printf '%s\\n' "$@" > {uv_log}
+n=$(cat {tmp_path / "uv.count"} 2>/dev/null || echo 0)
+n=$((n + 1))
+echo "$n" > {tmp_path / "uv.count"}
+if [ "$n" -gt 1 ]; then echo "--call--" >> {uv_log}; fi
+printf '%s\\n' "$@" >> {uv_log}
 for a in "$@"; do
   if [ -f "$a" ]; then
     stat -c '%a' "$(dirname "$a")" > {perm_log} 2>/dev/null || true
     break
   fi
 done
-exit 0
+{uv_exit_logic}
 """,
     )
     _write_fake_exe(
@@ -99,7 +109,7 @@ function Invoke-RestMethod {{
   throw "unexpected Invoke-RestMethod: $Uri"
 }}
 function Invoke-WebRequest {{
-  param([string]$Uri, [string]$OutFile)
+  param([string]$Uri, [string]$OutFile, [switch]$UseBasicParsing)
   if ($Uri -ne "https://example.invalid/pdomain_ocr_cli-9.9.9-py3-none-any.whl") {{
     throw "unexpected Invoke-WebRequest: $Uri"
   }}
@@ -108,6 +118,10 @@ function Invoke-WebRequest {{
 function irm {{
   param([string]$Uri)
   throw "unexpected irm: $Uri"
+}}
+function Start-Sleep {{
+  param([int]$Seconds)
+  Add-Content -Path "{tmp_path / "sleep.log"}" -Value $Seconds
 }}
 $InstallerText = @'
 {escaped_script}
@@ -258,3 +272,83 @@ def test_install_ps1_enables_tls12_before_any_web_request() -> None:
     web = next(i for i, line in enumerate(code) if "irm " in line or "Invoke-" in line)
     assert "-bor" in code[tls]
     assert tls < web
+
+
+# Real uv output captured on 2026-11-13 from uv 0.11.26 against a local index
+# that answered every request with HTTP 503. uv had already retried 3 times.
+UV_TRANSIENT_FAILURE = """echo 'error: Request failed after 3 retries in 8.3s' >&2
+echo '  Caused by: Failed to fetch: `https://pdomain.github.io/pdomain-index-pip/simple/markupsafe/`' >&2
+echo '  Caused by: HTTP status server error (503 Service Unavailable)' >&2
+exit 2"""
+
+# Real uv output for a requirement no index can satisfy (exit code 1).
+UV_PERMANENT_FAILURE = """echo '  x No solution found when resolving dependencies:' >&2
+echo '  Because there is no version of markupsafe==0.0.1 we can conclude that your requirements are unsatisfiable.' >&2
+exit 1"""
+
+
+def _uv_calls(uv_log: Path) -> int:
+    return uv_log.read_text(encoding="utf-8").count("--call--") + 1
+
+
+def _sleeps(tmp_path: Path) -> list[str]:
+    log = tmp_path / "sleep.log"
+    return log.read_text(encoding="utf-8").split() if log.exists() else []
+
+
+def test_install_ps1_fails_when_uv_fails(tmp_path: Path) -> None:
+    """uv's exit code was ignored, so a failed install still printed Done."""
+    result, uv_log, _perm = _run_install_ps1_full(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', uv_exit_logic=UV_PERMANENT_FAILURE
+    )
+
+    assert result.returncode != 0
+    assert "Done" not in result.stdout
+    assert "uv tool install failed with exit code 1" in result.stdout + result.stderr
+    assert _uv_calls(uv_log) == 1
+    assert _sleeps(tmp_path) == []
+    # The finally block still removed the downloaded wheel's temp dir.
+    wheel_arg = next(
+        line for line in uv_log.read_text(encoding="utf-8").splitlines() if line.endswith(".whl")
+    )
+    assert not Path(wheel_arg).parent.exists()
+
+
+def test_install_ps1_retries_uv_network_failure_then_succeeds(tmp_path: Path) -> None:
+    logic = f'if [ "$n" -eq 1 ]; then\n{UV_TRANSIENT_FAILURE}\nfi\nexit 0'
+    result, uv_log, _perm = _run_install_ps1_full(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', uv_exit_logic=logic
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert _uv_calls(uv_log) == 2
+    assert _sleeps(tmp_path) == ["15"]
+    assert "attempt 1 of 3" in result.stdout
+    assert "Done!" in result.stdout
+
+
+def test_install_ps1_stops_after_three_network_failures(tmp_path: Path) -> None:
+    result, uv_log, _perm = _run_install_ps1_full(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', uv_exit_logic=UV_TRANSIENT_FAILURE
+    )
+
+    assert result.returncode != 0
+    assert _uv_calls(uv_log) == 3
+    assert _sleeps(tmp_path) == ["15", "45"]
+    assert "after 3 attempts because of network errors" in result.stdout + result.stderr
+    assert "Done" not in result.stdout
+
+
+def test_install_ps1_does_not_retry_resolver_failure(tmp_path: Path) -> None:
+    """A 401 index also ends in "No solution found": never retry that."""
+    logic = (
+        "echo 'error: Request failed after 3 retries' >&2\n"  # noise from one index
+        + UV_PERMANENT_FAILURE
+    )
+    result, uv_log, _perm = _run_install_ps1_full(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', uv_exit_logic=logic
+    )
+
+    assert result.returncode != 0
+    assert _uv_calls(uv_log) == 1
+    assert _sleeps(tmp_path) == []
