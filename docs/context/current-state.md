@@ -81,8 +81,8 @@ The architecture pass preserves the four unresolved owner choices in the
 [intent map](intent-map.md). Local master requires
 `pdomain-book-tools>=0.31.3,<0.32`. Book-tools patch releases reach users
 without a CLI release; a 0.32 minor needs a cap change here first. GitHub runs nothing
-automatically. Its only workflow is the manual macOS install test, started
-with `just mac-test`. Releases run locally through `just release-{patch,minor,major}`.
+automatically. Its only workflows are the manual macOS and Windows install
+tests, started with `just mac-test` and `just win-test`. Releases run locally through `just release-{patch,minor,major}`.
 
 ## Test state
 

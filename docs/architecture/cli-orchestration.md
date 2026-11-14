@@ -249,8 +249,8 @@ The existing `local-run` recipe still delegates to a missing `run` recipe.
 
 Releases run locally, and GitHub runs nothing automatically. The
 CI, dependency-refresh, and release workflows were removed on 2026-09-13.
-The one workflow left, `.github/workflows/macos-install.yml`, runs only when
-`just mac-test` starts it.
+The two workflows left, `.github/workflows/macos-install.yml` and
+`windows-install.yml`, run only when `just mac-test` or `just win-test` starts them.
 `just release-{patch,minor,major}` calls `scripts/do-release.sh`. It runs the
 `just ci-slow` preflight, creates and pushes the tag, builds the wheel and
 sdist, and creates the GitHub Release with those assets

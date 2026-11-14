@@ -31,7 +31,7 @@ reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 | `AI=1 just lint` / `AI=1 just format` | ruff |
 | `AI=1 just build` | sdist + wheel into `dist/` |
 | `AI=1 just ci` | setup → pre-commit → lint-check → typecheck → coverage → installer-test → build → wheel-smoke → docgraph strict |
-| `just mac-test [runner]` | start the manual macOS install test on GitHub Actions and follow it; `mac-test-watch` and `mac-test-logs` follow or show a run |
+| `just mac-test [runner]` / `just win-test [runner]` | start the manual macOS or Windows install test on GitHub Actions and follow it; `-watch` and `-logs` variants follow or show a run |
 | `just upgrade-pdomain-book-tools` | deprecated alias for `just update-pdomain-deps` |
 | `just release-{patch,minor,major}` | run the `just ci-slow` preflight, create and push the tag, then build and create the GitHub Release locally |
 | `just refresh-version` | re-derive `pdomain-ocr --version` after tag changes (hatch-vcs) |

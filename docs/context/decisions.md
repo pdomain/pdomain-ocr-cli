@@ -15,18 +15,36 @@ Kind: context
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
 
-### 2026-11-14 — A manual macOS install test runs on GitHub Actions
+### 2026-11-14 — Manual macOS and Windows install tests run on GitHub Actions
 
-The owner asked for a macOS check of the CPU path. This repository has no Mac,
-and GitHub's standard macOS runners cost nothing for a public repository.
-`.github/workflows/macos-install.yml` has only a `workflow_dispatch` trigger,
-so the 2026-09-13 rule that nothing runs on GitHub automatically still holds.
-`just mac-test [runner]` starts it on master and follows it; `macos-26` and
-`macos-15` are both Apple Silicon. The job installs the latest release with
-`install.sh`, checks that `opencv-python` is the only OpenCV distribution, OCRs
-`tests/fixtures/title_page_001.png`, and needs a word overlap of at least 0.9
-with its expected text. It reports whether PyTorch sees MPS. The runners are
-virtual machines, so MPS may be missing and the run then covers the CPU path.
+The owner asked for macOS and Windows checks of the CPU path. GitHub's
+standard runners cost nothing for a public repository.
+`.github/workflows/macos-install.yml` and `windows-install.yml` have only a
+`workflow_dispatch` trigger, so the 2026-09-13 rule that nothing runs on GitHub
+automatically still holds. `just mac-test [runner]` and `just win-test [runner]`
+start a run on master and follow it, both through `scripts/install-test.sh`.
+The macOS runners `macos-26` and `macos-15` are Apple Silicon; the Windows
+runners `windows-2025` and `windows-2022` are x64.
+
+Each job installs the latest release the way a user does: `install.sh` on
+macOS, and `install.ps1` piped into `Invoke-Expression` in Windows PowerShell
+5.1. It checks that `opencv-python` is the only OpenCV distribution, OCRs
+`tests/fixtures/book_page.png`, and requires a word overlap of at least 0.95
+with `book_page.pgdp.txt`. The page is page 50 of *Credulities Past and
+Present*, PGDP project `projectID63ac6757567bd` page `p0500.png`, copied with
+its proofread text from pdomain-book-tools'
+`tests/fixtures/layout_regression/inputs/body-italic-header-left-pageno`. It
+has 372 words; the Linux release reads it at 0.987.
+`book_page.release-output.txt` is that Linux output. A run that differs from
+it gets a warning and a diff, not a failure. The first macOS run used the
+8-word title page instead: it matched the Linux output exactly but scored
+0.875 against the hand-written text, because the models read "XVIIIth" as
+"xVIIth". So 8 words cannot tell one misread word from a broken install.
+
+The runners are virtual machines with no GPU. On macOS 26, PyTorch reported no
+MPS, so the run covered the CPU path. The Windows job runs as an administrator
+on an image that already has the Visual C++ runtime, so the UAC prompt and the
+runtime install still need a real Windows machine.
 
 ### 2026-11-13 — Batch OCR rotation degrees are kept
 

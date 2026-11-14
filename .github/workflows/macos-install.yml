@@ -1,7 +1,7 @@
 # Manual macOS install test. Start it with `just mac-test`.
 #
 # It installs the latest published release the way a user would, with
-# install.sh, then OCRs one fixture page and checks the text. GitHub's macOS
+# install.sh, then OCRs a real book page and checks the text. GitHub's macOS
 # runners are Apple Silicon virtual machines; the job reports whether PyTorch
 # sees MPS, and passes on the CPU path when it does not.
 name: macOS install test
@@ -73,25 +73,46 @@ jobs:
           print("cv2", cv2.__version__)
           PY
 
-      - name: OCR the title page fixture
-        run: pdomain-ocr --no-update-check --output-dir ocr-out tests/fixtures/title_page_001.png
+      - name: OCR the book page fixture
+        run: pdomain-ocr --no-update-check --output-dir ocr-out tests/fixtures/book_page.png
 
-      - name: Compare the OCR text with the expected text
+      # The page is a real public-domain book page with Distributed
+      # Proofreaders' proofread text; the Linux release reads it at 0.987.
+      # A difference from the Linux output is reported as a warning only.
+      - name: Compare the OCR text with the proofread text
         run: |
-          python3 -I - ocr-out/title_page_001.txt tests/fixtures/title_page_001.expected.txt <<'PY'
+          python3 -I - ocr-out/book_page.txt \
+            tests/fixtures/book_page.pgdp.txt \
+            tests/fixtures/book_page.release-output.txt <<'PY'
+          import difflib
           import re
           import sys
           from collections import Counter
+          from pathlib import Path
+
+          got_path, proofread_path, linux_path = sys.argv[1:4]
+
+          def text(path):
+              return Path(path).read_text(encoding="utf-8")
 
           def words(path):
-              with open(path, encoding="utf-8") as handle:
-                  return Counter(re.findall(r"\w+", handle.read().lower()))
+              return Counter(re.findall(r"\w+", text(path).lower()))
 
-          got, expected = words(sys.argv[1]), words(sys.argv[2])
-          overlap = sum((got & expected).values()) / max(1, sum(expected.values()))
-          print(f"word overlap {overlap:.3f} ({sum(expected.values())} expected words)")
-          if overlap < 0.9:
-              sys.exit("word overlap is below 0.9")
+          got, proofread = words(got_path), words(proofread_path)
+          total = sum(proofread.values())
+          overlap = sum((got & proofread).values()) / max(1, total)
+          print(f"word overlap with the proofread text: {overlap:.3f} of {total} words")
+
+          linux = [line.rstrip() for line in text(linux_path).strip().splitlines()]
+          here = [line.rstrip() for line in text(got_path).strip().splitlines()]
+          if here == linux:
+              print(f"OCR output matches {linux_path} exactly")
+          else:
+              print(f"::warning::OCR output differs from {linux_path}")
+              print("\n".join(difflib.unified_diff(linux, here, "Linux release output", "this runner", lineterm="")))
+
+          if overlap < 0.95:
+              sys.exit("word overlap with the proofread text is below 0.95")
           PY
 
       - name: Keep the OCR output
