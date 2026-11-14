@@ -278,7 +278,7 @@ def _install(
     root: str = MICROSOFT_ROOT_2011,
     start_error: str = "",
 ) -> subprocess.CompletedProcess[str]:
-    start_body = start_error or f"[pscustomobject]@{{ ExitCode = {exit_code} }}"
+    start_body = start_error or exit_code
     return _pwsh(
         f"""
 function Invoke-WebRequest {{
@@ -295,9 +295,9 @@ function Get-AuthenticodeSignature {{
 }}
 function Get-CertificateOrganizations {{ param($Certificate) @({organizations}) }}
 function Get-CertificateRootThumbprint {{ param($Certificate) "{root}" }}
-function Start-Process {{
-    param([string]$FilePath, [string[]]$ArgumentList, [string]$Verb, [switch]$Wait, [switch]$PassThru)
-    Add-Content -Path calls.log -Value "start $(Split-Path -Leaf $FilePath) $($ArgumentList -join ' ') verb=$Verb wait=$Wait"
+function Start-ElevatedInstaller {{
+    param([string]$FilePath, [string]$Arguments)
+    Add-Content -Path calls.log -Value "start $(Split-Path -Leaf $FilePath) $Arguments"
     {start_body}
 }}
 $Outcome = Install-VcRuntime -WorkDir '{tmp_path}'
@@ -318,7 +318,7 @@ def test_install_runs_signed_official_redistributable_elevated(tmp_path: Path) -
     assert "outcome=installed" in result.stdout
     assert _calls(tmp_path) == [
         "download https://aka.ms/vc14/vc_redist.x64.exe basic=True",
-        "start vc_redist.x64.exe /install /passive /norestart verb=RunAs wait=True",
+        "start vc_redist.x64.exe /install /passive /norestart",
     ]
 
 
@@ -358,9 +358,11 @@ def test_install_explains_access_denied_for_standard_user(tmp_path: Path) -> Non
 def test_install_reports_cancelled_uac_prompt(tmp_path: Path) -> None:
     result = _install(
         tmp_path,
+        # Process.Start called from PowerShell surfaces as a
+        # MethodInvocationException wrapping the Win32Exception.
         start_error=(
-            "throw [System.ComponentModel.Win32Exception]::new("
-            '1223, "The operation was canceled by the user")'
+            "throw [System.Management.Automation.MethodInvocationException]::new("
+            '"Exception calling Start", [System.ComponentModel.Win32Exception]::new(1223))'
         ),
     )
     assert result.returncode != 0
@@ -604,3 +606,28 @@ def test_summary_tells_user_to_restart_without_restarting(tmp_path: Path) -> Non
     assert "Done, but Windows must restart before OCR can run" in result.stdout
     assert "never restarts Windows" in result.stdout
     assert result.stdout.count("Done!") == 1
+
+
+def test_elevated_start_uses_process_start_with_runas() -> None:
+    """Start-ElevatedInstaller must use Process.Start, which keeps the 1223
+    code that Windows PowerShell 5.1's Start-Process loses on a UAC cancel."""
+    script = INSTALLER.read_text(encoding="utf-8")
+    body = script[script.index("function Start-ElevatedInstaller") :]
+    body = body[: body.index("\nfunction ")]
+    assert "[System.Diagnostics.Process]::Start($Info)" in body
+    assert '$Info.Verb = "runas"' in body
+
+
+def test_uac_cancel_detection_walks_the_exception_chain(tmp_path: Path) -> None:
+    result = _pwsh(
+        """
+$Inner = [System.ComponentModel.Win32Exception]::new(1223)
+$Wrapped = [System.Management.Automation.MethodInvocationException]::new("x", $Inner)
+$Deep = [System.InvalidOperationException]::new("y", $Wrapped)
+$Other = [System.ComponentModel.Win32Exception]::new(2)
+"{0} {1} {2}" -f (Test-UacCancelled $Wrapped), (Test-UacCancelled $Deep), (Test-UacCancelled $Other)
+""",
+        tmp_path,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.split() == ["True", "True", "False"]

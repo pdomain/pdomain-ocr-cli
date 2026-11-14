@@ -324,6 +324,43 @@ function Assert-MicrosoftSignature {
     Write-Host "Signature verified: $($Certificate.Subject)"
 }
 
+function Start-ElevatedInstaller {
+    # Start a program with the "runas" verb, wait, and return its exit code.
+    # Process.Start is used instead of Start-Process: Windows PowerShell 5.1's
+    # Start-Process turns a cancelled UAC prompt into an InvalidOperationException
+    # without the Windows error code, while Process.Start raises a
+    # Win32Exception carrying 1223 (seen on Windows 11, 2026-11-13).
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string]$Arguments
+    )
+    $Info = New-Object System.Diagnostics.ProcessStartInfo
+    $Info.FileName = $FilePath
+    $Info.Arguments = $Arguments
+    $Info.Verb = "runas"
+    $Info.UseShellExecute = $true
+    $Process = [System.Diagnostics.Process]::Start($Info)
+    try {
+        $Process.WaitForExit()
+        return $Process.ExitCode
+    } finally {
+        $Process.Dispose()
+    }
+}
+
+function Test-UacCancelled {
+    # True when any exception in the chain is Windows error 1223, "the
+    # operation was cancelled by the user".
+    param($Exception)
+    for ($Current = $Exception; $Current; $Current = $Current.InnerException) {
+        $Native = $Current -as [System.ComponentModel.Win32Exception]
+        if ($Native -and $Native.NativeErrorCode -eq 1223) {
+            return $true
+        }
+    }
+    return $false
+}
+
 function Install-VcRuntime {
     # Download Microsoft's x64 Visual C++ Redistributable, check that
     # Microsoft signed it, and run it elevated. Only this step asks for
@@ -353,13 +390,9 @@ function Install-VcRuntime {
         Write-Host "Windows will ask for administrator permission to install the Visual C++ runtime."
         Write-Host "Only this step needs it; pdomain-ocr itself is installed for your user account."
         try {
-            $Process = Start-Process -FilePath $Installer -ArgumentList "/install", "/passive", "/norestart" -Verb RunAs -Wait -PassThru
+            $Code = Start-ElevatedInstaller -FilePath $Installer -Arguments "/install /passive /norestart"
         } catch {
-            $Native = $_.Exception -as [System.ComponentModel.Win32Exception]
-            if (-not $Native -and $_.Exception.InnerException) {
-                $Native = $_.Exception.InnerException -as [System.ComponentModel.Win32Exception]
-            }
-            if ($Native -and $Native.NativeErrorCode -eq 1223) {
+            if (Test-UacCancelled $_.Exception) {
                 throw "The Visual C++ runtime was not installed: the administrator prompt was cancelled."
             }
             throw "The Visual C++ runtime installer could not be started: $($_.Exception.Message)"
@@ -368,7 +401,6 @@ function Install-VcRuntime {
         $Lock.Dispose()
     }
 
-    $Code = $Process.ExitCode
     if ($null -eq $Code) {
         throw "The Visual C++ runtime installer did not report an exit code."
     }

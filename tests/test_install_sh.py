@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -74,14 +75,25 @@ def _write_fake_bin(
     gh_release_json: str | None = None,
     cuda: bool = False,
     cuda_version: str = "12.4",
+    uv_exit_logic: str = "exit 0",
 ) -> None:
     bin_dir.mkdir()
 
+    # Each call appends its arguments to uv.log, after a `--call--` line
+    # from the second call on; $n is the 1-based call number.
+    count = uv_log.with_suffix(".count")
     _ = (bin_dir / "uv").write_text(
-        f"#!/bin/sh\nprintf '%s\\n' \"$@\" > {uv_log}\n"
-        f"printf '%s' \"$TMPDIR\" > {uv_log}.tmpdir\nexit 0\n",
+        f'#!/bin/sh\nn=$(cat {count} 2>/dev/null || echo 0)\nn=$((n + 1))\necho "$n" > {count}\n'
+        f"if [ \"$n\" -gt 1 ]; then echo '--call--' >> {uv_log}; fi\n"
+        f"printf '%s\\n' \"$@\" >> {uv_log}\n"
+        f"printf '%s' \"$TMPDIR\" > {uv_log}.tmpdir\n{uv_exit_logic}\n",
         encoding="utf-8",
     )
+    # install.sh sleeps between uv attempts; log the delay instead.
+    _ = (bin_dir / "sleep").write_text(
+        f'#!/bin/sh\necho "$1" >> {uv_log.parent / "sleep.log"}\n', encoding="utf-8"
+    )
+    (bin_dir / "sleep").chmod(0o755)
     (bin_dir / "uv").chmod(0o755)
     _ = (bin_dir / "curl").write_text(
         f"""#!/bin/sh
@@ -146,10 +158,13 @@ def _run_install_sh(
     gh_release_json: str | None = None,
     cuda: bool = False,
     cuda_version: str = "12.4",
+    uv_exit_logic: str = "exit 0",
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     bin_dir = tmp_path / "bin"
     uv_log = tmp_path / "uv.log"
-    _write_fake_bin(bin_dir, uv_log, release_json, gh_release_json, cuda, cuda_version)
+    _write_fake_bin(
+        bin_dir, uv_log, release_json, gh_release_json, cuda, cuda_version, uv_exit_logic
+    )
 
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
@@ -392,3 +407,85 @@ def test_install_sh_leaves_callers_tmpdir_for_uv(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr + result.stdout
     recorded = Path(f"{uv_log}.tmpdir").read_text(encoding="utf-8")
     assert recorded == str(tmp_path)
+
+
+# Real uv 0.11.26 output, captured on 2026-11-13 (see test_install_ps1.py).
+UV_TRANSIENT_FAILURE = """echo 'error: Request failed after 3 retries in 8.3s' >&2
+echo '  Caused by: HTTP status server error (503 Service Unavailable)' >&2
+exit 2"""
+UV_PERMANENT_FAILURE = """echo '  x No solution found when resolving dependencies:' >&2
+exit 1"""
+
+
+def _valid_release() -> str:
+    return _release_json(f'"digest": "{FAKE_WHEEL_DIGEST}",')
+
+
+def _uv_calls(uv_log: Path) -> int:
+    return uv_log.read_text(encoding="utf-8").count("--call--") + 1
+
+
+def _sleeps(tmp_path: Path) -> list[str]:
+    log = tmp_path / "sleep.log"
+    return log.read_text(encoding="utf-8").split() if log.exists() else []
+
+
+def test_install_sh_fails_with_uv_exit_code_and_no_done(tmp_path: Path) -> None:
+    result, uv_log = _run_install_sh(tmp_path, _valid_release(), uv_exit_logic=UV_PERMANENT_FAILURE)
+    assert result.returncode == 1
+    assert "Done" not in result.stdout
+    assert "uv tool install failed with exit code 1" in result.stderr
+    assert _uv_calls(uv_log) == 1
+    assert _sleeps(tmp_path) == []
+
+
+def test_install_sh_retries_uv_network_failure_then_succeeds(tmp_path: Path) -> None:
+    logic = f'if [ "$n" -eq 1 ]; then\n{UV_TRANSIENT_FAILURE}\nfi\nexit 0'
+    result, uv_log = _run_install_sh(tmp_path, _valid_release(), uv_exit_logic=logic)
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert _uv_calls(uv_log) == 2
+    assert _sleeps(tmp_path) == ["15"]
+    assert "Request failed after 3 retries" in result.stdout
+    assert "Done!" in result.stdout
+
+
+def test_install_sh_stops_after_three_network_failures(tmp_path: Path) -> None:
+    result, uv_log = _run_install_sh(tmp_path, _valid_release(), uv_exit_logic=UV_TRANSIENT_FAILURE)
+    assert result.returncode == 2
+    assert _uv_calls(uv_log) == 3
+    assert _sleeps(tmp_path) == ["15", "45"]
+    assert "after 3 attempts because of network errors" in result.stderr
+    assert "Done" not in result.stdout
+
+
+def test_install_sh_does_not_retry_resolver_failure(tmp_path: Path) -> None:
+    logic = "echo 'error: Request failed after 3 retries' >&2\n" + UV_PERMANENT_FAILURE
+    result, uv_log = _run_install_sh(tmp_path, _valid_release(), uv_exit_logic=logic)
+    assert result.returncode == 1
+    assert _uv_calls(uv_log) == 1
+    assert _sleeps(tmp_path) == []
+
+
+def test_install_sh_fails_when_uv_bootstrap_installs_nothing(tmp_path: Path) -> None:
+    """A failed `curl | sh` of the uv installer exits 0; the script must
+    notice that uv is still missing."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for tool in ("curl", "sh", "grep", "sed", "head", "tr", "uname", "mktemp", "rm"):
+        found = shutil.which(tool)
+        assert found, tool
+        (bin_dir / tool).symlink_to(found)
+    env = {"PATH": str(bin_dir), "HOME": str(tmp_path), "TMPDIR": str(tmp_path)}
+    (bin_dir / "curl").unlink()
+    _ = (bin_dir / "curl").write_text("#!/bin/sh\nexit 22\n", encoding="utf-8")
+    (bin_dir / "curl").chmod(0o755)
+    result = subprocess.run(
+        [str(bin_dir / "sh"), str(REPO / "install.sh")],
+        cwd=tmp_path,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "uv could not be installed" in result.stderr

@@ -28,6 +28,12 @@ if ! command -v uv >/dev/null 2>&1; then
     echo "uv not found — installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$PATH"
+    # A failed download pipes nothing into sh, which then exits 0.
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "❌ uv could not be installed; see the message above." >&2
+        echo "   Install it yourself: https://docs.astral.sh/uv/getting-started/installation/" >&2
+        exit 1
+    fi
 fi
 
 EXTRA_INDEX=""
@@ -76,9 +82,9 @@ fi
 # ---------------------------------------------------------------------------
 # Resolve the latest non-prerelease GitHub Release and find the wheel asset.
 # ---------------------------------------------------------------------------
-# We pin to the asset URL of the .whl on the "latest" Release. The Release
-# workflow (.github/workflows/release.yml) attaches both .whl and .tar.gz —
-# we install the .whl directly so end users don't need a build toolchain.
+# We pin to the asset URL of the .whl on the "latest" Release. The local
+# release recipe (`just release-*`) attaches both .whl and .tar.gz; we
+# install the .whl directly so end users don't need a build toolchain.
 
 # Extract the value from a single grep -Eo match shaped like
 # `"key"  :  "value"` (whitespace optional). Structural, not positional, so
@@ -257,7 +263,36 @@ fi
 if [ -n "$EXTRA_INDEX" ]; then
     set -- "$@" --index "pytorch-cuda=${EXTRA_INDEX}"
 fi
-uv tool install --python "$PYTHON_VERSION" "$@"
+# Run `uv tool install`, retrying only uv-reported network failures. uv
+# already retried each request three times and then printed "Request failed
+# after N retries"; the extra attempts wait longer, for an index that is down
+# for a minute rather than a moment. A resolver failure ("No solution
+# found"), including one caused by a 401/403 index, is never retried.
+attempt=1
+max_attempts=3
+while :; do
+    { status=0; uv tool install --python "$PYTHON_VERSION" "$@" 2>&1 || status=$?; echo "$status" > "$WHEEL_DIR/uv.status"; } \
+        | tee "$WHEEL_DIR/uv.log"
+    status=$(cat "$WHEEL_DIR/uv.status")
+    if [ "$status" -eq 0 ]; then
+        break
+    fi
+    if grep -q "No solution found" "$WHEEL_DIR/uv.log" \
+        || ! grep -Eq "Request failed after [0-9]+ retr" "$WHEEL_DIR/uv.log"; then
+        echo "❌ uv tool install failed with exit code ${status}. pdomain-ocr was not installed." >&2
+        exit "$status"
+    fi
+    if [ "$attempt" -ge "$max_attempts" ]; then
+        echo "❌ uv tool install failed with exit code ${status} after ${max_attempts} attempts because of network errors." >&2
+        echo "   pdomain-ocr was not installed. Check your connection, then run the installer again." >&2
+        exit "$status"
+    fi
+    if [ "$attempt" -eq 1 ]; then delay=15; else delay=45; fi
+    echo ""
+    echo "uv could not reach a package index (attempt ${attempt} of ${max_attempts}). Trying again in ${delay} seconds..."
+    sleep "$delay"
+    attempt=$((attempt + 1))
+done
 
 echo ""
 echo "Done! Run: pdomain-ocr page.png"
