@@ -129,7 +129,7 @@ digest to be a lowercase `sha256:` plus 64 hex characters. After download, it
 refuses the wheel if the bytes do not match. If `gh` reports no digest,
 `install.sh` asks the REST API before failing closed, and it leaves the
 caller's `TMPDIR` set for `uv`. `install.ps1` enables TLS 1.2 before its first
-web request, for Windows PowerShell 5.1; no real 5.1 host has run it.
+web request, for Windows PowerShell 5.1.
 `install.sh` reads the digest
 from the wheel's own asset record, so a CR or CRLF between assets cannot apply
 the sdist digest to the wheel. Piped PowerShell installation stays
@@ -137,6 +137,40 @@ self-contained, and Windows PowerShell 5.1 skips the Unix file-mode step.
 The digest comes from the same GitHub API as the wheel, so it catches
 corruption in transit, not a replaced release asset. `uv` does not hash-check
 the wheel's dependencies.
+
+`install.ps1` checks every native exit code it depends on. If `uv tool install`
+fails, the script throws, so piped use leaves the window open, a `-File` run
+exits nonzero, and `Done` is never printed. It retries only failures that uv
+itself reports as "Request failed after N retries", twice, after 15 and then
+45 seconds. Output containing "No solution found", which includes 401 and 403
+index errors, fails at once. A command that cannot start is a failure too: the
+script clears `$LASTEXITCODE` before each native call. On Windows it runs the uv
+bootstrap in a child PowerShell with `-ExecutionPolicy Bypass`, because the uv
+installer calls `exit` on failure, which would close a window that ran
+`irm | iex`.
+
+After installing, `install.ps1` checks the Visual C++ runtime on Windows. It
+reads the linker version of every `.dll` and `.pyd` in the tool environment,
+skipping bundled runtime copies, and takes the newest MSVC 14.x version as the
+floor. Microsoft requires the runtime to be at least as new as the toolset that
+built a binary. The check compares the file versions of `msvcp140.dll`,
+`vcruntime140.dll` and `vcruntime140_1.dll` in the 64-bit system directory with
+that floor. If a DLL is missing or too old, it downloads
+`https://aka.ms/vc14/vc_redist.x64.exe`. It runs the file only if Authenticode
+reports `Valid`, the signer's only organization field is exactly `Microsoft
+Corporation`, and the chain ends at Microsoft Root Certificate Authority 2011,
+thumbprint `8F43288AD272F3103B6FB1428485EA3014C0BCFE`. It holds the file open
+for reading only, from the check until the installer exits, so the file cannot
+be replaced in between. It then starts `/install /passive /norestart` with
+`-Verb RunAs`, the only elevated step.
+Exit codes 0 and 1638 count as installed. 3010 and 1641 finish with a restart
+notice; the script never restarts Windows. 1602, 5, a cancelled prompt
+(Windows error 1223), a missing exit code and any other code fail with manual
+steps. If the tool environment is missing, the check falls back to requiring
+only that the three DLLs exist, and says so; unreadable files are skipped. `PD_OCR_SKIP_VC_RUNTIME=1` skips the
+install and fails with those steps. A runtime still older than the floor after
+installing only warns. The [Windows proof](../research/2026-11-13-windows-installer-proof.md)
+records the real runs.
 
 ## Dependency bounds
 

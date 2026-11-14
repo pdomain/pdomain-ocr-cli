@@ -492,3 +492,28 @@ normalize-output spec, plan, and issue stay, because that flag is not built.
   `211708f`, `637570a`, `4b50f8d`, `9a9abd7`, and `10cbac7`.
 - **Remaining work:** The four owner choices, real Windows PowerShell 5.1
   verification, and coordinated release publication remain open.
+
+### 2026-11-13 — Windows installer failures and runtime floor
+
+- **Context:** The owner's first Windows install of v0.9.3 lost the PowerShell
+  window to a `Restricted` policy, printed `Done` after `uv` failed with HTTP
+  503, and could not load `c10.dll` without the Visual C++ runtime.
+- **Decision:** `install.ps1` fails on any `uv` failure. It retries only uv's
+  own "Request failed after N retries" failures, twice more. It runs the uv
+  installer in a child PowerShell so that installer's `exit` cannot close the
+  user's window. It installs the Microsoft runtime elevated, and only that
+  step, when the runtime is older than the newest MSVC toolset among the
+  installed binaries. It runs the download only if the signer's organization
+  is exactly Microsoft Corporation and the chain ends at Microsoft Root
+  Certificate Authority 2011.
+- **Rationale:** uv already classifies network errors and retries them, so its
+  marker is safer than matching HTTP codes. The runtime floor is read from the
+  installed files because it moved with the wheels: torch 2.15.0 needs 14.42,
+  and the same install on Windows needed 14.51. Any fixed number would go
+  stale.
+- **Evidence:** [Windows proof](../research/2026-11-13-windows-installer-proof.md),
+  [CLI orchestration](../architecture/cli-orchestration.md#trust-and-network-boundaries),
+  `tests/test_install_ps1.py` and `tests/test_install_ps1_vc_runtime.py`.
+- **Remaining work:** Prove real UAC prompts and the missing-runtime path on a
+  VM with UAC on. Decide whether `install.sh` should retry the same way. The
+  four owner choices and the next release remain open.

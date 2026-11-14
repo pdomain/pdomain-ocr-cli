@@ -73,9 +73,21 @@ skip installer tests.
 `tests/test_install_ps1.py` exercises the top-level `install.ps1` contract,
 including piped invocation and package-index behavior.
 
+`tests/test_install_ps1_vc_runtime.py` loads the function definitions from
+`install.ps1`'s syntax tree without running its main body. It replaces the
+download, signature, elevation and file-version calls with PowerShell fakes,
+so the Windows-only bootstrap, runtime and main-flow steps run on Linux.
+Signer parsing and chain lookup run against real certificates built in the
+test. Linux .NET does not enforce Windows file-sharing modes, so the file lock
+was checked on Windows instead. The main-flow
+tests use a fake `uv` that fails with real uv error text to cover exit codes
+and retries.
+
 The installer checks use real PowerShell processes on this Linux test host.
-The TLS 1.2 line was exercised on PowerShell 7.6, not on a real Windows
-PowerShell 5.1 host. That compatibility check remains unverified.
+On 2026-11-13 the fixed installer also ran on real Windows PowerShell 5.1 as a
+standard user, through install, retry and one-page CPU OCR. The
+[Windows proof](../research/2026-11-13-windows-installer-proof.md) lists what
+that run did not cover, including real UAC prompts and a missing runtime.
 
 ## Word preservation
 

@@ -84,6 +84,13 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 ```
 
+You do not need an administrator PowerShell. `pdomain-ocr` installs for your
+own account. On Windows the script also checks for the Microsoft Visual C++
+Redistributable (x64), which PyTorch needs. If it is missing or too old, the
+script downloads Microsoft's installer, checks that Microsoft signed it, and asks
+Windows for administrator permission for that step only. It never restarts
+Windows. If a restart is needed, it tells you.
+
 Both scripts install the wheel from the latest GitHub Release and pass
 the self-hosted `pdomain-index-pip` package index. They also detect
 NVIDIA CUDA automatically and select the matching PyTorch build. Set
@@ -188,6 +195,22 @@ script does, disk / VRAM budgets), see
 
 That's the one-time model download (~150 MB) and initialization.
 Later runs reuse the cache.
+
+### Windows: OCR fails with "WinError 126" loading `c10.dll`
+
+The Microsoft Visual C++ Redistributable (x64) is missing or out of date.
+PyTorch prints a warning about it just before this error. Re-run the install
+script, which installs it, or install it yourself from an administrator
+account:
+
+1. Download <https://aka.ms/vc14/vc_redist.x64.exe>, Microsoft's
+   [latest supported redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
+2. Run `vc_redist.x64.exe /install /passive /norestart`.
+3. Run `pdomain-ocr` again. You do not need to reinstall it.
+
+A standard account needs an administrator to approve or run step 2. Set
+`PD_OCR_SKIP_VC_RUNTIME=1` before the install script to stop it installing the
+runtime; it then fails with these steps instead.
 
 ### Where are the models cached?
 
@@ -295,6 +318,17 @@ time to upgrade or to switch between CPU and GPU. They:
   `--index-strategy first-index` and a named `--index` for the
   self-hosted `pdomain-index-pip` (for `pdomain-book-tools`), listed
   before PyTorch's CUDA `--index` when applicable.
+- Stop with an error, and never print `Done`, if `uv` fails. When `uv`
+  reports a network failure after its own retries, the script tries twice
+  more, 15 and then 45 seconds later. Resolver, authentication and hash
+  errors are not retried.
+- On Windows, run the `uv` installer in a separate PowerShell process with
+  `-ExecutionPolicy Bypass`, the command uv's documentation gives. That
+  installer calls `exit` when it fails, which would otherwise close your
+  window. Your saved execution policy is not changed.
+- On Windows, check that the installed Visual C++ runtime is at least as new
+  as the newest MSVC toolset that built any installed `.dll` or `.pyd`. See
+  [WinError 126](#windows-ocr-fails-with-winerror-126-loading-c10dll).
 
 Once installed, `pdomain-ocr` itself only does the two outbound requests
 listed above.

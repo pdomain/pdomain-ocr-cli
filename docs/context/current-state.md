@@ -17,11 +17,19 @@ Kind: context
 
 ## What matters now
 
-v0.9.1 remains the published release. Local master adds the spec-review
-fixes (`ddf6f3f` through `211708f`), shared quote/dash cleanup, batch-angle
-propagation, and the task-runner migration (`9a9abd7`, `10cbac7`). Those local
-changes are not released. The proposed patch release is v0.9.2; publication
-is held for the coordinated dependency review.
+v0.9.3 is the published release: tag `v0.9.3` at `c0419de`, on GitHub
+Releases and the pdomain pip index. It includes the spec-review fixes, shared
+quote/dash cleanup, batch-angle propagation and the task-runner migration.
+
+Local master after `c0419de` adds unreleased Windows installer fixes. The
+README sets a session-only execution policy before each Windows install.
+`install.ps1` fails when `uv` fails, retries uv's network failures twice and
+checks the Visual C++ runtime, installing it elevated when it is missing or
+old. On 2026-11-13 the installer ran on real Windows PowerShell 5.1 as a
+standard user, with the runtime already present. The missing-runtime install
+and real UAC prompts have not run on Windows; see the
+[Windows proof](../research/2026-11-13-windows-installer-proof.md). Published
+users still get the old `install.ps1` from GitHub until master is pushed.
 
 The open product item on the [roadmap](../roadmap.md) is long-s normalization.
 The batch path reads `page.ocr_rotation_degrees` from `pdomain-ops` 0.12.2.
@@ -65,7 +73,9 @@ installing the declared PowerShell prerequisite through
 
 The isolated worktree baseline at `10cbac7` passed `just test` on
 2026-11-13: 522 passed, 16 slow tests skipped, and 100% configured coverage.
-That fast run does not establish real-model or Windows PowerShell 5.1 coverage.
+That fast run does not establish real-model coverage. Windows PowerShell 5.1
+coverage is limited to the
+[Windows proof](../research/2026-11-13-windows-installer-proof.md).
 
 `just ci` installs the GPU dependencies three times for its wheel smoke test,
 and on 2026-11-10 that exceeded the quota on `/tmp`. Set `TMPDIR` to a directory
@@ -78,6 +88,9 @@ exposure stay on the roadmap.
 
 Quote and dash cleanup calls `pdomain-book-contracts`. No long-s or ligature
 normalizer exists.
+
+The Windows UAC prompt and missing-runtime paths have only run against fakes.
+The proof VM has UAC off and already has the runtime installed.
 
 Open governed reports live under [`docs/issues/`](../issues/README.md)
 (1 active); see intent-map Open issues.

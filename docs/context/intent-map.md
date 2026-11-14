@@ -110,8 +110,9 @@ Fresh source-based analyses retained the live normalize-output spec, plan, and
 issue. The flag is still absent; shared quote/dash cleanup does not implement
 it. The completed spec-review handoff is
 [retired](../decisions/2026-11-13-spec-followups-handoff-retirement.md).
-Its real Windows PowerShell 5.1 verification gap remains in
-[test-suite architecture](../architecture/test-suite.md#powershell-and-installer-coverage).
+A standard-user run on real Windows PowerShell 5.1 has since passed; its
+remaining gaps, real UAC prompts and a missing runtime, are listed in the
+[Windows proof](../research/2026-11-13-windows-installer-proof.md).
 The four owner choices above remain unresolved. Their sources are the
 [normalization spec](../specs/2026-07-21-normalize-output-design.md),
 [deferred issue](../issues/2026-07-19-normalize-output-flag-deferred.md),
