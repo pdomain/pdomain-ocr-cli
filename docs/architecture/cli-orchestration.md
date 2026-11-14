@@ -181,7 +181,8 @@ records the real runs.
 ## Dependency bounds
 
 Every direct runtime dependency has an upper bound or an exact pin.
-`pdomain-book-tools` is pinned exactly at `==0.31.0`. The build backends are
+`pdomain-book-tools` is `>=0.31.3,<0.32`, so a book-tools patch release
+reaches users without a CLI release, and a new 0.x minor does not. The build backends are
 pinned exactly at `hatchling==1.33.0` and `hatch-vcs==0.5.0`.
 `tests/test_dependency_metadata.py` enforces both rules, including every
 optional extra. It parses each requirement, so an environment marker cannot

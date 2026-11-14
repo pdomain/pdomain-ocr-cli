@@ -1554,8 +1554,8 @@ dev = [
 requires-dist = [
     { name = "huggingface-hub", specifier = ">=1.16,<2" },
     { name = "pdomain-book-contracts", specifier = ">=0.3.1,<1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
-    { name = "pdomain-book-tools", specifier = "==0.31.3", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
-    { name = "pdomain-book-tools", extras = ["gpu"], marker = "extra == 'gpu'", specifier = "==0.31.3", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pdomain-book-tools", specifier = ">=0.31.3,<0.32", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
+    { name = "pdomain-book-tools", extras = ["gpu"], marker = "extra == 'gpu'", specifier = ">=0.31.3,<0.32", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
     { name = "pdomain-ops", specifier = ">=0.12.2,<1", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
     { name = "pillow", specifier = ">=11.0,<13" },
 ]

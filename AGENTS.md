@@ -56,7 +56,7 @@ Full recipe list: `just --list`. Full dev setup: [`DEVELOPMENT.md`](DEVELOPMENT.
 - Never silently drop OCR words. Reorg, caption suppression, and all output paths must preserve every word — roles may change, words may not disappear.
 - `--no-illustration-placeholders` suppresses the placeholder block, not caption text. Caption words must survive in the output.
 - `pdomain-book-tools` is upstream for OCR/layout/image primitives. Coordinate with that agent before adding logic that belongs in the library.
-- `pdomain-book-tools` is pinned exactly (`==`) in `pyproject.toml`, in both `dependencies` and the `gpu` extra. `just update-pdomain-deps` rewrites only `>=` pins, so bump this pin by hand, then run `uv lock`.
+- `pdomain-book-tools` is `>=0.31.3,<0.32` in `pyproject.toml`, in both `dependencies` and the `gpu` extra. The cap stops a new 0.x minor, which may break the API. `just update-pdomain-deps` raises the floor within the cap and refuses a release past it. To accept a new minor, check it, raise both caps by hand, then run `uv lock`.
 - `hatch-vcs` derives the version from git tags, so `pyproject.toml` carries no hardcoded version.
 
 ## Sibling repos

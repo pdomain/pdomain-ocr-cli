@@ -78,9 +78,9 @@ Former issue numbers are provenance tags only; see
 The completed spec-review handoff is
 [retired](../decisions/2026-11-13-spec-followups-handoff-retirement.md).
 The architecture pass preserves the four unresolved owner choices in the
-[intent map](intent-map.md). Local master keeps the exact
-`pdomain-book-tools==0.31.0` pin. No newer upstream NumPy/CuPy changes enter
-this CLI release through that pin. GitHub runs no workflows for this
+[intent map](intent-map.md). Local master requires
+`pdomain-book-tools>=0.31.3,<0.32`. Book-tools patch releases reach users
+without a CLI release; a 0.32 minor needs a cap change here first. GitHub runs no workflows for this
 repository; releases run locally through `just release-{patch,minor,major}`.
 
 ## Test state

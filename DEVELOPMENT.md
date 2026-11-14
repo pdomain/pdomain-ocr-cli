@@ -36,7 +36,7 @@ just setup
 ```
 
 This syncs the dev deps from `pyproject.toml`, including `pdomain-book-tools`
-at its exact pin from the self-hosted `pdomain-index-pip` index, and installs
+within its `>=0.31.3,<0.32` range from the self-hosted `pdomain-index-pip` index, and installs
 pre-commit hooks. You can now run
 `uv run pdomain-ocr ...` without installing globally.
 
@@ -101,7 +101,7 @@ Both coverage floors default to 100. `PYTHON_VERSIONS` defaults to
 | `reset` | `clean` + remove `.venv` + `setup`. |
 | `upgrade-deps` | Upgrade the lockfile and sync the venv. Refuses in local-dev mode; use `local-upgrade-deps` instead. |
 | `local-upgrade-deps` | Upgrade dependencies, sync to the canonical baseline, then restore editable siblings. |
-| `update-pdomain-deps` | Bump the `>=` pins of `pdomain-book-tools` and `pdomain-ops` to the latest `pdomain-index-pip` version. It skips exact `==` pins, so bump `pdomain-book-tools==` by hand. |
+| `update-pdomain-deps` | Raise the `>=` floors of `pdomain-book-tools` and `pdomain-ops` to the latest `pdomain-index-pip` version, keeping any `<` cap. It refuses a release past the cap and skips exact `==` pins; change those by hand. It edits the checkout it runs from. |
 | `upgrade-pdomain-book-tools` | Deprecated alias for `update-pdomain-deps`. |
 | `release-{patch,minor,major}` | Run release preflight, tag, push `master` and the tag, then build the artifacts and create the GitHub Release. |
 
