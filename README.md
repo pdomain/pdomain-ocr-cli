@@ -132,7 +132,7 @@ authoritatively.
 ### How do I switch from CPU-only to GPU?
 
 Re-run the install script. It re-detects `nvidia-smi` on every run,
-picks the matching `cuXXX` PyTorch wheels, and (when CUDA ≥ 13)
+has uv pick the matching PyTorch CUDA build, and (when CUDA ≥ 13)
 opts into the `pdomain-book-tools[gpu]` extra (`cupy-cuda13x`).
 `uv tool install --reinstall` swaps the existing install in place.
 
@@ -183,7 +183,7 @@ A few things to check:
 - **GPU still not used after that** — re-run the install script; it
   re-detects on each run.
 
-For the deep mechanics (`cuXXX` wheel selection, what the install
+For the deep mechanics (PyTorch CUDA build selection, what the install
 script does, disk / VRAM budgets), see
 [Technical details](#technical-details).
 
@@ -307,14 +307,15 @@ time to upgrade or to switch between CPU and GPU. They:
   match.
 - Use Python 3.13 by default for the uv tool environment. Override with
   `PD_OCR_INSTALL_PYTHON` if you need another supported Python version.
-- Detect NVIDIA CUDA via `nvidia-smi`, pick the matching `cuXXX` PyTorch
-  wheel index, and (when CUDA ≥ 13) add `--with 'pdomain-book-tools[gpu]'`
-  for `cupy-cuda13x`.
+- Detect NVIDIA CUDA via `nvidia-smi`. If found, pass
+  `--torch-backend auto` so uv picks the PyTorch CUDA build that matches
+  the driver, and (when CUDA ≥ 13) add
+  `--with 'pdomain-book-tools[gpu]'` for `cupy-cuda13x`.
 - Run `uv tool install --reinstall <wheel>` with
   `--index-strategy first-index` and a named `--index` for the
-  self-hosted `pdomain-index-pip` (for `pdomain-book-tools`), listed
-  before PyTorch's CUDA `--index` when applicable.
-- Stop with an error, and never print `Done`, if `uv` fails. When `uv`
+  self-hosted `pdomain-index-pip` (for `pdomain-book-tools`).
+- Stop with an error, and never print `Done`, if `uv` fails. A `uv` too
+  old for `--torch-backend` gets a hint to run `uv self update`. When `uv`
   reports a network failure after its own retries, the script tries twice
   more, 15 and then 45 seconds later. Resolver, authentication and hash
   errors are not retried.
@@ -358,25 +359,31 @@ uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
     --index pdomain=https://pdomain.github.io/pdomain-index-pip/simple/
 ```
 
-NVIDIA GPU install — replace `cuXXX` with your CUDA version (e.g.
-`cu124`, `cu130`; **CUDA 13 or later required** for the `[gpu]`
-extra):
+NVIDIA GPU install. `--torch-backend auto` makes uv read your driver
+version and pick the matching PyTorch CUDA build. Keep the `[gpu]` extra
+only for **CUDA 13 or later**; on CUDA 12, drop the `--with` line:
 
 ```sh
 uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
     --with 'pdomain-book-tools[gpu]' \
     --index-strategy first-index \
     --index pdomain=https://pdomain.github.io/pdomain-index-pip/simple/ \
-    --index pytorch-cuda=https://download.pytorch.org/whl/cuXXX
+    --torch-backend auto
 ```
 
 These are the flags the installers use. A named `--index` with
 `--index-strategy first-index` makes `pdomain-book-tools` resolve only from
 the pdomain index, so another index cannot supply a package with that name.
+`--torch-backend` needs a recent uv; if uv rejects it, run `uv self update`.
+
+Do not add `download.pytorch.org/whl/cuXXX` as an extra `--index`. That
+index also serves old copies of common packages such as `packaging` (24.1
+at most). Under `first-index`, uv then takes those packages from it alone,
+and the resolve fails because `pdomain-ops` needs `packaging>=26`.
+`--torch-backend` sends only PyTorch packages to the PyTorch index.
 
 The `[gpu]` extra on `pdomain-book-tools` 0.31.0 opts into `cupy-cuda13x`.
-Use `nvidia-smi` to read your CUDA version, or the
-[PyTorch install selector](https://pytorch.org/get-started/locally/).
+Use `nvidia-smi` to read your CUDA version.
 Disk / VRAM budgets are below in
 [GPU acceleration mechanics](#gpu-acceleration-mechanics).
 
@@ -392,16 +399,16 @@ How the pieces fit together when you opt in:
   your GPU. Required on Linux / Windows for the CUDA path; the
   Apple Silicon path uses Metal via PyTorch's MPS backend instead.
 - **CUDA-enabled PyTorch wheels** — the same PyTorch you'd install
-  on CPU, compiled to call into CUDA. The install script chooses
-  the wheel matching your installed CUDA: `cu124` for CUDA 12.4,
-  `cu130` for 13.0, etc. (CUDA 13 or newer is required for the
-  `[gpu]` extra.)
+  on CPU, compiled to call into CUDA. The install script passes
+  `--torch-backend auto`, and uv picks the build that matches your
+  NVIDIA driver. (CUDA 13 or newer is required for the `[gpu]`
+  extra.)
 - **OCR / layout model weights** — downloaded on first run; not
   GPU-specific.
 
-If you'd rather pick the PyTorch wheel manually, the
-[PyTorch install selector](https://pytorch.org/get-started/locally/)
-walks you through it.
+To pick a build yourself, pass an explicit value such as
+`--torch-backend cu128` instead of `auto`; `uv tool install --help` lists
+the values your uv knows.
 
 Rough disk + memory budget for the NVIDIA path:
 

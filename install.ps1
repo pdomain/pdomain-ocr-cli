@@ -45,11 +45,6 @@ function Get-CudaVersion {
     return $null
 }
 
-function Get-CudaTag {
-    param([Parameter(Mandatory = $true)][string]$CudaVer)
-    return "cu" + ($CudaVer -replace "\.", "")
-}
-
 function Get-BookToolsExtras {
     param([Parameter(Mandatory = $true)][string]$CudaVer)
     try {
@@ -122,6 +117,14 @@ function Invoke-NativeCaptured {
     }
 }
 
+function Test-UvLacksTorchBackend {
+    # A uv older than the --torch-backend option rejects it, for example
+    # "unexpected argument '--torch-backend' found". Updating uv is the fix;
+    # retrying cannot help.
+    param([string]$Output)
+    return $Output -match "torch-backend"
+}
+
 function Test-UvTransientFailure {
     # uv retries network errors itself and reports "Request failed after N
     # retries" once it gives up; that is the only failure worth retrying.
@@ -147,6 +150,9 @@ function Invoke-UvToolInstall {
         $Result = Invoke-NativeCaptured -FilePath "uv" -ArgumentList $UvArgs
         if ($Result.ExitCode -eq 0) {
             return
+        }
+        if (Test-UvLacksTorchBackend $Result.Output) {
+            throw "uv tool install failed with exit code $($Result.ExitCode). pdomain-ocr was not installed. This uv is too old for the --torch-backend option, which picks the PyTorch CUDA build. Run: uv self update (or update uv with the package manager that installed it). Then run the installer again."
         }
         $Transient = Test-UvTransientFailure $Result.Output
         if (-not $Transient) {
@@ -535,16 +541,21 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     }
 }
 
-$ExtraIndex = ""
+$TorchBackend = ""
 $BookToolsExtras = ""
 
 if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
     $CudaVer = Get-CudaVersion
 
     if ($CudaVer) {
-        $CudaTag = Get-CudaTag $CudaVer
-        $ExtraIndex = "https://download.pytorch.org/whl/$CudaTag"
-        Write-Host "Detected CUDA $CudaVer -- will install PyTorch with $CudaTag support."
+        # uv picks the PyTorch CUDA build that matches the driver. PyPI's
+        # Windows torch wheels are CPU-only, so this matters on Windows too.
+        # Do not add download.pytorch.org/whl/cuXXX as an --index instead:
+        # it also serves old copies of common packages (packaging 24.1 at
+        # most), and under first-index uv then takes `packaging` from it
+        # alone, so the resolve fails (pdomain-ops needs packaging>=26).
+        $TorchBackend = "auto"
+        Write-Host "Detected CUDA $CudaVer -- uv will pick the matching PyTorch CUDA build."
 
         $BookToolsExtras = Get-BookToolsExtras $CudaVer
         if ($BookToolsExtras -eq "[gpu]") {
@@ -644,9 +655,8 @@ try {
     # explicitly on the CLI replaces (rather than merges with) any UV_INDEX
     # the environment supplies. Verified against real uv 0.11.32 with local
     # decoy indexes: a hostile UV_INDEX env var beats --extra-index-url but
-    # cannot beat this --index binding, and the pdomain --index is always
-    # listed before the CUDA extra --index below, so it's still checked
-    # first under first-index.
+    # cannot beat this --index binding. When CUDA was detected,
+    # --torch-backend auto lets uv choose the PyTorch CUDA build.
     $UvArgs = @(
         "tool", "install", "--python", $PythonVersion, "--reinstall", $WheelFile,
         "--index-strategy", "first-index", "--index", "pdomain=$PdIndexUrl"
@@ -654,8 +664,8 @@ try {
     if ($BookToolsExtras) {
         $UvArgs += @("--with", "pdomain-book-tools$BookToolsExtras")
     }
-    if ($ExtraIndex) {
-        $UvArgs += @("--index", "pytorch-cuda=$ExtraIndex")
+    if ($TorchBackend) {
+        $UvArgs += @("--torch-backend", $TorchBackend)
     }
     Invoke-UvToolInstall -UvArgs $UvArgs
 

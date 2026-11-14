@@ -199,7 +199,20 @@ def test_install_sh_uses_release_wheel_and_pdomain_index(tmp_path: Path) -> None
     assert "git+https://github.com/pdomain/pdomain-ocr-cli" not in args
 
 
-def test_install_sh_pdomain_index_precedes_cuda_extra_index(tmp_path: Path) -> None:
+def _assert_torch_backend_auto(args: str) -> None:
+    """uv picks the PyTorch CUDA build itself; no PyTorch index is passed.
+
+    download.pytorch.org/whl/cuXXX also serves old copies of common packages
+    (packaging 24.1 at most). Under first-index that index then wins for
+    `packaging`, and pdomain-ops>=0.12.2 needs packaging>=26, so every GPU
+    install failed to resolve.
+    """
+    assert "--torch-backend\nauto" in args
+    assert "pytorch-cuda" not in args
+    assert "download.pytorch.org" not in args
+
+
+def test_install_sh_cuda_12_uses_torch_backend_auto(tmp_path: Path) -> None:
     result, uv_log = _run_install_sh(
         tmp_path, _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'), cuda=True
     )
@@ -207,11 +220,9 @@ def test_install_sh_pdomain_index_precedes_cuda_extra_index(tmp_path: Path) -> N
     assert result.returncode == 0, result.stderr + result.stdout
     args = uv_log.read_text(encoding="utf-8")
     assert "--index\npdomain=https://pdomain.github.io/pdomain-index-pip/simple/" in args
-    assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu124" in args
+    assert "--index-strategy\nfirst-index" in args
+    _assert_torch_backend_auto(args)
     assert "--with\npdomain-book-tools[gpu]" not in args
-    # The pdomain index must be listed (and therefore checked, under
-    # first-index) before the CUDA/PyTorch extra index.
-    assert args.index("pdomain=") < args.index("pytorch-cuda=")
 
 
 def test_install_sh_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
@@ -224,7 +235,7 @@ def test_install_sh_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr + result.stdout
     args = uv_log.read_text(encoding="utf-8")
-    assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu130" in args
+    _assert_torch_backend_auto(args)
     assert "--with\npdomain-book-tools[gpu]" in args
 
 
@@ -243,8 +254,18 @@ def test_install_sh_reads_the_cuda_umd_version_banner(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr + result.stdout
     args = uv_log.read_text(encoding="utf-8")
-    assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu134" in args
+    _assert_torch_backend_auto(args)
     assert "--with\npdomain-book-tools[gpu]" in args
+
+
+def test_install_sh_without_gpu_passes_no_torch_backend(tmp_path: Path) -> None:
+    result, uv_log = _run_install_sh(tmp_path, _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    args = uv_log.read_text(encoding="utf-8")
+    assert "--torch-backend" not in args
+    assert "pytorch-cuda" not in args
+    assert "--with" not in args
 
 
 def test_install_sh_uses_first_index_strategy() -> None:
@@ -510,3 +531,19 @@ def test_install_sh_fails_when_uv_bootstrap_installs_nothing(tmp_path: Path) -> 
     )
     assert result.returncode == 1
     assert "uv could not be installed" in result.stderr
+
+
+# What a uv without --torch-backend prints (clap's unknown-argument error).
+UV_NO_TORCH_BACKEND = """echo "error: unexpected argument '--torch-backend' found" >&2
+exit 2"""
+
+
+def test_install_sh_hints_uv_self_update_when_uv_lacks_torch_backend(tmp_path: Path) -> None:
+    result, uv_log = _run_install_sh(
+        tmp_path, _valid_release(), cuda=True, uv_exit_logic=UV_NO_TORCH_BACKEND
+    )
+    assert result.returncode != 0
+    assert _uv_calls(uv_log) == 1
+    assert _sleeps(tmp_path) == []
+    assert "uv self update" in result.stderr
+    assert "Done" not in result.stdout

@@ -23,10 +23,6 @@ def _pwsh(body: str) -> subprocess.CompletedProcess:
     )
 
 
-def test_get_cuda_tag_strips_dot():
-    assert _pwsh("Get-CudaTag '12.4'").stdout.strip() == "cu124"
-
-
 def test_get_book_tools_extras_gpu_at_cuda_13():
     assert _pwsh("Get-BookToolsExtras '13.0'").stdout.strip() == "[gpu]"
     assert _pwsh("Get-BookToolsExtras '13.1'").stdout.strip() == "[gpu]"

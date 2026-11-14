@@ -22,7 +22,7 @@ def _write_fake_exe(path: Path, body: str) -> None:
 
 
 def _run_install_ps1(
-    tmp_path: Path, digest_property: str, cuda_version: str = "12.4"
+    tmp_path: Path, digest_property: str, cuda_version: str | None = "12.4"
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     result, uv_log, _perm_log = _run_install_ps1_full(
         tmp_path, digest_property, cuda_version=cuda_version
@@ -34,7 +34,7 @@ def _run_install_ps1_full(
     tmp_path: Path,
     digest_property: str,
     umask: int | None = None,
-    cuda_version: str = "12.4",
+    cuda_version: str | None = "12.4",
     uv_exit_logic: str = "exit 0",
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """Run install.ps1 through pwsh with mocked GitHub API + uv + nvidia-smi.
@@ -57,6 +57,9 @@ def _run_install_ps1_full(
     `$n`, the 1-based number of this `uv` call. Every call appends its
     arguments to `uv.log`, separated by a `--call--` line, and the harness
     logs each `Start-Sleep` delay to `sleep.log` instead of sleeping.
+
+    `cuda_version=None` makes the fake `nvidia-smi` print nothing, so the
+    installer finds no CUDA version and takes the CPU path.
     """
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -80,10 +83,15 @@ done
 {uv_exit_logic}
 """,
     )
+    smi_output = (
+        f"printf '%s\\n' 'CUDA Version                          : {cuda_version}'"
+        if cuda_version is not None
+        else ":"
+    )
     _write_fake_exe(
         bin_dir / "nvidia-smi",
         f"""#!/bin/sh
-printf '%s\\n' 'CUDA Version                          : {cuda_version}'
+{smi_output}
 exit 0
 """,
     )
@@ -134,6 +142,7 @@ Invoke-Expression $InstallerText
     env = os.environ.copy()
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
     env["PD_OCR_INSTALL_PYTHON"] = "3.12"
+    _ = env.pop("CUDA_VERSION", None)
     preexec_fn = (lambda: os.umask(umask)) if umask is not None else None
     result = subprocess.run(
         ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(harness)],
@@ -145,6 +154,19 @@ Invoke-Expression $InstallerText
         preexec_fn=preexec_fn,
     )
     return result, uv_log, perm_log
+
+
+def _assert_torch_backend_auto(args: str) -> None:
+    """uv picks the PyTorch CUDA build itself; no PyTorch index is passed.
+
+    download.pytorch.org/whl/cuXXX also serves old copies of common packages
+    (packaging 24.1 at most). Under first-index that index then wins for
+    `packaging`, and pdomain-ops>=0.12.2 needs packaging>=26, so every GPU
+    install failed to resolve.
+    """
+    assert "--torch-backend\nauto" in args
+    assert "pytorch-cuda" not in args
+    assert "download.pytorch.org" not in args
 
 
 def test_install_ps1_piped_mode_is_self_contained_and_uses_release_wheel(
@@ -163,12 +185,10 @@ def test_install_ps1_piped_mode_is_self_contained_and_uses_release_wheel(
     assert "--extra-index-url" not in args
     assert "pdomain_ocr_cli-9.9.9-py3-none-any.whl" in args
     assert "git+https://github.com/pdomain/pdomain-ocr-cli" not in args
-    # This harness's fake nvidia-smi always reports CUDA 12.4, so the CUDA
-    # extra index is also present. The pdomain index must be listed (and
-    # therefore checked, under first-index) before it.
-    assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu124" in args
+    # This harness's fake nvidia-smi reports CUDA 12.4 by default: uv picks
+    # the PyTorch CUDA build, and CUDA 12 gets no [gpu] extra.
+    _assert_torch_backend_auto(args)
     assert "--with" not in args
-    assert args.index("pdomain=") < args.index("pytorch-cuda=")
 
 
 def test_install_ps1_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
@@ -178,8 +198,20 @@ def test_install_ps1_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr + result.stdout
     args = uv_log.read_text(encoding="utf-8")
-    assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu130" in args
+    _assert_torch_backend_auto(args)
     assert "--with\npdomain-book-tools[gpu]" in args
+
+
+def test_install_ps1_without_cuda_passes_no_torch_backend(tmp_path: Path) -> None:
+    result, uv_log = _run_install_ps1(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', cuda_version=None
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    args = uv_log.read_text(encoding="utf-8")
+    assert "--torch-backend" not in args
+    assert "pytorch-cuda" not in args
+    assert "--with" not in args
 
 
 def test_install_ps1_uses_first_index_strategy() -> None:
@@ -352,3 +384,20 @@ def test_install_ps1_does_not_retry_resolver_failure(tmp_path: Path) -> None:
     assert result.returncode != 0
     assert _uv_calls(uv_log) == 1
     assert _sleeps(tmp_path) == []
+
+
+# What a uv without --torch-backend prints (clap's unknown-argument error).
+UV_NO_TORCH_BACKEND = """echo "error: unexpected argument '--torch-backend' found" >&2
+exit 2"""
+
+
+def test_install_ps1_hints_uv_self_update_when_uv_lacks_torch_backend(tmp_path: Path) -> None:
+    result, uv_log, _perm = _run_install_ps1_full(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', uv_exit_logic=UV_NO_TORCH_BACKEND
+    )
+
+    assert result.returncode != 0
+    assert _uv_calls(uv_log) == 1
+    assert _sleeps(tmp_path) == []
+    assert "uv self update" in result.stdout + result.stderr
+    assert "Done" not in result.stdout

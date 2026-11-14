@@ -9,9 +9,18 @@ set -e
 # public GitHub Releases API via curl.
 #
 # GPU auto-enable:
-#   The CUDA >= 13 branch below passes `--with pdomain-book-tools[gpu]` to
-#   pull in cupy-cuda13x. pdomain-book-tools 0.31.0 makes that extra CUDA 13
-#   only. CUDA 12 still gets the matching PyTorch wheel, without the extra.
+#   When nvidia-smi reports a CUDA version, the install passes
+#   `--torch-backend auto`, so uv picks the PyTorch CUDA build that matches
+#   the driver. The CUDA >= 13 branch below also passes
+#   `--with pdomain-book-tools[gpu]` to pull in cupy-cuda13x.
+#   pdomain-book-tools 0.31.0 makes that extra CUDA 13 only. CUDA 12 still
+#   gets a CUDA PyTorch build, without the extra.
+#
+#   Do not add download.pytorch.org/whl/cuXXX as an --index instead. That
+#   index also serves old copies of common packages (packaging 24.1 at most),
+#   and under first-index uv then takes `packaging` from it alone, so the
+#   resolve fails (pdomain-ops needs packaging>=26). `--torch-backend` sends
+#   only PyTorch packages to the PyTorch index.
 #
 # pdomain-book-tools is published on a self-hosted PEP 503 index (pdomain-index-pip) so
 # the wheel's Requires-Dist entry resolves automatically when we bind that
@@ -36,7 +45,7 @@ if ! command -v uv >/dev/null 2>&1; then
     fi
 fi
 
-EXTRA_INDEX=""
+TORCH_BACKEND=""
 PD_BOOK_TOOLS_EXTRAS=""
 PD_INDEX_URL="https://pdomain.github.io/pdomain-index-pip/simple/"
 # "first-index" makes uv stop looking once a package name resolves on an
@@ -55,12 +64,11 @@ UV_INDEX_STRATEGY="first-index"
 if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
     CUDA_VER=$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA \(UMD \)\{0,1\}Version: \([0-9]*\.[0-9]*\).*/\2/p' | head -1)
     if [ -n "$CUDA_VER" ]; then
-        CUDA_TAG="cu$(echo "$CUDA_VER" | tr -d '.')"
-        EXTRA_INDEX="https://download.pytorch.org/whl/${CUDA_TAG}"
-        echo "Detected CUDA ${CUDA_VER} — will install PyTorch with ${CUDA_TAG} support."
+        TORCH_BACKEND="auto"
+        echo "Detected CUDA ${CUDA_VER} — uv will pick the matching PyTorch CUDA build."
 
-        # cupy-cuda13x needs CUDA 13. CUDA 12 still gets the matching
-        # PyTorch wheel, without the [gpu] extra.
+        # cupy-cuda13x needs CUDA 13. CUDA 12 still gets a CUDA PyTorch
+        # build, without the [gpu] extra.
         # POSIX-sh version compare — no `sort -V`, no `awk`.
         CUDA_MAJOR=${CUDA_VER%.*}
         if [ "$CUDA_MAJOR" -ge 13 ]; then
@@ -254,14 +262,14 @@ echo "Installing pdomain-ocr ${RELEASE_TAG:-} from $(basename "$WHEEL_FILE")..."
 # that the wheel's METADATA carries, and so a hostile UV_INDEX env var can't
 # outrank it (see the UV_INDEX_STRATEGY comment above). When CUDA >= 13
 # was detected above, $PD_BOOK_TOOLS_EXTRAS is "[gpu]"; we pass --with to
-# pull that extra in. The pdomain --index is always listed before the CUDA
-# extra --index, so it's still checked first under first-index.
+# pull that extra in. When any CUDA version was detected, --torch-backend
+# auto lets uv choose the PyTorch CUDA build (see the header comment).
 set -- --reinstall "$WHEEL_FILE" --index-strategy "$UV_INDEX_STRATEGY" --index "pdomain=${PD_INDEX_URL}"
 if [ -n "$PD_BOOK_TOOLS_EXTRAS" ]; then
     set -- "$@" --with "pdomain-book-tools${PD_BOOK_TOOLS_EXTRAS}"
 fi
-if [ -n "$EXTRA_INDEX" ]; then
-    set -- "$@" --index "pytorch-cuda=${EXTRA_INDEX}"
+if [ -n "$TORCH_BACKEND" ]; then
+    set -- "$@" --torch-backend "$TORCH_BACKEND"
 fi
 # Run `uv tool install`, retrying only uv-reported network failures. uv
 # already retried each request three times and then printed "Request failed
@@ -276,6 +284,15 @@ while :; do
     status=$(cat "$WHEEL_DIR/uv.status")
     if [ "$status" -eq 0 ]; then
         break
+    fi
+    # A uv older than the --torch-backend option rejects it. Updating uv is
+    # the fix; retrying cannot help.
+    if grep -q "torch-backend" "$WHEEL_DIR/uv.log"; then
+        echo "❌ uv tool install failed with exit code ${status}. pdomain-ocr was not installed." >&2
+        echo "   This uv is too old for the --torch-backend option, which picks the PyTorch CUDA build." >&2
+        echo "   Run: uv self update  (or update uv with the package manager that installed it)" >&2
+        echo "   Then run the installer again." >&2
+        exit "$status"
     fi
     if grep -q "No solution found" "$WHEEL_DIR/uv.log" \
         || ! grep -Eq "Request failed after [0-9]+ retr" "$WHEEL_DIR/uv.log"; then

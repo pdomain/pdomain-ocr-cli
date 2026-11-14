@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-13
+Last verified: 2026-11-14
 Kind: context
 ---
 
@@ -32,6 +32,25 @@ with the runtime missing and too old. Later on 2026-11-13 the README command,
 `irm .../master/install.ps1 | iex`, installed v0.9.4 from GitHub as that user
 in 28 s. Only the restart-required exit codes have not run on Windows; see the
 [Windows proof](../research/2026-11-13-windows-installer-proof.md).
+
+Every GPU install of v0.9.4 fails to resolve; branch `fix/torch-backend`
+fixes it, unreleased as of 2026-11-14. With CUDA detected, both installers
+added `--index pytorch-cuda=https://download.pytorch.org/whl/cuXXX` under
+`--index-strategy first-index`. That index also hosts old copies of common
+packages, with `packaging` 24.1 at most; cu126, cu128, cu130 and cu134 were
+checked. uv then took `packaging` from it alone, and `pdomain-ops>=0.12.2`
+needs `packaging>=26`, so uv reported "No solution found". This was seen on
+2026-11-14 on an RTX 5070 Ti host with NVIDIA driver 615.78 and CUDA 13.4. The
+CPU path was not affected.
+
+The fix passes `--torch-backend auto` instead of the PyTorch index, in
+`install.sh`, `install.ps1` and `scripts/install-uv-tool.sh`. uv then sends
+only PyTorch packages to the PyTorch index and reads the driver version
+itself. On that host, uv 0.11.26 installed v0.9.4 with this flag and
+`--with 'pdomain-book-tools[gpu]'`: torch 2.14.1+cu130, packaging 26.3 and
+cupy-cuda13x. OCR then ran on CUDA with 100% word overlap. uv 0.11.26 lists
+explicit backends only up to cu130, so the installers use `auto` rather than
+a computed tag. A uv too old for the flag gets a hint to run `uv self update`.
 
 The open product item on the [roadmap](../roadmap.md) is long-s normalization.
 The batch path reads `page.ocr_rotation_degrees` from `pdomain-ops` 0.12.2.

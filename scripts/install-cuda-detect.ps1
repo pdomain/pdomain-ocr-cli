@@ -30,11 +30,6 @@ function Get-CudaVersion {
     return $null
 }
 
-function Get-CudaTag {
-    param([Parameter(Mandatory = $true)][string]$CudaVer)
-    return "cu" + ($CudaVer -replace "\.", "")
-}
-
 function Get-BookToolsExtras {
     param([Parameter(Mandatory = $true)][string]$CudaVer)
     try {
