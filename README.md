@@ -74,7 +74,13 @@ curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/insta
 
 **Windows (PowerShell):**
 
+Run both commands in one Windows PowerShell window. The first allows scripts
+only for that session. Closing the window restores the previous policy. A
+`Restricted` policy blocks the `uv` installer and can close PowerShell before
+OCR installation starts.
+
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 ```
 
@@ -133,6 +139,7 @@ curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/insta
 
 ```powershell
 # Windows
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 ```
 
@@ -308,6 +315,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ```powershell
 # Windows (PowerShell)
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 irm https://astral.sh/uv/install.ps1 | iex
 ```
 
