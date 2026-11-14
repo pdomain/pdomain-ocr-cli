@@ -76,6 +76,7 @@ def _write_fake_bin(
     cuda: bool = False,
     cuda_version: str = "12.4",
     uv_exit_logic: str = "exit 0",
+    smi_line: str | None = None,
 ) -> None:
     bin_dir.mkdir()
 
@@ -139,7 +140,7 @@ exit 1
         # install.sh parses the PLAIN `nvidia-smi` header line (colon
         # immediately after "Version", unlike the padded `nvidia-smi -q`
         # form), e.g.: "| ... Driver Version: 550.54.15  CUDA Version: 12.4 |"
-        smi_line = (
+        smi_line = smi_line or (
             "| NVIDIA-SMI 550.54.15   Driver Version: 550.54.15   "
             f"CUDA Version: {cuda_version}    |"
         )
@@ -159,11 +160,12 @@ def _run_install_sh(
     cuda: bool = False,
     cuda_version: str = "12.4",
     uv_exit_logic: str = "exit 0",
+    smi_line: str | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     bin_dir = tmp_path / "bin"
     uv_log = tmp_path / "uv.log"
     _write_fake_bin(
-        bin_dir, uv_log, release_json, gh_release_json, cuda, cuda_version, uv_exit_logic
+        bin_dir, uv_log, release_json, gh_release_json, cuda, cuda_version, uv_exit_logic, smi_line
     )
 
     env = os.environ.copy()
@@ -223,6 +225,25 @@ def test_install_sh_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr + result.stdout
     args = uv_log.read_text(encoding="utf-8")
     assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu130" in args
+    assert "--with\npdomain-book-tools[gpu]" in args
+
+
+def test_install_sh_reads_the_cuda_umd_version_banner(tmp_path: Path) -> None:
+    """NVIDIA driver 615 renamed the banner field to "CUDA UMD Version".
+    install.sh missed it and installed CPU-only on an RTX 5070 Ti."""
+    result, uv_log = _run_install_sh(
+        tmp_path,
+        _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'),
+        cuda=True,
+        smi_line=(
+            "| NVIDIA-SMI 615.78.08              KMD Version: 615.78.08     "
+            "CUDA UMD Version: 13.4     |"
+        ),
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    args = uv_log.read_text(encoding="utf-8")
+    assert "--index\npytorch-cuda=https://download.pytorch.org/whl/cu134" in args
     assert "--with\npdomain-book-tools[gpu]" in args
 
 

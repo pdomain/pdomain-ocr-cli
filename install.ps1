@@ -28,7 +28,7 @@ function Get-CudaVersion {
 
     try {
         $Query = & nvidia-smi -q 2>$null | Out-String
-        if ($Query -match "CUDA Version\s*:\s*([0-9]+\.[0-9]+)") {
+        if ($Query -match "CUDA (?:UMD )?Version\s*:\s*([0-9]+\.[0-9]+)") {
             return $Matches[1]
         }
     } catch {
@@ -36,7 +36,7 @@ function Get-CudaVersion {
 
     try {
         $Plain = & nvidia-smi 2>$null | Out-String
-        if ($Plain -match "CUDA Version:\s*([0-9]+\.[0-9]+)") {
+        if ($Plain -match "CUDA (?:UMD )?Version:\s*([0-9]+\.[0-9]+)") {
             return $Matches[1]
         }
     } catch {

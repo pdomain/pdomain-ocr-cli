@@ -69,3 +69,40 @@ def test_get_cuda_version_null_when_smi_gives_nothing():
     # Both -q and plain branches get '' — neither regex matches — function returns
     # $null. PowerShell writes nothing to stdout for a $null return value.
     assert _pwsh(body).stdout.strip() == ""
+
+
+# NVIDIA driver 615 prints "CUDA UMD Version" in the banner and marks the old
+# "CUDA Version" field in `nvidia-smi -q` as deprecated, to be removed in CUDA 14.
+UMD_BANNER = "| NVIDIA-SMI 615.78.08   KMD Version: 615.78.08     CUDA UMD Version: 13.4     |"
+
+
+def test_get_cuda_version_parses_umd_banner():
+    body = (
+        "$env:CUDA_VERSION=$null\n"
+        "function nvidia-smi { if ($args -contains '-q') { '' } "
+        f"else {{ '{UMD_BANNER}' }} }}\n"
+        "Get-CudaVersion"
+    )
+    assert _pwsh(body).stdout.strip() == "13.4"
+
+
+def test_get_cuda_version_parses_umd_query_field():
+    body = (
+        "$env:CUDA_VERSION=$null\n"
+        "function nvidia-smi { 'CUDA UMD Version                      : 14.0' }\n"
+        "Get-CudaVersion"
+    )
+    assert _pwsh(body).stdout.strip() == "14.0"
+
+
+def test_install_ps1_parses_umd_banner(tmp_path):
+    from tests.test_install_ps1_vc_runtime import _pwsh as installer_pwsh
+
+    body = (
+        "$env:CUDA_VERSION=$null\n"
+        "function nvidia-smi { if ($args -contains '-q') { '' } "
+        f"else {{ '{UMD_BANNER}' }} }}\n"
+        "Get-CudaVersion"
+    )
+    result = installer_pwsh(body, tmp_path)
+    assert result.stdout.strip() == "13.4", result.stderr
