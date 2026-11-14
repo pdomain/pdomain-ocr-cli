@@ -514,6 +514,7 @@ normalize-output spec, plan, and issue stay, because that flag is not built.
 - **Evidence:** [Windows proof](../research/2026-11-13-windows-installer-proof.md),
   [CLI orchestration](../architecture/cli-orchestration.md#trust-and-network-boundaries),
   `tests/test_install_ps1.py` and `tests/test_install_ps1_vc_runtime.py`.
-- **Remaining work:** Prove real UAC prompts and the missing-runtime path on a
-  VM with UAC on. Decide whether `install.sh` should retry the same way. The
-  four owner choices and the next release remain open.
+- **Remaining work:** Real UAC prompts and the missing and old runtime paths
+  have since passed on Windows; only the restart-required codes remain
+  unproven. `install.sh` got the same uv retry and failure handling
+  afterwards. The four owner choices and the next release remain open.

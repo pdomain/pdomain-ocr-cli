@@ -59,6 +59,19 @@ run used the final installer, SHA256
    parsed signer organization and chain root, and tried to write and delete
    the installer while holding the same lock the installer uses.
 
+The owner then approved turning UAC on and one Windows restart. Before it,
+the `docker` account set `EnableLUA` to 1, `ConsentPromptBehaviorUser` to 3
+(ask for credentials) and uninstalled the 14.52 runtime; the uninstall exited
+0 and removed all three DLLs. The third run used installer SHA256 prefix
+`e3c080cfe62f52f8`, which starts the elevated step with `Process.Start`:
+
+1. As `pdtest`, with no runtime, ran the piped install and pressed Esc at the
+   UAC credential prompt.
+2. As `docker`, installed Microsoft's 14.44.35211 redistributable, approving
+   the UAC consent prompt.
+3. As `pdtest`, ran the piped install again, entered the `docker` password at
+   the UAC credential prompt, and then ran OCR.
+
 ## Evidence
 
 **VM state.** Windows PowerShell 5.1.26100.7920. UAC is off: `EnableLUA` is
@@ -114,11 +127,33 @@ Authority 2011. The redistributable ran and succeeded while the installer's
 read-only lock was held. With that lock held, opening the file for writing
 and deleting it both failed.
 
+**UAC on, missing runtime.** The installer reported all three DLLs missing,
+downloaded and verified the redistributable, and Windows showed a credential
+prompt: "Microsoft Visual C++ v14 Redistributable (x64) - 14.52.37029",
+verified publisher Microsoft Corporation, asking for the `docker` password.
+Pressing Esc cancelled it. The first attempt used `Start-Process`, and Windows
+PowerShell 5.1 reported the cancel as an `InvalidOperationException` with no
+Windows error code, so the installer's message said "could not be started".
+After the switch to `Process.Start`, the same cancel read "the administrator
+prompt was cancelled". Both times the install failed with the manual steps,
+printed no `Done`, and left the DLLs missing. The pdomain index returned 503
+once in this run too, and the retry recovered.
+
+**UAC on, runtime too old.** With 14.44.35211 installed, the installer
+reported "Visual C++ runtime 14.44 is older than 14.51", naming fontTools'
+`cu2qu.cp313-win_amd64.pyd`. After the `docker` password was entered at the
+prompt, the redistributable installed 14.52.37029 without asking for a
+restart. The recheck passed and the run ended with `Done!` after 50 seconds.
+OCR as `pdtest` then exited 0 in 81 seconds with byte-identical output.
+
 ## Conclusions
 
+- With UAC on, a standard user gets a real credential prompt for the
+  runtime step only. Cancelling it fails clearly, and approving it repairs a
+  missing or old runtime without a restart.
 - The final installer works under the default `Restricted` policy without
-  the session-only command. The README keeps that command, because the
-  installer already published on GitHub still needs it.
+  the session-only command, so the README no longer asks for it. The
+  installer published before this fix still needs it.
 - Retrying uv's own network failures fixed a real install. The pdomain index
   on GitHub Pages returned 503 for several seconds at a time.
 - A standard account can install and run `pdomain-ocr` once the Visual C++
@@ -129,20 +164,18 @@ and deleting it both failed.
 
 ## Next steps
 
-- Prove the UAC consent and credential prompts on a VM with UAC on. Turning
-  UAC on here needs a restart, which the owner must approve.
-- Prove the missing-runtime path on a clean VM or snapshot, without
-  uninstalling the owner's runtime.
-- The `install.sh` uv call has no retries; it fails with uv's exit code under
-  `set -e`. Decide whether it should match.
+- The VM was left with UAC on. The owner asked for it to be turned off again,
+  which needs another restart; that waits for the owner.
+- Done after this note: `install.sh` now retries uv's network failures the
+  same way and checks that the uv bootstrap actually installed uv.
 
 ## What this does NOT establish
 
-- No UAC prompt appeared, because UAC is off. Cancelling a real prompt
-  (Windows error 1223) and the exit codes 1602, 1638, 3010 and 1641 are
-  covered only by tests that fake the Windows calls. Which success code the
-  `docker` runs returned, 0 or 1638, was not recorded.
-- The missing-runtime and too-old-runtime paths did not run on Windows.
+- The redistributable never returned 3010 or 1641, so the restart-required
+  path is covered only by tests that fake the Windows calls. Exit codes 1602
+  and 1638 were also not seen.
+- Only the credential prompt was tested for the runtime step. The consent
+  prompt was seen only when `docker` installed 14.44 by hand.
 - Only Windows PowerShell 5.1 ran; PowerShell 7 on Windows did not.
 - This is a one-page CPU smoke test, not a check of OCR quality, GPU use or
   CUDA detection on Windows.

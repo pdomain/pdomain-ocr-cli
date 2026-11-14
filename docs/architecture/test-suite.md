@@ -87,7 +87,7 @@ The installer checks use real PowerShell processes on this Linux test host.
 On 2026-11-13 the fixed installer also ran on real Windows PowerShell 5.1 as a
 standard user, through install, retry and one-page CPU OCR. The
 [Windows proof](../research/2026-11-13-windows-installer-proof.md) lists what
-that run did not cover, including real UAC prompts and a missing runtime.
+those runs did not cover, mainly the restart-required exit codes.
 
 ## Word preservation
 

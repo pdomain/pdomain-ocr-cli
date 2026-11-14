@@ -138,6 +138,10 @@ The digest comes from the same GitHub API as the wheel, so it catches
 corruption in transit, not a replaced release asset. `uv` does not hash-check
 the wheel's dependencies.
 
+Both installers retry `uv tool install` the same way and fail with uv's exit
+code otherwise. `install.sh` streams uv's output through `tee` to classify it,
+and fails if the uv bootstrap leaves no `uv` on `PATH`.
+
 `install.ps1` checks every native exit code it depends on. If `uv tool install`
 fails, the script throws, so piped use leaves the window open, a `-File` run
 exits nonzero, and `Done` is never printed. It retries only failures that uv
@@ -161,8 +165,10 @@ reports `Valid`, the signer's only organization field is exactly `Microsoft
 Corporation`, and the chain ends at Microsoft Root Certificate Authority 2011,
 thumbprint `8F43288AD272F3103B6FB1428485EA3014C0BCFE`. It holds the file open
 for reading only, from the check until the installer exits, so the file cannot
-be replaced in between. It then starts `/install /passive /norestart` with
-`-Verb RunAs`, the only elevated step.
+be replaced in between. It then starts `/install /passive /norestart` through `Process.Start` with
+the `runas` verb, the only elevated step. `Start-Process` is not used because
+Windows PowerShell 5.1 drops the Windows error code when the user cancels
+the prompt.
 Exit codes 0 and 1638 count as installed. 3010 and 1641 finish with a restart
 notice; the script never restarts Windows. 1602, 5, a cancelled prompt
 (Windows error 1223), a missing exit code and any other code fail with manual
