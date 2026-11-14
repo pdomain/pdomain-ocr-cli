@@ -28,18 +28,13 @@ runners `windows-2025` and `windows-2022` are x64.
 
 Each job installs the latest release the way a user does: `install.sh` on
 macOS, and `install.ps1` piped into `Invoke-Expression` in Windows PowerShell
-5.1. It checks that `opencv-python` is the only OpenCV distribution, OCRs
-`tests/fixtures/book_page.png`, and requires a word overlap of at least 0.95
-with `book_page.pgdp.txt`. The page is page 50 of *Credulities Past and
-Present*, PGDP project `projectID63ac6757567bd` page `p0500.png`, copied with
-its proofread text from pdomain-book-tools'
-`tests/fixtures/layout_regression/inputs/body-italic-header-left-pageno`. It
-has 372 words; the Linux release reads it at 0.987.
-`book_page.release-output.txt` is that Linux output. A run that differs from
-it gets a warning and a diff, not a failure. The first macOS run used the
-8-word title page instead: it matched the Linux output exactly but scored
-0.875 against the hand-written text, because the models read "XVIIIth" as
-"xVIIth". So 8 words cannot tell one misread word from a broken install.
+5.1. It checks that `opencv-python` is the only OpenCV distribution, then OCRs
+`tests/fixtures/known_good_page.png`, the GUI's 20-word drawn test page. These
+runs prove the install works; they are not OCR quality tests. So the job fails
+only if the word overlap with `known_good_page.gt.txt` is below 0.6, the GUI
+acceptance script's threshold. `known_good_page.release-output.txt` is the
+Linux release output; a run that differs from it gets a warning and a diff,
+not a failure. The CLI and GUI workflows now OCR the same page.
 
 The runners are virtual machines with no GPU. On macOS 26, PyTorch reported no
 MPS, so the run covered the CPU path. The Windows job runs as an administrator

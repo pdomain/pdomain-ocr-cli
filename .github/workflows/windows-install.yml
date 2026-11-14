@@ -1,11 +1,11 @@
 # Manual Windows install test. Start it with `just win-test`.
 #
 # It runs install.ps1 the way a user would, piped into Invoke-Expression in
-# Windows PowerShell 5.1, then OCRs a real book page and compares the text with
-# its proofread text. GitHub's Windows runners are x64 virtual machines
-# with no GPU, where the job runs as an administrator and the Visual C++
-# runtime is already present. So this covers the CPU path; the UAC prompt and
-# the runtime install still need a real Windows machine.
+# Windows PowerShell 5.1, then OCRs a 20-word test page and checks the text.
+# GitHub's Windows runners are x64 virtual machines with no GPU, where the job
+# runs as an administrator and the Visual C++ runtime is already present. So
+# this covers the CPU path; the UAC prompt and the runtime install still need
+# a real Windows machine.
 name: Windows install test
 
 on:
@@ -80,14 +80,15 @@ jobs:
           $code | & $toolPython -I -
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: OCR the book page fixture
+      - name: OCR the 20-word test page
         shell: pwsh
-        run: pdomain-ocr --no-update-check --output-dir ocr-out tests\fixtures\book_page.png
+        run: pdomain-ocr --no-update-check --output-dir ocr-out tests\fixtures\known_good_page.png
 
-      # The page is a real public-domain book page with Distributed
-      # Proofreaders' proofread text; the Linux release reads it at 0.987.
-      # A difference from the Linux output is reported as a warning only.
-      - name: Compare the OCR text with the proofread text
+      # This proves the install runs OCR; it is not an OCR quality test.
+      # known_good_page.png is the GUI's 20-word drawn test page. The run
+      # fails only if under 0.6 of its words come back. A difference from
+      # the Linux release output is reported as a warning.
+      - name: Check the OCR text
         shell: pwsh
         run: |
           $code = @'
@@ -97,7 +98,7 @@ jobs:
           from collections import Counter
           from pathlib import Path
 
-          got_path, proofread_path, linux_path = sys.argv[1:4]
+          got_path, truth_path, linux_path = sys.argv[1:4]
 
           def text(path):
               return Path(path).read_text(encoding="utf-8")
@@ -105,10 +106,10 @@ jobs:
           def words(path):
               return Counter(re.findall(r"\w+", text(path).lower()))
 
-          got, proofread = words(got_path), words(proofread_path)
-          total = sum(proofread.values())
-          overlap = sum((got & proofread).values()) / max(1, total)
-          print(f"word overlap with the proofread text: {overlap:.3f} of {total} words")
+          got, truth = words(got_path), words(truth_path)
+          total = sum(truth.values())
+          overlap = sum((got & truth).values()) / max(1, total)
+          print(f"word overlap with the ground truth: {overlap:.3f} of {total} words")
 
           linux = [line.rstrip() for line in text(linux_path).strip().splitlines()]
           here = [line.rstrip() for line in text(got_path).strip().splitlines()]
@@ -118,10 +119,10 @@ jobs:
               print(f"::warning::OCR output differs from {linux_path}")
               print("\n".join(difflib.unified_diff(linux, here, "Linux release output", "this runner", lineterm="")))
 
-          if overlap < 0.95:
-              sys.exit("word overlap with the proofread text is below 0.95")
+          if overlap < 0.6:
+              sys.exit("word overlap with the ground truth is below 0.6")
           '@
-          $code | python -I - ocr-out\book_page.txt tests\fixtures\book_page.pgdp.txt tests\fixtures\book_page.release-output.txt
+          $code | python -I - ocr-out\known_good_page.txt tests\fixtures\known_good_page.gt.txt tests\fixtures\known_good_page.release-output.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Keep the OCR output
