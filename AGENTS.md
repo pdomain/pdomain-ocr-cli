@@ -16,7 +16,7 @@ reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 
 | recipe | does |
 |---|---|
-| `AI=1 just setup` | dev venv + pre-commit hooks (exact `pdomain-book-tools` pin from `pdomain-index-pip`) |
+| `AI=1 just setup` | dev venv + pre-commit hooks (`pdomain-book-tools` from `pdomain-index-pip`) |
 | `just local-setup` | clone any missing sibling pd-* repos into the workspace |
 | `just local-dev` | switch to local-dev mode (editable `../pdomain-book-tools` + marker) |
 | `just local-check` | print local-dev mode + per-sibling resolution |
@@ -31,6 +31,7 @@ reading-order reconstruction, and a user-facing `pdomain-ocr` command.
 | `AI=1 just lint` / `AI=1 just format` | ruff |
 | `AI=1 just build` | sdist + wheel into `dist/` |
 | `AI=1 just ci` | setup → pre-commit → lint-check → typecheck → coverage → installer-test → build → wheel-smoke → docgraph strict |
+| `just mac-test [runner]` | start the manual macOS install test on GitHub Actions and follow it; `mac-test-watch` and `mac-test-logs` follow or show a run |
 | `just upgrade-pdomain-book-tools` | deprecated alias for `just update-pdomain-deps` |
 | `just release-{patch,minor,major}` | run the `just ci-slow` preflight, create and push the tag, then build and create the GitHub Release locally |
 | `just refresh-version` | re-derive `pdomain-ocr --version` after tag changes (hatch-vcs) |

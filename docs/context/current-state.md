@@ -80,8 +80,9 @@ The completed spec-review handoff is
 The architecture pass preserves the four unresolved owner choices in the
 [intent map](intent-map.md). Local master requires
 `pdomain-book-tools>=0.31.3,<0.32`. Book-tools patch releases reach users
-without a CLI release; a 0.32 minor needs a cap change here first. GitHub runs no workflows for this
-repository; releases run locally through `just release-{patch,minor,major}`.
+without a CLI release; a 0.32 minor needs a cap change here first. GitHub runs nothing
+automatically. Its only workflow is the manual macOS install test, started
+with `just mac-test`. Releases run locally through `just release-{patch,minor,major}`.
 
 ## Test state
 

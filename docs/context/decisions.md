@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-13
+Last verified: 2026-11-14
 Kind: context
 ---
 
@@ -14,6 +14,19 @@ Kind: context
 - **Status:** active
 - **Read when:** checking durable repository decisions or documentation tombstones.
 - **Search terms:** decisions, rationale, retirement, tombstone, docgraph.
+
+### 2026-11-14 — A manual macOS install test runs on GitHub Actions
+
+The owner asked for a macOS check of the CPU path. This repository has no Mac,
+and GitHub's standard macOS runners cost nothing for a public repository.
+`.github/workflows/macos-install.yml` has only a `workflow_dispatch` trigger,
+so the 2026-09-13 rule that nothing runs on GitHub automatically still holds.
+`just mac-test [runner]` starts it on master and follows it; `macos-26` and
+`macos-15` are both Apple Silicon. The job installs the latest release with
+`install.sh`, checks that `opencv-python` is the only OpenCV distribution, OCRs
+`tests/fixtures/title_page_001.png`, and needs a word overlap of at least 0.9
+with its expected text. It reports whether PyTorch sees MPS. The runners are
+virtual machines, so MPS may be missing and the run then covers the CPU path.
 
 ### 2026-11-13 — Batch OCR rotation degrees are kept
 

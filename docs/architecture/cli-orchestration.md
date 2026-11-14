@@ -247,8 +247,10 @@ The existing `local-run` recipe still delegates to a missing `run` recipe.
 
 ## Release boundary
 
-Releases run locally; GitHub runs no workflows for this repository. The
+Releases run locally, and GitHub runs nothing automatically. The
 CI, dependency-refresh, and release workflows were removed on 2026-09-13.
+The one workflow left, `.github/workflows/macos-install.yml`, runs only when
+`just mac-test` starts it.
 `just release-{patch,minor,major}` calls `scripts/do-release.sh`. It runs the
 `just ci-slow` preflight, creates and pushes the tag, builds the wheel and
 sdist, and creates the GitHub Release with those assets

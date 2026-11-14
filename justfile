@@ -284,6 +284,20 @@ ci-slow:
     if [[ -n "${AI:-}" ]]; then exec just --quiet _ai ci-slow; fi
     just --quiet ci coverage-slow
 
+# It installs the latest release with install.sh and OCRs a fixture page.
+# runner: macos-26 (default) or macos-15, both Apple Silicon.
+# Start the manual macOS install test on GitHub Actions and follow it.
+mac-test runner="macos-26":
+    ./scripts/mac-test.sh start "{{ runner }}"
+
+# Follow a macOS install test run; default: the newest one.
+mac-test-watch run="":
+    ./scripts/mac-test.sh watch "{{ run }}"
+
+# Print the failed steps' logs of a macOS install test run; default: the newest one.
+mac-test-logs run="":
+    ./scripts/mac-test.sh logs "{{ run }}"
+
 ci-against-master:
     #!/usr/bin/env bash
     set -euo pipefail
