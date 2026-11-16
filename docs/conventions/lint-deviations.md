@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-31
-Last verified: 2026-11-13
+Last verified: 2026-11-15
 Kind: process
 ---
 
@@ -69,7 +69,7 @@ sequential pipeline logic without improving clarity.
 ### 9. `PLC0415` — import-not-at-top-level
 
 Deferred imports are intentional. They break circular deps and avoid loading
-optional-heavy modules (torch, cv2, cupy) until needed.
+optional-heavy modules (torch, cv2) until needed.
 Several are also monkeypatch seams for tests.
 
 ### 10. `TRY003` — long-message-outside-exception-class
@@ -149,18 +149,18 @@ that review still flags any *accidental* debug `print`.
 
 ### 18. `BLE001` — blind-except (ruff)
 
-**Files:** `pdomain_ocr_cli/_startup_notices.py` (lines 58, 79, 100),
-`_update_check.py` (line 181), `ocr_to_txt.py` (lines 932, 946, 1096,
-1349), and `_artifacts.py` (lines 289, 299, 311).
+**Files:** `pdomain_ocr_cli/_startup_notices.py` (lines 53, 61, 94, 115),
+`_update_check.py` (line 181), `ocr_to_txt.py` (lines 930, 944, 1094,
+1347), and `_artifacts.py` (lines 289, 299, 311).
 
 **Suppression form:** `# noqa: BLE001` (sometimes `# noqa: BLE001 S110`)
 inline, each with a trailing rationale.
 
 **Justification.** Five distinct catch-all boundaries:
 
-- The CuPy GPU probe and the GPU-install nudge helper must never crash
-  `pdomain-ocr` — a broken native CuPy can even segfault, so the catch is
-  intentionally `BaseException` and silent.
+- The torch CUDA probe and the GPU-install nudge helper must never crash
+  `pdomain-ocr`. A broken PyTorch install is caught and treated as "do not
+  nudge," so OCR still starts. The catch is `BaseException` and silent.
 - The update-check is best-effort; any network/parse failure is safe to
   swallow. It reports the failure only when `PD_OCR_DEBUG` is set.
 - Model-file resolution in `main()` normalizes every OCR and layout resolver
@@ -172,11 +172,11 @@ inline, each with a trailing rationale.
 
 ### 19. `S110` — try-except-pass (ruff)
 
-**Files:** `pdomain_ocr_cli/_startup_notices.py` (line 100). Paired with
+**Files:** `pdomain_ocr_cli/_startup_notices.py` (line 115). Paired with
 `BLE001`.
 
 **Justification.** The startup notice helper is a best-effort boundary. It
-must not interrupt OCR when an optional dependency or subprocess fails.
+must not interrupt OCR when the torch probe or a subprocess fails.
 
 ### 20. `S310` — suspicious-url-open (ruff)
 
@@ -211,7 +211,7 @@ update-check gate kept beside the tests that exercise it.
 
 ### 23. `TRY301` — raise-within-try (ruff)
 
-**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 1086).
+**Files:** `pdomain_ocr_cli/ocr_to_txt.py` (line 1084).
 
 **Suppression form:** `# noqa: TRY301` inline.
 
@@ -233,18 +233,7 @@ widening the protocol.
 
 ## Inline `# pyright: ignore` suppressions
 
-### 25. `reportMissingImports` — basedpyright
-
-**Files:** `pdomain_ocr_cli/_startup_notices.py` (line 53).
-
-**Suppression form:** `# pyright: ignore[reportMissingImports]` inline on
-the `import cupy` probe line.
-
-**Justification.** `cupy` is an optional GPU dependency absent from CPU-only
-installs. The guarded import probes whether the optional GPU stack is
-available.
-
-### 26. `reportAttributeAccessIssue` — basedpyright
+### 25. `reportAttributeAccessIssue` — basedpyright
 
 **Files:** `pdomain_ocr_cli/ocr_to_txt.py` (lines 436 and 459).
 
@@ -254,7 +243,7 @@ available.
 `importlib.import_module`. As a result, basedpyright cannot resolve their attributes.
 The surrounding casts establish the callable types used downstream.
 
-### 27. `reportPrivateUsage` — basedpyright
+### 26. `reportPrivateUsage` — basedpyright
 
 **Files:** `tests/test_main_errors.py` (lines 40 and 120).
 

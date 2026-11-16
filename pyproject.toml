@@ -20,17 +20,6 @@ dependencies = [
     "pillow>=11.0,<13",
 ]
 
-[project.optional-dependencies]
-# GPU acceleration is opt-in. Plain `pip install pdomain-ocr-cli` works on
-# CPU-only machines; users with an NVIDIA GPU can install the heavy
-# CUDA stack (cupy-cuda13x) via:
-#   pip install pdomain-ocr-cli[gpu]
-# This forwards to pdomain-book-tools' own [gpu] extra, which owns the
-# actual CUDA dependency list.
-gpu = [
-    "pdomain-book-tools[gpu]>=0.31.3,<0.32",
-]
-
 [project.scripts]
 pdomain-ocr = "pdomain_ocr_cli.ocr_to_txt:main"
 
@@ -160,7 +149,7 @@ ignore = [
     "COM812",
     # PLC0415 (import-not-at-top-level): deferred imports are a legitimate
     # pattern here -- used to break circular deps and avoid loading optional-
-    # heavy modules (torch, cv2, cupy) until needed (monkeypatch seams).
+    # heavy modules (torch, cv2) until needed (monkeypatch seams).
     "PLC0415",
     # PLR complexity rules: CLI pipeline functions legitimately have high
     # branch/return counts (main() orchestrates the full pipeline).
@@ -211,7 +200,7 @@ exclude = ["**/__pycache__", "**/.venv", "**/node_modules"]
 # untyped decorators, missing return types, and unused call results.
 typeCheckingMode = "all"
 # Warnings are gated via a baseline file (.basedpyright/baseline.json) that grandfathers
-# the existing warnings from CuPy/cv2/DocTR stub gaps. New warnings beyond the
+# the existing warnings from cv2/DocTR stub gaps. New warnings beyond the
 # baseline will fail CI. Regenerate the baseline with: uv run basedpyright pdomain_ocr_cli --writebaseline
 failOnWarnings = true
 

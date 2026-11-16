@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-14
+Last verified: 2026-11-15
 Kind: context
 ---
 
@@ -48,7 +48,12 @@ The fix passes `--torch-backend auto` instead of the PyTorch index, in
 only PyTorch packages to the PyTorch index and reads the driver version
 itself. On that host, uv 0.11.26 installed v0.9.4 with this flag and
 `--with 'pdomain-book-tools[gpu]'`: torch 2.14.1+cu130, packaging 26.3 and
-cupy-cuda13x. OCR then ran on CUDA with 100% word overlap. uv 0.11.26 lists
+cupy-cuda13x. OCR then ran on CUDA with 100% word overlap. The installers
+no longer pass that `--with` flag. OCR uses the CUDA PyTorch build and does
+not install CuPy. When `nvidia-smi` cannot report a CUDA version, the installer
+prints the NVIDIA driver steps and links to the OCR Simple GUI
+[GPU setup guide](https://github.com/pdomain/pdomain-ocr-simple-gui/blob/master/docs/usage/nvidia-gpu-setup.md).
+uv 0.11.26 lists
 explicit backends only up to cu130, so the installers use `auto` rather than
 a computed tag. A uv too old for the flag gets a hint to run `uv self update`.
 

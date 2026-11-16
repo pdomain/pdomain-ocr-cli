@@ -561,9 +561,9 @@ def _should_nudge_gpu_install() -> bool:
 
     Logic:
     1. ``PD_OCR_NO_GPU_NUDGE=1`` short-circuits to False (user opt-out).
-    2. If ``cupy`` imports cleanly, the GPU stack is already wired up — no nudge.
+    2. If PyTorch reports CUDA, the OCR GPU build is already installed — no nudge.
     3. Otherwise, check whether ``nvidia-smi`` exists AND exits 0 within 2s.
-       If yes, the host has a GPU but pdomain-ocr was installed CPU-only → nudge.
+       If yes, the host has a GPU but PyTorch is the CPU build → nudge.
     4. Any unexpected error in the probe path swallows silently and returns
        False — a printing-helper bug must never break ``pdomain-ocr`` itself.
 
@@ -916,12 +916,10 @@ def main() -> None:
         disabled=_startup_notices.update_check_disabled(args)
     )
 
-    # One-line nudge for users who have an NVIDIA GPU but installed
-    # pdomain-ocr without the [gpu] extra — surfaces the opt-in path so the
-    # GPU isn't silently left on the table. Suppressible via
-    # PD_OCR_NO_GPU_NUDGE=1. The probe itself is bullet-proof: any
-    # error (missing nvidia-smi, hung subprocess, broken CuPy) is
-    # swallowed so the nudge never breaks the actual OCR run.
+    # One-line nudge when an NVIDIA GPU is present but PyTorch is the CPU
+    # build. Suppressible via PD_OCR_NO_GPU_NUDGE=1. The probe swallows
+    # errors (missing nvidia-smi, a hung subprocess, a broken torch import)
+    # so the nudge never breaks the OCR run.
     _maybe_print_gpu_nudge()
 
     print("Resolving model files...", flush=True)  # noqa: T201  # CLI output
@@ -1012,10 +1010,10 @@ def main() -> None:
 
             traceback.print_exc(file=sys.stderr)
 
-    # cv2 + numpy are always present with the doctr/gpu deps that this code path
-    # requires.  Import once here (lazy, to avoid pulling heavy GPU libs at
-    # module import time) rather than re-importing on every chunk iteration.
-    import cv2  # optional [gpu] dep; always present with doctr
+    # cv2 and numpy ship with python-doctr. Import them once here, lazily,
+    # so module import does not pull the imaging stack, and do not
+    # re-import them on every chunk.
+    import cv2
     import numpy as np
     from PIL import Image, UnidentifiedImageError
 

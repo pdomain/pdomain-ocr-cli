@@ -40,7 +40,8 @@ def test_is_bounded_reads_the_version_specifier_only(requirement: str, bounded: 
 def test_direct_dependencies_have_upper_bounds() -> None:
     data = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
     requirements = list(data["project"]["dependencies"])
-    for extra in data["project"]["optional-dependencies"].values():
+    extras = data["project"].get("optional-dependencies", {})
+    for extra in extras.values():
         requirements += extra
     assert requirements
     assert all(_is_bounded(requirement) for requirement in requirements)

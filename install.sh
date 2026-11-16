@@ -11,10 +11,8 @@ set -e
 # GPU auto-enable:
 #   When nvidia-smi reports a CUDA version, the install passes
 #   `--torch-backend auto`, so uv picks the PyTorch CUDA build that matches
-#   the driver. The CUDA >= 13 branch below also passes
-#   `--with pdomain-book-tools[gpu]` to pull in cupy-cuda13x.
-#   pdomain-book-tools 0.31.0 makes that extra CUDA 13 only. CUDA 12 still
-#   gets a CUDA PyTorch build, without the extra.
+#   the driver. OCR runs on that PyTorch build. This app does not install
+#   CuPy.
 #
 #   Do not add download.pytorch.org/whl/cuXXX as an --index instead. That
 #   index also serves old copies of common packages (packaging 24.1 at most),
@@ -46,7 +44,6 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 TORCH_BACKEND=""
-PD_BOOK_TOOLS_EXTRAS=""
 PD_INDEX_URL="https://pdomain.github.io/pdomain-index-pip/simple/"
 # "first-index" makes uv stop looking once a package name resolves on an
 # index, in index-URL order. The pdomain index is always passed first (see
@@ -60,31 +57,33 @@ PD_INDEX_URL="https://pdomain.github.io/pdomain-index-pip/simple/"
 # this property (a hostile UV_INDEX beats it).
 UV_INDEX_STRATEGY="first-index"
 
+# Printed when this run will not download the CUDA build of PyTorch.
+print_gpu_setup_hint() {
+    echo "This installer does not install the NVIDIA driver. OCR still works on CPU."
+    echo "To use an NVIDIA GPU:"
+    echo "  1. Install driver 525 or newer: https://www.nvidia.com/en-us/drivers/"
+    echo "  2. Reboot if the driver installer asks you to."
+    echo "  3. Run nvidia-smi and confirm it lists the GPU."
+    echo "  4. Run this installer again. It downloads the CUDA build of PyTorch."
+    echo "Step-by-step: https://github.com/pdomain/pdomain-ocr-simple-gui/blob/master/docs/usage/nvidia-gpu-setup.md"
+}
+
 # Auto-detect NVIDIA CUDA
 if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
     CUDA_VER=$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA \(UMD \)\{0,1\}Version: \([0-9]*\.[0-9]*\).*/\2/p' | head -1)
     if [ -n "$CUDA_VER" ]; then
         TORCH_BACKEND="auto"
         echo "Detected CUDA ${CUDA_VER} — uv will pick the matching PyTorch CUDA build."
-
-        # cupy-cuda13x needs CUDA 13. CUDA 12 still gets a CUDA PyTorch
-        # build, without the [gpu] extra.
-        # POSIX-sh version compare — no `sort -V`, no `awk`.
-        CUDA_MAJOR=${CUDA_VER%.*}
-        if [ "$CUDA_MAJOR" -ge 13 ]; then
-            PD_BOOK_TOOLS_EXTRAS="[gpu]"
-            echo "CUDA ${CUDA_VER} >= 13 — enabling pdomain-book-tools[gpu] (cupy-cuda13x)."
-        else
-            echo "CUDA ${CUDA_VER} < 13 — installing CPU-only book-tools (cupy-cuda13x needs CUDA 13)."
-        fi
     else
         echo "nvidia-smi found but could not detect CUDA version — falling back to CPU."
+        print_gpu_setup_hint
     fi
 # Detect Apple Silicon (MPS)
 elif [ "$(uname)" = "Darwin" ] && [ "$(uname -m)" = "arm64" ]; then
     echo "Detected Apple Silicon — MPS acceleration will be used automatically."
 else
     echo "No GPU detected — installing CPU-only PyTorch."
+    print_gpu_setup_hint
 fi
 
 # ---------------------------------------------------------------------------
@@ -260,14 +259,11 @@ echo "Installing pdomain-ocr ${RELEASE_TAG:-} from $(basename "$WHEEL_FILE")..."
 # (GitHub Pages PEP 503 index); bind it via a named `--index` (not the
 # deprecated --extra-index-url) so uv can resolve the Requires-Dist entry
 # that the wheel's METADATA carries, and so a hostile UV_INDEX env var can't
-# outrank it (see the UV_INDEX_STRATEGY comment above). When CUDA >= 13
-# was detected above, $PD_BOOK_TOOLS_EXTRAS is "[gpu]"; we pass --with to
-# pull that extra in. When any CUDA version was detected, --torch-backend
-# auto lets uv choose the PyTorch CUDA build (see the header comment).
+# outrank it (see the UV_INDEX_STRATEGY comment above). When any CUDA
+# version was detected, --torch-backend auto lets uv choose the PyTorch
+# CUDA build. OCR does not use CuPy, so this command never passes
+# --with pdomain-book-tools[gpu].
 set -- --reinstall "$WHEEL_FILE" --index-strategy "$UV_INDEX_STRATEGY" --index "pdomain=${PD_INDEX_URL}"
-if [ -n "$PD_BOOK_TOOLS_EXTRAS" ]; then
-    set -- "$@" --with "pdomain-book-tools${PD_BOOK_TOOLS_EXTRAS}"
-fi
 if [ -n "$TORCH_BACKEND" ]; then
     set -- "$@" --torch-backend "$TORCH_BACKEND"
 fi

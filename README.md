@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-03
-Last verified: 2026-11-07
+Last verified: 2026-11-15
 Kind: process
 ---
 
@@ -49,17 +49,16 @@ environment, but the wheel is tested on Python 3.11, 3.12, and 3.13.
 `pdomain-ocr` works fine on CPU. Add an NVIDIA GPU and it goes faster — worth
 it when you're running through a whole book rather than one page.
 
-> ⚠️ **Heads up — disk space.** The NVIDIA path pulls in the CUDA
-> Toolkit and CUDA-flavored PyTorch wheels — roughly 10 GB total. CPU
-> mode is a fine starting point if that's tight.
+> ⚠️ **Heads up — disk space.** The CUDA build of PyTorch is roughly
+> 2–3 GB. CPU mode is smaller if disk space is tight.
 
-- **NVIDIA on Linux/Windows** — install the [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (13 or newer for the GPU extra), then run the install script; it auto-detects CUDA.
+- **NVIDIA on Linux/Windows** — install [driver 525 or newer](https://www.nvidia.com/en-us/drivers/), then run the install script. It reads `nvidia-smi` and downloads the matching PyTorch build. The steps are in the [GPU setup guide](https://github.com/pdomain/pdomain-ocr-simple-gui/blob/master/docs/usage/nvidia-gpu-setup.md). The installer does not install the driver.
 - **Apple Silicon Mac** — kicks in automatically, nothing to install. *(Unverified — feedback welcome.)*
 - **No GPU** — nothing to do; CPU is the default.
 
 Already installed without a GPU? Re-run the install script — it
 swaps the install in place. See the [FAQ](#faq) for switching to GPU,
-the "GPU detected but installed CPU-only" nudge, troubleshooting, and
+the "PyTorch is the CPU build" nudge, troubleshooting, and
 when a GPU is (or isn't) worth it.
 
 ---
@@ -131,9 +130,8 @@ authoritatively.
 
 ### How do I switch from CPU-only to GPU?
 
-Re-run the install script. It re-detects `nvidia-smi` on every run,
-has uv pick the matching PyTorch CUDA build, and (when CUDA ≥ 13)
-opts into the `pdomain-book-tools[gpu]` extra (`cupy-cuda13x`).
+Re-run the install script. It re-detects `nvidia-smi` on every run and
+has uv pick the matching PyTorch CUDA build.
 `uv tool install --reinstall` swaps the existing install in place.
 
 ```sh
@@ -146,16 +144,13 @@ curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/insta
 irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 ```
 
-CUDA 12 still gets the matching PyTorch wheel, but the CuPy stack is
-skipped (`cupy-cuda13x` requires CUDA 13).
-
-### Why am I seeing a "GPU detected but installed CPU-only" message?
+### Why am I seeing a "GPU detected but PyTorch is the CPU build" message?
 
 On startup, `pdomain-ocr` runs a cheap check. If your host has an NVIDIA GPU
-(`nvidia-smi` on `PATH`, exits 0) but pdomain-ocr was installed without the
-`[gpu]` extra (CuPy isn't importable), it prints a one-line nudge to
-stderr. The nudge suggests the reinstall command. The probe is
-fail-soft: it swallows any error and lets the OCR run proceed normally.
+(`nvidia-smi` on `PATH`, exits 0) but PyTorch cannot see CUDA, it prints a
+one-line nudge to stderr. The nudge suggests the reinstall command. The
+probe is fail-soft: it swallows any error and lets the OCR run proceed
+normally.
 
 To silence it persistently (e.g. you've decided CPU-only is right for
 this host):
@@ -174,8 +169,11 @@ you're processing tens or hundreds of pages in a single run.
 
 A few things to check:
 
-- **`nvidia-smi` not found** — NVIDIA driver / toolkit isn't
-  available in your environment. Install the [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads).
+- **`nvidia-smi` not found** — the NVIDIA driver is not available
+  in your environment. Install [driver 525 or newer](https://www.nvidia.com/en-us/drivers/),
+  then re-run the install script. The
+  [GPU setup guide](https://github.com/pdomain/pdomain-ocr-simple-gui/blob/master/docs/usage/nvidia-gpu-setup.md)
+  has the steps.
 - **Running in Docker / devcontainer** — make sure the container was
   started with `--gpus all` and the NVIDIA Container Toolkit is
   configured on the host (see
@@ -327,8 +325,7 @@ time to upgrade or to switch between CPU and GPU. They:
   `PD_OCR_INSTALL_PYTHON` if you need another supported Python version.
 - Detect NVIDIA CUDA via `nvidia-smi`. If found, pass
   `--torch-backend auto` so uv picks the PyTorch CUDA build that matches
-  the driver, and (when CUDA ≥ 13) add
-  `--with 'pdomain-book-tools[gpu]'` for `cupy-cuda13x`.
+  the driver. The installer does not install CuPy. OCR does not use it.
 - Run `uv tool install --reinstall <wheel>` with
   `--index-strategy first-index` and a named `--index` for the
   self-hosted `pdomain-index-pip` (for `pdomain-book-tools`).
@@ -378,12 +375,10 @@ uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
 ```
 
 NVIDIA GPU install. `--torch-backend auto` makes uv read your driver
-version and pick the matching PyTorch CUDA build. Keep the `[gpu]` extra
-only for **CUDA 13 or later**; on CUDA 12, drop the `--with` line:
+version and pick the matching PyTorch CUDA build:
 
 ```sh
 uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
-    --with 'pdomain-book-tools[gpu]' \
     --index-strategy first-index \
     --index pdomain=https://pdomain.github.io/pdomain-index-pip/simple/ \
     --torch-backend auto
@@ -400,7 +395,6 @@ at most). Under `first-index`, uv then takes those packages from it alone,
 and the resolve fails because `pdomain-ops` needs `packaging>=26`.
 `--torch-backend` sends only PyTorch packages to the PyTorch index.
 
-The `[gpu]` extra on `pdomain-book-tools` 0.31.0 opts into `cupy-cuda13x`.
 Use `nvidia-smi` to read your CUDA version.
 Disk / VRAM budgets are below in
 [GPU acceleration mechanics](#gpu-acceleration-mechanics).
@@ -419,8 +413,7 @@ How the pieces fit together when you opt in:
 - **CUDA-enabled PyTorch wheels** — the same PyTorch you'd install
   on CPU, compiled to call into CUDA. The install script passes
   `--torch-backend auto`, and uv picks the build that matches your
-  NVIDIA driver. (CUDA 13 or newer is required for the `[gpu]`
-  extra.)
+  NVIDIA driver.
 - **OCR / layout model weights** — downloaded on first run; not
   GPU-specific.
 

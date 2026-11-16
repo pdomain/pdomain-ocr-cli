@@ -40,8 +40,30 @@ def start_update_check_thread(
 GPU_NUDGE_CACHE: dict[str, bool] = {}
 
 
+def _cuda_torch_installed() -> bool | None:
+    """Return whether this install can run OCR on CUDA.
+
+    ``False`` means PyTorch is missing or has no CUDA build. ``None`` means
+    the import itself failed for a reason other than ``ImportError``.
+    """
+    try:
+        import torch
+    except ImportError:
+        return False
+    except BaseException:  # noqa: BLE001  # a broken torch install must not crash startup
+        return None
+    try:
+        cuda = getattr(torch, "cuda", None)
+        is_available = getattr(cuda, "is_available", None)
+        if not callable(is_available):
+            return False
+        return bool(is_available())
+    except BaseException:  # noqa: BLE001  # a broken CUDA probe must not crash startup
+        return None
+
+
 def should_nudge_gpu_install(cache: dict[str, bool] | None = None) -> bool:
-    """Return True when an NVIDIA host looks like a CPU-only pdomain-ocr install."""
+    """Return True when an NVIDIA host has the CPU build of PyTorch."""
     cache = GPU_NUDGE_CACHE if cache is None else cache
     if "result" in cache:
         return cache["result"]
@@ -49,15 +71,8 @@ def should_nudge_gpu_install(cache: dict[str, bool] | None = None) -> bool:
     def _probe() -> bool:
         if env_truthy("PD_OCR_NO_GPU_NUDGE"):
             return False
-        try:
-            import cupy as cupy_module  # pyright: ignore[reportMissingImports]  # optional GPU dep
-
-            _ = cupy_module
-        except ImportError:
-            pass
-        except BaseException:  # noqa: BLE001  # broken optional GPU dep must stay silent
-            return False
-        else:
+        cuda_torch = _cuda_torch_installed()
+        if cuda_torch is None or cuda_torch:
             return False
 
         if shutil.which("nvidia-smi") is None:
@@ -90,8 +105,8 @@ def maybe_print_gpu_nudge(
         if should_nudge():
             print(  # noqa: T201  # CLI output
                 (
-                    "pdomain-ocr: NVIDIA GPU detected but pdomain-ocr was installed CPU-only.\n"
-                    + "        Re-run the install script to switch to GPU (requires CUDA >= 13):\n"
+                    "pdomain-ocr: NVIDIA GPU detected but PyTorch is the CPU build.\n"
+                    + "        Re-run the install script to install the CUDA build of PyTorch:\n"
                     + "          curl -sSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh | sh\n"
                     + "        Set PD_OCR_NO_GPU_NUDGE=1 to silence this message."
                 ),

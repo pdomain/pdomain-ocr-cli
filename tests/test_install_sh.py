@@ -225,7 +225,7 @@ def test_install_sh_cuda_12_uses_torch_backend_auto(tmp_path: Path) -> None:
     assert "--with\npdomain-book-tools[gpu]" not in args
 
 
-def test_install_sh_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
+def test_install_sh_cuda_13_uses_torch_backend_without_cupy(tmp_path: Path) -> None:
     result, uv_log = _run_install_sh(
         tmp_path,
         _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'),
@@ -236,7 +236,8 @@ def test_install_sh_cuda_13_enables_gpu_extra(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr + result.stdout
     args = uv_log.read_text(encoding="utf-8")
     _assert_torch_backend_auto(args)
-    assert "--with\npdomain-book-tools[gpu]" in args
+    assert "--with" not in args
+    assert "Step-by-step:" not in result.stdout
 
 
 def test_install_sh_reads_the_cuda_umd_version_banner(tmp_path: Path) -> None:
@@ -255,7 +256,7 @@ def test_install_sh_reads_the_cuda_umd_version_banner(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr + result.stdout
     args = uv_log.read_text(encoding="utf-8")
     _assert_torch_backend_auto(args)
-    assert "--with\npdomain-book-tools[gpu]" in args
+    assert "--with" not in args
 
 
 def test_install_sh_without_gpu_passes_no_torch_backend(tmp_path: Path) -> None:
@@ -266,6 +267,8 @@ def test_install_sh_without_gpu_passes_no_torch_backend(tmp_path: Path) -> None:
     assert "--torch-backend" not in args
     assert "pytorch-cuda" not in args
     assert "--with" not in args
+    assert "https://www.nvidia.com/en-us/drivers/" in result.stdout
+    assert "docs/usage/nvidia-gpu-setup.md" in result.stdout
 
 
 def test_install_sh_uses_first_index_strategy() -> None:

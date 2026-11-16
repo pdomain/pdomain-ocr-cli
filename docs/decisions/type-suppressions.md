@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-31
-Last verified: 2026-11-07
+Last verified: 2026-11-15
 Kind: decision
 ---
 
@@ -39,7 +39,6 @@ No supersession relationship is recorded.
 
 | File | Line | Rule | Rationale |
 |------|------|------|-----------|
-| `pdomain_ocr_cli/_startup_notices.py` | 53 | `reportMissingImports` | `cupy` is an optional GPU dependency not declared in `pyproject.toml`. The import is a runtime probe; the ignore lets the type checker skip the missing stub. |
 | `pdomain_ocr_cli/ocr_to_txt.py` | 429 | `reportAttributeAccessIssue` | `module` is the result of `importlib.import_module("pdomain_ops.gpu.device")` cast to `object`. Basedpyright cannot resolve attributes on `object`; the `cast` on the same line completes the type for downstream callers. |
 | `pdomain_ocr_cli/ocr_to_txt.py` | 452 | `reportAttributeAccessIssue` | Same pattern — `importlib.import_module("pdomain_ops.gpu.doctr_batch")` cast to `object`. The outer `cast` resolves the callable type; the suppress covers the intermediate attribute access. |
 
@@ -60,7 +59,8 @@ inventory. `docs/conventions/lint-deviations.md` is the authoritative catalogue.
 The historical table above remains unchanged. The live inventory in
 [`lint-deviations.md`](../conventions/lint-deviations.md) now records the
 dynamic-module accesses at `ocr_to_txt.py` lines 436 and 459 and the `TRY301`
-site at line 1086. Its shared per-image decode handler is at line 1096.
-The optional CuPy import remains at `_startup_notices.py` line 53. Source
+site at line 1084. Its shared per-image decode handler is at line 1094.
+The startup probe no longer imports CuPy. `_startup_notices.py` checks
+`torch.cuda` and treats a broken PyTorch install as "do not nudge." Source
 inspection confirmed the same structural rationale; this update does not
 change the suppression policy or resolve the owner's consolidation question.

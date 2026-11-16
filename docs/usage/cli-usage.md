@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-19
-Last verified: 2026-11-12
+Last verified: 2026-11-15
 Kind: usage
 ---
 
@@ -302,7 +302,7 @@ supported Python version.
 | Variable | Effect |
 | --- | --- |
 | `PD_OCR_NO_UPDATE_CHECK=1` | Skip the background GitHub-tag upgrade-notice request (same as `--no-update-check`). |
-| `PD_OCR_NO_GPU_NUDGE=1` | Silence the one-line "GPU detected but installed CPU-only" message printed on startup when `nvidia-smi` is on `PATH` but the `[gpu]` extra wasn't installed. See the FAQ in [README.md](../../README.md#faq) for details. |
+| `PD_OCR_NO_GPU_NUDGE=1` | Silence the one-line message printed on startup when `nvidia-smi` is on `PATH` but PyTorch cannot see CUDA. See the FAQ in [README.md](../../README.md#faq) for details. |
 | `PD_OCR_INSTALL_PYTHON` | Installer-only override for the Python version passed to `uv tool install --python`; defaults to `3.13`. |
 | `PD_OCR_DEBUG=1` | On per-image processing errors, also print the full traceback to stderr. If the background update check fails, print `update check failed: {type}: {message}` or `update check failed: {reason}`. |
 | `PD_OCR_REORGANIZE_STRICT=1` | Read by `pdomain-book-tools`'s `reorganize_page()`. When set, words dropped during reorganize raise `ReorganizeDroppedWordsError` instead of being re-added with a warning. Useful in CI to fail loudly on pipeline regressions. |
