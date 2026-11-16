@@ -183,6 +183,12 @@ def _run_install_sh(
     return result, uv_log
 
 
+def test_install_sh_switches_apple_silicon_out_of_rosetta() -> None:
+    script = (REPO / "install.sh").read_text(encoding="utf-8")
+    assert "sysctl.proc_translated" in script
+    assert "/usr/bin/arch -arm64 /bin/sh" in script
+
+
 def test_install_sh_uses_release_wheel_and_pdomain_index(tmp_path: Path) -> None:
     result, uv_log = _run_install_sh(tmp_path, _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'))
 
