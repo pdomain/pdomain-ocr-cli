@@ -3,6 +3,9 @@
 The process that runs is ``git show master:agent_verify/check.py``. It reads
 ``agent-verify.toml`` and the justfile from ``master`` as well, so a worktree
 edit of those files is not the judge.
+
+The shell scan leaves these limits allowed: aliases, source, declare,
+process substitution, and a shell script file.
 """
 
 from __future__ import annotations
@@ -41,8 +44,11 @@ _ATTACHED_PREFIX = {
     "env": ("-u", "-C", "-a", "-S"),
 }
 _SHELLS = frozenset({"bash", "sh", "dash"})
+# Short options that do not take an argument. `-o` and `-O` do.
+_BASH_NOARG = frozenset("ilrsDabefhkmnptuvxBCEHPT")
+_BASH_ARG = frozenset({"o", "O"})
+_BASH_LONG_ARG = frozenset({"--rcfile", "--init-file"})
 _UNPARSED = "\0"
-_FALLBACK_JUST = Path("/home/ntw/.local/bin/just")
 _OUTPUT_LIMIT = 4000
 
 
@@ -338,26 +344,142 @@ def _command_mentions_hook(command: str, root: Path, hook_paths: tuple[str, ...]
     return False
 
 
-def _shell_hook_reason(command: str, root: Path, hook_paths: tuple[str, ...]) -> str | None:
+def _shell_hook_reason(
+    command: str,
+    root: Path,
+    hook_paths: tuple[str, ...],
+    *,
+    depth: int = 0,
+) -> str | None:
+    """Deny a write to a hook path.
+
+    Quoted ``echo`` may mention a hook path. A quoted path passed to another
+    command, and a path that resolves with ``.`` or ``..``, still write it.
+    """
+    if depth > 8:
+        return "The command could not be parsed, so the hook denied it."
     prepared = _join_continuations(command)
     for segment, _sep in _split_commands(prepared):
-        tokens = _tokens(segment)
+        tokens = _tokens(_strip_redirects(segment))
         if tokens is None:
             return "The command could not be parsed, so the hook denied it."
         if not tokens:
             continue
         for target in _redirect_targets(segment):
-            if _matches_hook(target, root, hook_paths):
+            if _word_hits_hook(target, root, hook_paths):
                 return f"Writes to {target} are reserved for a commit on master."
-        if _is_reader(tokens):
+        for body in _substitution_bodies(segment):
+            reason = _shell_hook_reason(body, root, hook_paths, depth=depth + 1)
+            if reason is not None:
+                return reason
+        for _kind, body in _command_groups(segment):
+            reason = _shell_hook_reason(body, root, hook_paths, depth=depth + 1)
+            if reason is not None:
+                return reason
+        script = _hook_script(tokens)
+        if script is not None:
+            body, skip = script
+            reason = _shell_hook_reason(body, root, hook_paths, depth=depth + 1)
+            if reason is not None:
+                return reason
+            for cursor, token in enumerate(tokens):
+                if cursor in skip:
+                    continue
+                if _word_hits_hook(token, root, hook_paths):
+                    return f"Writes to {token} are reserved for a commit on master."
             continue
-        for token in tokens:
-            if _contains_hook(token, hook_paths):
+        subject = _subject(tokens)
+        if _is_reader(subject):
+            continue
+        for word in _unquoted_words(segment):
+            if _word_hits_hook(word, root, hook_paths):
+                return f"Writes to {word} are reserved for a commit on master."
+        if _is_echo(subject):
+            continue
+        for token in subject:
+            if _word_hits_hook(token, root, hook_paths):
                 return f"Writes to {token} are reserved for a commit on master."
     return None
 
 
+_SUBJECT_WRAPPERS = frozenset({"command", "exec", "nohup", "time", "nice", "env"})
+
+
+def _subject(tokens: list[str]) -> list[str]:
+    """Return the program a wrapper runs, including its arguments."""
+    index = 0
+    while index < len(tokens):
+        if _assignment_parts(tokens[index]) is not None:
+            index += 1
+            continue
+        name = Path(tokens[index]).name
+        if name == "timeout":
+            index = _skip_timeout(tokens, index + 1)
+            continue
+        if name not in _SUBJECT_WRAPPERS:
+            return tokens[index:]
+        index, _ignored, script = _skip_wrapper_options(name, tokens, index + 1, "")
+        if script is not None:
+            return []
+    return []
+
+
+def _is_echo(tokens: list[str]) -> bool:
+    return bool(tokens) and Path(tokens[0]).name == "echo"
+
+
+def _word_hits_hook(word: str, root: Path, hook_paths: tuple[str, ...]) -> bool:
+    """True when a word, or the value after ``=``, is a hook path."""
+    if _contains_hook(word, hook_paths) or _matches_hook(word, root, hook_paths):
+        return True
+    if "=" not in word:
+        return False
+    value = word.split("=", 1)[1]
+    return _contains_hook(value, hook_paths) or _matches_hook(value, root, hook_paths)
+
+
+def _hook_script(tokens: list[str]) -> tuple[str, frozenset[int]] | None:
+    """Return a ``-c``, ``eval``, or ``env -S`` script and the token indexes to skip.
+
+    The skipped indexes are the script text. Other arguments are still checked.
+    """
+    index = 0
+    while index < len(tokens):
+        if _assignment_parts(tokens[index]) is not None:
+            index += 1
+            continue
+        name = Path(tokens[index]).name
+        if name == "timeout":
+            index = _skip_timeout(tokens, index + 1)
+            continue
+        if name in _WRAPPERS:
+            start = index
+            index, _ignored, script = _skip_wrapper_options(name, tokens, index + 1, "")
+            if script is not None:
+                return script, _matching_indexes(tokens, script, start)
+            continue
+        if name in _SHELLS:
+            script = _c_script(tokens, index)
+            if script is None:
+                return None
+            return script, _matching_indexes(tokens, script, index + 1)
+        if name == "eval":
+            return " ".join(tokens[index + 1 :]), frozenset(range(index + 1, len(tokens)))
+        return None
+    return None
+
+
+def _matching_indexes(tokens: list[str], text: str, start: int) -> frozenset[int]:
+    """Return the first token index at or after ``start`` whose text is ``text``."""
+    for cursor in range(start, len(tokens)):
+        if tokens[cursor] == text:
+            return frozenset({cursor})
+    return frozenset()
+
+
 def _is_reader(tokens: list[str]) -> bool:
+    if not tokens:
+        return False
     name = Path(tokens[0]).name
     if name in _READERS:
         return True
@@ -376,9 +498,10 @@ def _contains_hook(token: str, hook_paths: tuple[str, ...]) -> bool:
     return False
 
 
-def _redirect_targets(segment: str) -> list[str]:
-    """File targets of unquoted redirects. Quoted ``>`` is not an operator."""
-    found: list[str] = []
+def _unquoted_words(segment: str) -> list[str]:
+    """Words outside quotes. A ``#`` that starts a word ends the segment."""
+    words: list[str] = []
+    buf: list[str] = []
     quote = ""
     index = 0
     while index < len(segment):
@@ -395,9 +518,57 @@ def _redirect_targets(segment: str) -> list[str]:
             quote = char
             index += 1
             continue
-        if char == "\\":
+        if char == "\\" and index + 1 < len(segment):
+            buf.append(segment[index + 1])
             index += 2
             continue
+        if char in {" ", "\t", "\n"}:
+            if buf:
+                words.append("".join(buf))
+                buf = []
+            index += 1
+            continue
+        if char == "#" and not buf:
+            break
+        buf.append(char)
+        index += 1
+    if buf:
+        words.append("".join(buf))
+    return words
+
+
+def _redirect_targets(segment: str) -> list[str]:
+    """File targets of unquoted redirects. Quoted ``>`` is not an operator."""
+    found: list[str] = []
+    quote = ""
+    index = 0
+    at_word_start = True
+    while index < len(segment):
+        char = segment[index]
+        if quote:
+            if char == "\\" and quote == '"' and index + 1 < len(segment):
+                index += 2
+                continue
+            if char == quote:
+                quote = ""
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            at_word_start = False
+            index += 1
+            continue
+        if char == "\\":
+            at_word_start = False
+            index += 2
+            continue
+        if char in {" ", "\t", "\n"}:
+            at_word_start = True
+            index += 1
+            continue
+        if char == "#" and at_word_start:
+            break
+        at_word_start = False
         operator = _redirect_operator(segment, index)
         if operator is None:
             index += 1
@@ -411,6 +582,77 @@ def _redirect_targets(segment: str) -> list[str]:
         if target:
             found.append(target)
     return found
+
+
+def _strip_redirects(segment: str) -> str:
+    """Remove unquoted redirect operators and targets, leaving the command."""
+    kept: list[str] = []
+    quote = ""
+    index = 0
+    at_word_start = True
+    while index < len(segment):
+        char = segment[index]
+        if quote == "'":
+            kept.append(char)
+            if char == "'":
+                quote = ""
+            index += 1
+            continue
+        if quote == '"':
+            if char == "\\" and index + 1 < len(segment):
+                kept.append(segment[index : index + 2])
+                index += 2
+                continue
+            kept.append(char)
+            if char == '"':
+                quote = ""
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            kept.append(char)
+            at_word_start = False
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(segment):
+            kept.append(segment[index : index + 2])
+            index += 2
+            at_word_start = False
+            continue
+        if char in {" ", "\t", "\n"}:
+            kept.append(char)
+            at_word_start = True
+            index += 1
+            continue
+        if char == "#" and at_word_start:
+            break
+        operator = _redirect_operator(segment, index)
+        if operator is not None:
+            _drop_fd_number(kept)
+            _op, op_len = operator
+            _target, index = _redirect_target(segment, index + op_len)
+            at_word_start = True
+            continue
+        kept.append(char)
+        at_word_start = False
+        index += 1
+    return "".join(kept)
+
+
+def _drop_fd_number(kept: list[str]) -> None:
+    """Drop a file-descriptor number glued to the redirect operator."""
+    text = "".join(kept)
+    start = len(text)
+    while start > 0 and text[start - 1].isdigit():
+        start -= 1
+    if start == len(text):
+        return
+    if start > 0 and text[start - 1] not in {" ", "\t", "\n"}:
+        return
+    kept.clear()
+    prefix = text[:start]
+    if prefix:
+        kept.append(prefix)
 
 
 def _redirect_operator(segment: str, index: int) -> tuple[str, int] | None:
@@ -469,36 +711,90 @@ def _join_continuations(command: str) -> str:
 
 def _scan(command: str, state: _VenvState, root: Path, *, depth: int) -> str | None:
     """Return the venv a nested script would give uv, or ``_UNPARSED``."""
+    found, _end = _scan_with_state(command, state, root, depth=depth)
+    return found
+
+
+def _scan_with_state(
+    command: str,
+    state: _VenvState,
+    root: Path,
+    *,
+    depth: int,
+) -> tuple[str | None, _VenvState]:
+    """Return the venv uv would see, and the shell state after the command."""
     if depth > 8:
-        return state.child() or _UNPARSED
+        return state.child() or _UNPARSED, state
     shell = state
     pipeline: _VenvState | None = None
     found: str | None = None
     for segment, sep in _split_commands(_join_continuations(command)):
         base = pipeline if pipeline is not None else shell
         if not segment:
-            pipeline = base if sep == "|" else None
+            pipeline = base if _is_pipe(sep) else None
             continue
-        tokens = _tokens(segment)
+        tokens = _tokens(_strip_redirects(segment))
         if tokens is None:
-            return _UNPARSED
-        if _substitution(segment) and base.child():
-            return base.child()
+            return _UNPARSED, shell
+        nested = _scan_substitutions(segment, base, root, depth=depth)
+        if _venv_blocks(nested, root):
+            return nested, shell
+        if nested is not None:
+            found = nested
+        grouped, brace_state = _scan_groups(segment, base, root, depth=depth)
+        if _venv_blocks(grouped, root):
+            return grouped, shell
+        if grouped is not None:
+            found = grouped
         effective = _effective_venv(tokens, base, root, depth=depth)
-        if effective == _UNPARSED:
-            return _UNPARSED
+        if _venv_blocks(effective, root):
+            return effective, shell
         if effective is not None:
             found = effective
-            if _shell_expands(effective) or _outside_root(effective, root):
-                return effective
-        if sep == "|":
+        if _is_pipe(sep):
             if pipeline is None:
                 pipeline = shell
             continue
         if sep != "&" and pipeline is None:
-            shell = _shell_after(tokens, shell)
+            if brace_state is not None:
+                shell = brace_state
+            else:
+                shell = _shell_after(tokens, shell, root, depth=depth)
         pipeline = None
-    return found
+    return found, shell
+
+
+def _is_pipe(sep: str) -> bool:
+    """True for ``|`` and ``|&``. Neither updates the parent shell."""
+    return sep in {"|", "|&"}
+
+
+def _venv_blocks(found: str | None, root: Path) -> bool:
+    """True when a venv result must stop the scan."""
+    if found == _UNPARSED:
+        return True
+    return found is not None and (_shell_expands(found) or _outside_root(found, root))
+
+
+def _scan_groups(
+    segment: str,
+    state: _VenvState,
+    root: Path,
+    *,
+    depth: int,
+) -> tuple[str | None, _VenvState | None]:
+    """Scan ``(...)`` and ``{ ...; }``. Only a brace group updates the shell."""
+    found: str | None = None
+    brace_state: _VenvState | None = None
+    for kind, body in _command_groups(segment):
+        nested, end = _scan_with_state(body, state, root, depth=depth + 1)
+        if _venv_blocks(nested, root):
+            return nested, brace_state
+        if nested is not None:
+            found = nested
+        if kind == "brace":
+            brace_state = end
+    return found, brace_state
 
 
 def _effective_venv(
@@ -514,13 +810,16 @@ def _effective_venv(
     assignment applies only to that command. ``+=`` appends.
     """
     current = state.child()
+    # ``+=`` appends to the shell value even when that value is not exported.
+    assigned = state.value
     index = 0
     while index < len(tokens):
         parsed = _assignment_parts(tokens[index])
         if parsed is not None:
             key, value, append = parsed
             if key == "UV_PROJECT_ENVIRONMENT":
-                current = _apply_assignment(current, value, append=append)
+                assigned = _apply_assignment(assigned, value, append=append)
+                current = assigned
             index += 1
             continue
         name = Path(tokens[index]).name
@@ -553,8 +852,18 @@ def _apply_assignment(current: str, value: str, *, append: bool) -> str:
     return value
 
 
-def _shell_after(tokens: list[str], state: _VenvState) -> _VenvState:
-    """Shell state after a command. Prefix assignments do not persist."""
+def _shell_after(
+    tokens: list[str],
+    state: _VenvState,
+    root: Path,
+    *,
+    depth: int,
+) -> _VenvState:
+    """Shell state after a command. Prefix assignments do not persist.
+
+    ``export`` and ``unset`` apply every name operand, including names that
+    follow the variable. ``command export`` and ``eval`` update this shell.
+    """
     value = state.value
     exported = state.exported
     index = 0
@@ -567,14 +876,50 @@ def _shell_after(tokens: list[str], state: _VenvState) -> _VenvState:
                 value = _apply_assignment(base, raw, append=append)
             index += 1
             continue
+        # A prefix applies only to the command. export and unset start
+        # from the shell state that was already in effect.
+        return _command_shell(tokens, index, state, root, depth=depth)
+    return _VenvState(value, exported)
+
+
+def _command_shell(
+    tokens: list[str],
+    index: int,
+    state: _VenvState,
+    root: Path,
+    *,
+    depth: int,
+) -> _VenvState:
+    """Shell state after a real command. A redirect does not cancel export."""
+    value = state.value
+    exported = state.exported
+    while index < len(tokens):
         name = Path(tokens[index]).name
+        if name == "command":
+            index = _skip_leading_flags(tokens, index + 1)
+            continue
+        if name == "eval":
+            script = " ".join(tokens[index + 1 :])
+            _found, end = _scan_with_state(
+                script,
+                _VenvState(value, exported),
+                root,
+                depth=depth + 1,
+            )
+            return end
         if name in {"export", "unset"}:
-            value, exported, index = _export_or_unset(
+            value, exported, _index = _export_or_unset(
                 name, tokens, index + 1, value, exported=exported
             )
-            continue
+            return _VenvState(value, exported)
         return state
     return _VenvState(value, exported)
+
+
+def _skip_leading_flags(tokens: list[str], index: int) -> int:
+    while index < len(tokens) and tokens[index].startswith("-"):
+        index += 1
+    return index
 
 
 def _export_or_unset(
@@ -585,20 +930,41 @@ def _export_or_unset(
     *,
     exported: bool,
 ) -> tuple[str, bool, int]:
+    """Apply ``export`` or ``unset`` operands. A later name is still an operand.
+
+    ``unset -f`` removes a function, not the variable. ``export -n`` clears
+    the export flag. ``-f`` and ``-v`` together do nothing, as bash refuses
+    that unset.
+    """
     if name == "unset":
-        while index < len(tokens) and _assignment_parts(tokens[index]) is None:
-            if tokens[index].startswith("-"):
+        # ``-f`` unsets a function. With ``-v`` as well, bash refuses both.
+        functions = False
+        while index < len(tokens):
+            word = tokens[index]
+            if word == "--":
+                index += 1
+                break
+            flags = _short_flags(word)
+            if flags is not None:
+                functions = functions or "f" in flags
                 index += 1
                 continue
-            if tokens[index] == "UV_PROJECT_ENVIRONMENT":
-                value, exported = "", False
-            else:
+            if not _is_shell_name(word):
                 break
+            if word == "UV_PROJECT_ENVIRONMENT" and not functions:
+                value, exported = "", False
             index += 1
         return value, exported, index
+    unexport = False
     while index < len(tokens):
         word = tokens[index]
-        if word.startswith("-"):
+        if word == "--":
+            index += 1
+            break
+        flags = _short_flags(word)
+        if flags is not None or (word.startswith("--") and _assignment_parts(word) is None):
+            if flags is not None and "n" in flags:
+                unexport = True
             index += 1
             continue
         parsed = _assignment_parts(word)
@@ -607,47 +973,168 @@ def _export_or_unset(
             if key == "UV_PROJECT_ENVIRONMENT":
                 base = value if append else ""
                 value = _apply_assignment(base, raw, append=append)
-                exported = True
+                exported = not unexport
             index += 1
             continue
+        if not _is_shell_name(word):
+            break
         if word == "UV_PROJECT_ENVIRONMENT":
-            exported = True
-            index += 1
-            continue
-        break
+            exported = not unexport
+        index += 1
     return value, exported, index
+
+
+def _short_flags(word: str) -> str | None:
+    """Return the letters of a short option such as ``-n`` or ``-fv``."""
+    if len(word) < 2 or not word.startswith("-") or word.startswith("--"):
+        return None
+    return word[1:]
+
+
+def _is_shell_name(word: str) -> bool:
+    if not word or not (word[0].isalpha() or word[0] == "_"):
+        return False
+    return all(char.isalnum() or char == "_" for char in word[1:])
 
 
 def _shell_expands(value: str) -> bool:
     return "$" in value or "`" in value
 
 
-def _substitution(segment: str) -> bool:
-    quote = ""
+def _scan_substitutions(
+    segment: str,
+    state: _VenvState,
+    root: Path,
+    *,
+    depth: int,
+) -> str | None:
+    """Scan ``$(...)`` and backticks with the exported child environment."""
+    found: str | None = None
+    child = _VenvState(state.child(), True)
+    for body in _substitution_bodies(segment):
+        nested = _scan(body, child, root, depth=depth + 1)
+        if nested == _UNPARSED or (nested is not None and _outside_root(nested, root)):
+            return nested
+        if nested is not None:
+            found = nested
+    return found
+
+
+def _substitution_bodies(text: str) -> list[str]:
+    """Return command-substitution bodies the shell would run.
+
+    Single quotes hide a substitution. A ``#`` that starts an unquoted
+    word ends the text, because the rest is a comment.
+    """
+    found: list[str] = []
     index = 0
-    while index < len(segment):
-        char = segment[index]
+    quote = ""
+    at_word_start = True
+    while index < len(text):
+        char = text[index]
         if quote == "'":
             if char == "'":
                 quote = ""
             index += 1
             continue
+        if char in {" ", "\t", "\n"} and not quote:
+            at_word_start = True
+            index += 1
+            continue
+        if char == "#" and at_word_start and not quote:
+            break
+        if not quote and char in {"'", '"'}:
+            quote = char
+            at_word_start = False
+            index += 1
+            continue
+        if quote == '"' and char == '"':
+            quote = ""
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(text) and quote != "'":
+            at_word_start = False
+            index += 2
+            continue
+        at_word_start = False
+        if text.startswith("$(", index):
+            body, index = _paren_body(text, index + 2)
+            found.append(body)
+            continue
+        if char == "`":
+            body, index = _backtick_body(text, index + 1)
+            found.append(body)
+            continue
+        index += 1
+    return found
+
+
+def _paren_body(text: str, start: int) -> tuple[str, int]:
+    """Return the inside of ``$(...)`` and the index after its closing paren."""
+    depth = 1
+    index = start
+    quote = ""
+    buf: list[str] = []
+    while index < len(text) and depth:
+        char = text[index]
+        if quote == "'":
+            buf.append(char)
+            if char == "'":
+                quote = ""
+            index += 1
+            continue
         if quote == '"':
-            if char == "\\" and index + 1 < len(segment):
+            buf.append(char)
+            if char == "\\" and index + 1 < len(text):
+                buf.append(text[index + 1])
                 index += 2
                 continue
             if char == '"':
                 quote = ""
-                index += 1
-                continue
-        elif char in {"'", '"'}:
-            quote = char
             index += 1
             continue
-        if segment.startswith("$(", index) or char == "`":
-            return True
+        if char in {"'", '"'}:
+            quote = char
+            buf.append(char)
+            index += 1
+            continue
+        if text.startswith("$(", index):
+            depth += 1
+            buf.append("$(")
+            index += 2
+            continue
+        if char == "(":
+            depth += 1
+            buf.append(char)
+            index += 1
+            continue
+        if char == ")":
+            depth -= 1
+            if depth == 0:
+                return "".join(buf), index + 1
+            buf.append(char)
+            index += 1
+            continue
+        buf.append(char)
         index += 1
-    return False
+    return "".join(buf), index
+
+
+def _backtick_body(text: str, start: int) -> tuple[str, int]:
+    """Return the inside of a backtick substitution and the index after it."""
+    buf: list[str] = []
+    index = start
+    while index < len(text):
+        char = text[index]
+        if char == "\\" and index + 1 < len(text) and text[index + 1] in {"`", "$", "\\"}:
+            buf.append(text[index + 1])
+            index += 2
+            continue
+        if char == "`":
+            return "".join(buf), index + 1
+        buf.append(char)
+        index += 1
+    return "".join(buf), index
 
 
 def _skip_wrapper_options(
@@ -777,25 +1264,56 @@ def _assignment_parts(token: str) -> tuple[str, str, bool] | None:
 
 
 def _c_script(tokens: list[str], index: int) -> str | None:
-    """Return the script after ``bash -c``, or None when bash runs a file."""
+    """Return the script after ``bash -c``, or None when bash runs a file.
+
+    ``-o`` and ``-O`` take the next word. A clustered ``-c`` whose other
+    letters are flags, such as ``-cl``, uses the next word as the script.
+    """
     cursor = index + 1
     while cursor < len(tokens):
         word = tokens[cursor]
-        if word == "--" or not word.startswith("-"):
+        if word in {"--", "-"} or not word.startswith("-"):
             return None
-        if word == "-c":
-            if cursor + 1 >= len(tokens):
-                return ""
-            return tokens[cursor + 1]
-        if not word.startswith("--") and "c" in word[1:]:
-            rest = word.split("c", 1)[1]
-            if rest:
-                return rest
-            if cursor + 1 >= len(tokens):
-                return ""
-            return tokens[cursor + 1]
-        cursor += 1
+        if word.startswith("--"):
+            option, sep, _value = word.partition("=")
+            if option in _BASH_LONG_ARG and sep != "=":
+                cursor += 2
+                continue
+            cursor += 1
+            continue
+        script, cursor = _bash_short_cluster(word[1:], tokens, cursor)
+        if script is not None:
+            return script
     return None
+
+
+def _bash_short_cluster(
+    body: str,
+    tokens: list[str],
+    cursor: int,
+) -> tuple[str | None, int]:
+    """Walk one short-option cluster. The string is the ``-c`` script."""
+    pos = 0
+    next_index = cursor + 1
+    while pos < len(body):
+        flag = body[pos]
+        rest = body[pos + 1 :]
+        if flag == "c":
+            if rest and all(char in _BASH_NOARG for char in rest):
+                script = tokens[next_index] if next_index < len(tokens) else ""
+                return script, next_index
+            if rest:
+                return rest, next_index
+            script = tokens[next_index] if next_index < len(tokens) else ""
+            return script, next_index
+        if flag in _BASH_ARG:
+            if rest:
+                return None, next_index
+            if next_index >= len(tokens):
+                return None, next_index
+            return None, next_index + 1
+        pos += 1
+    return None, next_index
 
 
 def _skip_timeout(tokens: list[str], index: int) -> int:
@@ -815,8 +1333,15 @@ def _skip_timeout(tokens: list[str], index: int) -> int:
 
 
 def _outside_root(value: str, root: Path) -> bool:
+    """Return whether a venv value is outside the repo.
+
+    Empty is inside. A relative path is joined to the git root first.
+    A value that contains ``$`` or a backtick is outside.
+    """
     if not value:
         return False
+    if _shell_expands(value):
+        return True
     expanded = Path(value).expanduser()
     if not expanded.is_absolute():
         expanded = root / expanded
@@ -834,42 +1359,277 @@ def _redirect_ampersand(command: str, index: int) -> bool:
 
 
 def _split_commands(command: str) -> list[tuple[str, str]]:
-    """Split on shell separators. The second item is the separator that followed."""
+    """Split on separators outside quotes, substitutions, and groups.
+
+    The second item is the separator that followed. ``$(...)``, backticks,
+    process substitution, ``(...)``, and ``{ ...; }`` stay one piece.
+    """
     parts: list[tuple[str, str]] = []
     buf: list[str] = []
     quote = ""
     index = 0
+    at_word_start = True
     while index < len(command):
         char = command[index]
-        if quote:
+        if quote == "'":
             buf.append(char)
-            if char == quote and command[index - 1] != "\\":
+            if char == "'":
+                quote = ""
+            index += 1
+            continue
+        if quote == '"':
+            if char == "\\" and index + 1 < len(command):
+                buf.append(command[index : index + 2])
+                index += 2
+                continue
+            buf.append(char)
+            if char == '"':
                 quote = ""
             index += 1
             continue
         if char in {"'", '"'}:
             quote = char
             buf.append(char)
+            at_word_start = False
             index += 1
             continue
+        if char == "\\" and index + 1 < len(command):
+            buf.append(command[index : index + 2])
+            index += 2
+            at_word_start = False
+            continue
+        if char in {" ", "\t"}:
+            buf.append(char)
+            at_word_start = True
+            index += 1
+            continue
+        if char == "#" and at_word_start:
+            newline = command.find("\n", index)
+            if newline == -1:
+                break
+            index = newline
+            continue
+        hidden = _hidden_end(command, index, at_word_start=at_word_start)
+        if hidden is not None:
+            buf.append(command[index:hidden])
+            index = hidden
+            at_word_start = False
+            continue
         sep = ""
-        if command.startswith(("&&", "||"), index):
+        if command.startswith("|&", index):
+            sep = "|&"
+        elif command.startswith(("&&", "||"), index):
             sep = command[index : index + 2]
         elif char == "&" and not _redirect_ampersand(command, index):
             sep = "&"
+        elif char == "|" and _closes_force_redirect(command, index):
+            buf.append(char)
+            at_word_start = False
+            index += 1
+            continue
         elif char in {";", "\n", "|"}:
             sep = char
         if sep:
             parts.append(("".join(buf).strip(), sep))
             buf = []
             index += len(sep)
+            at_word_start = True
             continue
         buf.append(char)
+        at_word_start = False
         index += 1
     tail = "".join(buf).strip()
     if tail:
         parts.append((tail, ""))
     return parts
+
+
+def _closes_force_redirect(command: str, index: int) -> bool:
+    """True when this ``|`` finishes an unescaped ``>|`` redirect."""
+    if index == 0 or command[index - 1] != ">":
+        return False
+    slashes = 0
+    cursor = index - 2
+    while cursor >= 0 and command[cursor] == "\\":
+        slashes += 1
+        cursor -= 1
+    return slashes % 2 == 0
+
+
+def _hidden_end(command: str, index: int, *, at_word_start: bool) -> int | None:
+    """Return the index after a substitution or group, or None."""
+    if command.startswith("$(", index):
+        return _paren_body(command, index + 2)[1]
+    if command[index] == "`":
+        return _backtick_body(command, index + 1)[1]
+    if command.startswith("<(", index) or command.startswith(">(", index):
+        return _paren_body(command, index + 2)[1]
+    if at_word_start and command[index] == "(":
+        return _paren_body(command, index + 1)[1]
+    if at_word_start and _is_brace_word(command, index):
+        return _brace_body(command, index + 1)[1]
+    return None
+
+
+def _command_groups(segment: str) -> list[tuple[str, str]]:
+    """Return subshell and brace bodies. Process substitution stays out."""
+    found: list[tuple[str, str]] = []
+    index = 0
+    quote = ""
+    at_word_start = True
+    while index < len(segment):
+        char = segment[index]
+        if quote == "'":
+            if char == "'":
+                quote = ""
+            index += 1
+            continue
+        if quote == '"':
+            if char == "\\" and index + 1 < len(segment):
+                index += 2
+                continue
+            if char == '"':
+                quote = ""
+            index += 1
+            continue
+        if char in {" ", "\t", "\n"}:
+            at_word_start = True
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            at_word_start = False
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(segment):
+            at_word_start = False
+            index += 2
+            continue
+        if char == "#" and at_word_start:
+            break
+        if segment.startswith("$(", index):
+            index = _paren_body(segment, index + 2)[1]
+            at_word_start = False
+            continue
+        if char == "`":
+            index = _backtick_body(segment, index + 1)[1]
+            at_word_start = False
+            continue
+        if segment.startswith("<(", index) or segment.startswith(">(", index):
+            index = _paren_body(segment, index + 2)[1]
+            at_word_start = False
+            continue
+        if at_word_start and char == "(":
+            body, index = _paren_body(segment, index + 1)
+            found.append(("subshell", body))
+            at_word_start = False
+            continue
+        if at_word_start and _is_brace_word(segment, index):
+            body, index = _brace_body(segment, index + 1)
+            found.append(("brace", body))
+            at_word_start = False
+            continue
+        at_word_start = False
+        index += 1
+    return found
+
+
+def _is_brace_word(text: str, index: int) -> bool:
+    """True when ``{`` is its own word."""
+    if index >= len(text) or text[index] != "{":
+        return False
+    nxt = index + 1
+    return nxt >= len(text) or text[nxt] in " \t\n}"
+
+
+def _brace_body(text: str, start: int) -> tuple[str, int]:
+    """Return the inside of a ``{ ... }`` group and the index after ``}``."""
+    depth = 1
+    index = start
+    quote = ""
+    at_word_start = True
+    buf: list[str] = []
+    while index < len(text) and depth:
+        char = text[index]
+        if quote == "'":
+            buf.append(char)
+            if char == "'":
+                quote = ""
+            index += 1
+            continue
+        if quote == '"':
+            buf.append(char)
+            if char == "\\" and index + 1 < len(text):
+                buf.append(text[index + 1])
+                index += 2
+                continue
+            if char == '"':
+                quote = ""
+            index += 1
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            buf.append(char)
+            at_word_start = False
+            index += 1
+            continue
+        if char in {" ", "\t", "\n"}:
+            buf.append(char)
+            at_word_start = True
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(text):
+            buf.append(char)
+            buf.append(text[index + 1])
+            at_word_start = False
+            index += 2
+            continue
+        if (
+            text.startswith("$(", index)
+            or text.startswith("<(", index)
+            or text.startswith(">(", index)
+        ):
+            _body, end = _paren_body(text, index + 2)
+            buf.append(text[index:end])
+            index = end
+            at_word_start = False
+            continue
+        if at_word_start and char == "(":
+            _body, end = _paren_body(text, index + 1)
+            buf.append(text[index:end])
+            index = end
+            at_word_start = False
+            continue
+        if char == "`":
+            _body, end = _backtick_body(text, index + 1)
+            buf.append(text[index:end])
+            index = end
+            at_word_start = False
+            continue
+        if at_word_start and _is_brace_word(text, index):
+            depth += 1
+            buf.append(char)
+            at_word_start = False
+            index += 1
+            continue
+        if at_word_start and char == "}" and _closes_word(text, index):
+            depth -= 1
+            if depth == 0:
+                return "".join(buf), index + 1
+            buf.append(char)
+            at_word_start = False
+            index += 1
+            continue
+        buf.append(char)
+        at_word_start = False
+        index += 1
+    return "".join(buf), index
+
+
+def _closes_word(text: str, index: int) -> bool:
+    """True when the character after ``}`` ends that word."""
+    nxt = index + 1
+    return nxt >= len(text) or text[nxt] in " \t\n;&|)}"
 
 
 def _tokens(segment: str) -> list[str] | None:
@@ -898,7 +1658,7 @@ def _stop(
             "Unset it or point it inside the checkout."
         )
         return _finish(event, profile, home, reason)
-    code, output = _run_recipe(root, profile, env)
+    code, output = _run_recipe(root, profile, env, home)
     if code == 0:
         return 0
     reason = f"just {profile.recipe} failed (exit {code}).\n{output}"
@@ -934,12 +1694,26 @@ def _name_list(root: Path, *args: str) -> list[str]:
     return [line for line in text.splitlines() if line]
 
 
-def _run_recipe(root: Path, profile: Profile, env: Mapping[str, str]) -> tuple[int, str]:
-    just = shutil.which("just")
-    if just is None and _FALLBACK_JUST.is_file():
-        just = str(_FALLBACK_JUST)
+def _just_program(env: Mapping[str, str], home: Path) -> str | None:
+    """Return ``just`` from ``PATH``, then ``~/.local/bin/just`` under ``home``."""
+    found = shutil.which("just", path=env.get("PATH"))
+    if found is not None:
+        return found
+    fallback = home / ".local" / "bin" / "just"
+    if fallback.is_file() and os.access(fallback, os.X_OK):
+        return str(fallback)
+    return None
+
+
+def _run_recipe(
+    root: Path,
+    profile: Profile,
+    env: Mapping[str, str],
+    home: Path,
+) -> tuple[int, str]:
+    just = _just_program(env, home)
     if just is None:
-        return 127, "just is not on PATH and /home/ntw/.local/bin/just is missing."
+        return 127, "just is not on PATH and ~/.local/bin/just is missing."
     try:
         justfile = _git_bytes(root, "justfile")
     except CheckError as exc:

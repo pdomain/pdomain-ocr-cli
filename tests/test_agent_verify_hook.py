@@ -372,6 +372,539 @@ class CheckTests(unittest.TestCase):
         assert dd[0] == 2
         assert "master" in dd[1]
 
+    def test_quoted_hook_text_is_allowed(self) -> None:
+        """Quoted text that only mentions a hook path stays allowed."""
+        self._commit_profile()
+        quoted = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="echo '.claude/settings.json'",
+            )
+        )
+        assert quoted[0] == 0, quoted[1]
+        assert quoted[1] == ""
+        comment = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="echo x # > .claude/settings.json",
+            )
+        )
+        assert comment[0] == 0, comment[1]
+        assert comment[1] == ""
+        plain = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="echo .claude/settings.json",
+            )
+        )
+        assert plain[0] == 2
+        redirected = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="echo x > '.codex/hooks.json'",
+            )
+        )
+        assert redirected[0] == 2
+
+    def test_command_substitution_uses_the_child_environment(self) -> None:
+        """A substitution is scanned with the exported venv, not any ``$(...)``."""
+        self._commit_profile()
+        harmless = self._run(
+            self._event("PreToolUse", tool_name="Bash", command="echo $(date)"),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert harmless[0] == 0, harmless[1]
+        assert harmless[1] == ""
+        hidden = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=(f"echo $(UV_PROJECT_ENVIRONMENT={_ENGINE_VENV} uv run pytest tests/ -q)"),
+            )
+        )
+        assert hidden[0] == 2, hidden
+        assert "UV_PROJECT_ENVIRONMENT" in hidden[1]
+        cleared = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="echo $(env -u UV_PROJECT_ENVIRONMENT uv run pytest tests/ -q)",
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert cleared[0] == 0, cleared[1]
+        ticks = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=(f"echo `UV_PROJECT_ENVIRONMENT={_ENGINE_VENV} uv run pytest tests/ -q`"),
+            )
+        )
+        assert ticks[0] == 2, ticks
+        assert "UV_PROJECT_ENVIRONMENT" in ticks[1]
+        quoted = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=(
+                    f"echo '$(UV_PROJECT_ENVIRONMENT={_ENGINE_VENV} uv run pytest tests/ -q)'"
+                ),
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert quoted[0] == 0, quoted[1]
+        assert quoted[1] == ""
+
+    def test_a_substitution_keeps_separators_in_its_own_shell(self) -> None:
+        """``$(...)`` is one child shell, so ``&&`` and redirects inside it are visible."""
+        self._commit_profile()
+        hidden = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=(
+                    "echo $(export UV_PROJECT_ENVIRONMENT="
+                    f"{_ENGINE_VENV} && uv run pytest tests/ -q)"
+                ),
+            )
+        )
+        assert hidden[0] == 2, hidden
+        assert "UV_PROJECT_ENVIRONMENT" in hidden[1]
+        written = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="echo $(true; cat > .claude/settings.json)",
+            )
+        )
+        assert written[0] == 2, written
+        assert "master" in written[1]
+
+    def test_export_reaches_a_later_uv_when_more_operands_follow(self) -> None:
+        """``export``, ``command export``, and ``eval`` change the shell uv sees."""
+        self._commit_profile()
+        denied = (
+            f"export UV_PROJECT_ENVIRONMENT={_ENGINE_VENV} PATH; uv run pytest tests/ -q",
+            f"command export UV_PROJECT_ENVIRONMENT={_ENGINE_VENV}; uv run pytest tests/ -q",
+            f"eval 'export UV_PROJECT_ENVIRONMENT={_ENGINE_VENV}'; uv run pytest tests/ -q",
+        )
+        for command in denied:
+            code, out, err = self._run(
+                self._event("PreToolUse", tool_name="Bash", command=command),
+            )
+            assert code == 2, (command, out, err)
+            assert "UV_PROJECT_ENVIRONMENT" in out
+        bare = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=f"UV_PROJECT_ENVIRONMENT={_ENGINE_VENV}; uv run pytest tests/ -q",
+            )
+        )
+        assert bare[0] == 0, bare
+        cleared = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="unset UV_PROJECT_ENVIRONMENT PATH; uv run pytest tests/ -q",
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert cleared[0] == 0, cleared
+
+    def test_bash_options_do_not_hide_a_c_script(self) -> None:
+        """``bash -c`` still runs the script after an option argument or a flag cluster."""
+        self._commit_profile()
+        commands = (
+            "bash -o pipefail -c 'uv run pytest tests/ -q'",
+            "bash -cl 'uv run pytest tests/ -q'",
+        )
+        for command in commands:
+            code, out, err = self._run(
+                self._event("PreToolUse", tool_name="Bash", command=command),
+                {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+            )
+            assert code == 2, (command, out, err)
+            assert "UV_PROJECT_ENVIRONMENT" in out
+
+    def test_groups_do_not_hide_uv(self) -> None:
+        """A subshell or brace group is scanned for uv and just."""
+        self._commit_profile()
+        commands = (
+            "(uv run pytest tests/ -q)",
+            "( uv run pytest tests/ -q )",
+            "{ uv run pytest tests/ -q; }",
+        )
+        for command in commands:
+            code, out, err = self._run(
+                self._event("PreToolUse", tool_name="Bash", command=command),
+                {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+            )
+            assert code == 2, (command, out, err)
+            assert "UV_PROJECT_ENVIRONMENT" in out
+
+    def test_quoted_hook_operands_and_dotdot_paths_are_denied(self) -> None:
+        """A quoted path or a ``..`` path still writes the hook file. Echo may mention it."""
+        self._commit_profile()
+        remove = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="rm '.claude/settings.json'",
+            )
+        )
+        assert remove[0] == 2, remove
+        copy = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command='cp a ".codex/hooks.json"',
+            )
+        )
+        assert copy[0] == 2, copy
+        parent = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="rm .claude/foo/../settings.json",
+            )
+        )
+        assert parent[0] == 2, parent
+        mention = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="echo '.claude/settings.json'",
+            )
+        )
+        assert mention[0] == 0, mention
+        assert mention[1] == ""
+
+    def test_a_prefix_before_command_export_does_not_clear_the_venv(self) -> None:
+        """A prefix on ``command export`` does not replace the exported value."""
+        self._commit_profile()
+        code, out, err = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="UV_PROJECT_ENVIRONMENT= command export PATH; uv run pytest tests/ -q",
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert code == 2, (out, err)
+        assert "UV_PROJECT_ENVIRONMENT" in out
+
+    def test_export_with_a_redirect_still_reaches_uv(self) -> None:
+        """A redirect does not drop ``export``."""
+        self._commit_profile()
+        code, out, err = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=(
+                    f"export UV_PROJECT_ENVIRONMENT={_ENGINE_VENV} >/tmp/x; uv run pytest tests/ -q"
+                ),
+            )
+        )
+        assert code == 2, (out, err)
+        assert "UV_PROJECT_ENVIRONMENT" in out
+
+    def test_quotes_and_escaped_separators_follow_the_shell(self) -> None:
+        """``\\\\`` does not keep the next command inside quotes. ``\\;`` is not a separator."""
+        self._commit_profile()
+        hidden = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=r'echo "\\"; uv run pytest tests/ -q',
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert hidden[0] == 2, hidden
+        assert "UV_PROJECT_ENVIRONMENT" in hidden[1]
+        written = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=r"""echo "\\"; rm '.claude/settings.json'""",
+            )
+        )
+        assert written[0] == 2, written
+        assert "master" in written[1]
+        escaped = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=r"echo \; uv run pytest tests/ -q",
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert escaped[0] == 0, escaped
+        assert escaped[1] == ""
+
+    def test_a_pipe_with_stderr_does_not_update_the_parent(self) -> None:
+        """``|&`` is a pipe, so ``unset`` on the right does not reach the parent."""
+        self._commit_profile()
+        code, out, err = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="true |& unset UV_PROJECT_ENVIRONMENT; uv run pytest tests/ -q",
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert code == 2, (out, err)
+        assert "UV_PROJECT_ENVIRONMENT" in out
+
+    def test_command_keeps_echo_mentions_and_readers(self) -> None:
+        """``command`` runs the next program. Quoted echo and ``cat`` may name a hook file."""
+        self._commit_profile()
+        mention = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="command echo '.claude/settings.json'",
+            )
+        )
+        assert mention[0] == 0, mention
+        assert mention[1] == ""
+        read = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="command cat .claude/settings.json",
+            )
+        )
+        assert read[0] == 0, read
+        assert read[1] == ""
+        remove = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="command rm '.claude/settings.json'",
+            )
+        )
+        assert remove[0] == 2, remove
+        assert "master" in remove[1]
+
+    def test_append_uses_an_unexported_shell_value(self) -> None:
+        """``+=`` appends to the shell value, then the prefix is what uv sees."""
+        self._commit_profile()
+        code, out, err = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command=(
+                    f"UV_PROJECT_ENVIRONMENT={_ENGINE_VENV}/; "
+                    "UV_PROJECT_ENVIRONMENT+=venv uv run pytest tests/ -q"
+                ),
+            )
+        )
+        assert code == 2, (out, err)
+        assert "UV_PROJECT_ENVIRONMENT" in out
+
+    def test_unset_function_and_export_n_follow_the_shell(self) -> None:
+        """``unset -f`` leaves the variable. ``export -n`` stops exporting it."""
+        self._commit_profile()
+        kept = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="unset -f UV_PROJECT_ENVIRONMENT; uv run pytest tests/ -q",
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert kept[0] == 2, kept
+        assert "UV_PROJECT_ENVIRONMENT" in kept[1]
+        cleared = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="export -n UV_PROJECT_ENVIRONMENT; uv run pytest tests/ -q",
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert cleared[0] == 0, cleared
+        assert cleared[1] == ""
+
+    def test_a_shell_script_is_scanned_for_hook_writes(self) -> None:
+        """``bash -c``, ``eval``, and ``env -S`` run the script. Quoted echo may name a hook file."""
+        self._commit_profile()
+        remove = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="env -S 'rm .claude/settings.json'",
+            )
+        )
+        assert remove[0] == 2, remove
+        assert "master" in remove[1]
+        written = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="bash -c 'rm .claude/settings.json'",
+            )
+        )
+        assert written[0] == 2, written
+        mention = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="bash -c \"echo '.claude/settings.json'\"",
+            )
+        )
+        assert mention[0] == 0, mention
+        assert mention[1] == ""
+
+    def test_a_glued_redirect_does_not_hide_uv_or_export(self) -> None:
+        """A redirect is not an argument, including ``>|`` and a target glued to ``>``."""
+        self._commit_profile()
+        hidden = (
+            "uv>/tmp/x run pytest tests/ -q",
+            ">/tmp/x uv run pytest tests/ -q",
+        )
+        for command in hidden:
+            code, out, err = self._run(
+                self._event("PreToolUse", tool_name="Bash", command=command),
+                {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+            )
+            assert code == 2, (command, out, err)
+            assert "UV_PROJECT_ENVIRONMENT" in out
+        exported = (
+            f"export UV_PROJECT_ENVIRONMENT={_ENGINE_VENV}>/tmp/x; uv run pytest tests/ -q",
+            f"export UV_PROJECT_ENVIRONMENT={_ENGINE_VENV} >|/tmp/x; uv run pytest tests/ -q",
+        )
+        for command in exported:
+            code, out, err = self._run(
+                self._event("PreToolUse", tool_name="Bash", command=command),
+            )
+            assert code == 2, (command, out, err)
+            assert "UV_PROJECT_ENVIRONMENT" in out
+
+    def test_a_bare_assignment_updates_an_exported_value(self) -> None:
+        """``NAME=`` with no command updates an exported value. Empty is inside."""
+        self._commit_profile()
+        cleared = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="UV_PROJECT_ENVIRONMENT=; uv run pytest tests/ -q",
+            ),
+            {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+        )
+        assert cleared[0] == 0, cleared
+        assert cleared[1] == ""
+
+    def test_a_script_argument_can_still_name_a_hook_file(self) -> None:
+        """The script is scanned. Other arguments, including ``time -o``, still count."""
+        self._commit_profile()
+        extra = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="bash -c true .claude/settings.json",
+            )
+        )
+        assert extra[0] == 2, extra
+        assert "master" in extra[1]
+        timed = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="time -o .claude/settings.json bash -c true",
+            )
+        )
+        assert timed[0] == 2, timed
+        assert "master" in timed[1]
+        moved = self._run(
+            self._event(
+                "PreToolUse",
+                tool_name="Bash",
+                command="bash >/tmp/x -c \"echo '.claude/settings.json'\"",
+            )
+        )
+        assert moved[0] == 0, moved
+        assert moved[1] == ""
+
+    def test_a_descriptor_redirect_does_not_hide_uv(self) -> None:
+        """An fd number before ``>`` is part of the redirect. ``\\>|`` is a pipe."""
+        self._commit_profile()
+        commands = (
+            "2>/tmp/x uv run pytest tests/ -q",
+            "2>&1 uv run pytest tests/ -q",
+            r"true \>| uv run pytest tests/ -q",
+        )
+        for command in commands:
+            code, out, err = self._run(
+                self._event("PreToolUse", tool_name="Bash", command=command),
+                {"UV_PROJECT_ENVIRONMENT": _ENGINE_VENV},
+            )
+            assert code == 2, (command, out, err)
+            assert "UV_PROJECT_ENVIRONMENT" in out
+
+    def test_shell_limits_stay_allowed(self) -> None:
+        """These limits stay allowed: aliases, source, declare, process substitution, and a shell script file."""
+        self._commit_profile()
+        commands = (
+            "alias uv='uv run pytest tests/ -q'",
+            "source script.sh",
+            f"declare -x UV_PROJECT_ENVIRONMENT={_ENGINE_VENV}; uv run pytest tests/ -q",
+            f"diff <(UV_PROJECT_ENVIRONMENT={_ENGINE_VENV} uv run pytest tests/ -q) x",
+            "bash script.sh",
+            "sh script.sh",
+        )
+        for command in commands:
+            code, out, err = self._run(
+                self._event("PreToolUse", tool_name="Bash", command=command),
+            )
+            assert code == 0, (command, out, err)
+            assert out == ""
+
+    def test_stop_does_not_start_just_when_the_venv_value_expands(self) -> None:
+        """A venv value with ``$`` or a backtick is outside, so Stop does not run just."""
+        marker = self.scratch / "just-ran"
+        self._commit_profile(recipe_body=f"touch {marker}")
+        self._dirty_package()
+        for value in ("$HOME/venv", "`pwd`"):
+            marker.unlink(missing_ok=True)
+            code, out, err = self._run(
+                self._stop_event(),
+                {"UV_PROJECT_ENVIRONMENT": value},
+            )
+            assert code == 0, (value, out, err)
+            assert out == ""
+            assert not marker.exists(), (value, err)
+        log = (self.home / ".local/state/agent-verify/pdomain-ocr-cli/would-block.log").read_text(
+            encoding="utf-8"
+        )
+        assert log.count("Would-block") == 2
+        assert "UV_PROJECT_ENVIRONMENT" in log
+
+    def test_stop_finds_just_under_the_home_directory(self) -> None:
+        """When ``just`` is not on ``PATH``, Stop runs ``~/.local/bin/just``."""
+        self._commit_profile(recipe_body="exit 1")
+        self._dirty_package()
+        bindir = self.home / ".local" / "bin"
+        bindir.mkdir(parents=True)
+        stub = bindir / "just"
+        marker = self.scratch / "stub-ran"
+        stub.write_text(
+            f"#!/bin/sh\n/usr/bin/touch {marker}\nexit 0\n",
+            encoding="utf-8",
+        )
+        stub.chmod(0o755)
+        empty = self.scratch / "empty-path"
+        empty.mkdir()
+        code, out, err = self._run(self._stop_event(), {"PATH": str(empty)})
+        assert marker.is_file(), (code, out, err)
+        assert code == 0
+        assert out == ""
+
     def test_non_utf8_git_names_do_not_skip_the_stop_check(self) -> None:
         """Stop fails closed when git prints a name that is not UTF-8."""
         self._commit_profile()
