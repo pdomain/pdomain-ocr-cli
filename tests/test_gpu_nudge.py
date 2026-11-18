@@ -168,6 +168,40 @@ def test_nudge_skipped_when_torch_import_explodes(monkeypatch: pytest.MonkeyPatc
     assert ocr_to_txt._should_nudge_gpu_install() is False
 
 
+def test_nudge_fires_when_cuda_probe_is_not_callable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A torch install with no callable ``cuda.is_available`` counts as CPU-only."""
+    torch = SimpleNamespace(cuda=SimpleNamespace(is_available=None))
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    monkeypatch.setattr(ocr_to_txt.shutil, "which", lambda name: "/usr/bin/nvidia-smi")
+    monkeypatch.delenv("PD_OCR_NO_GPU_NUDGE", raising=False)
+
+    def _ok_subprocess(*args: object, **kwargs: object) -> SimpleNamespace:
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(ocr_to_txt.subprocess, "run", _ok_subprocess)
+
+    assert ocr_to_txt._should_nudge_gpu_install() is True
+
+
+def test_nudge_skipped_when_cuda_probe_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A CUDA probe that raises is unknown, so the nudge stays off."""
+
+    def _boom() -> bool:
+        raise RuntimeError("cuda probe failed")
+
+    torch = SimpleNamespace(cuda=SimpleNamespace(is_available=_boom))
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    monkeypatch.setattr(ocr_to_txt.shutil, "which", lambda name: "/usr/bin/nvidia-smi")
+    monkeypatch.delenv("PD_OCR_NO_GPU_NUDGE", raising=False)
+
+    def _no_subprocess(*args: object, **kwargs: object) -> object:
+        raise AssertionError("subprocess.run must not be called when the CUDA probe fails")
+
+    monkeypatch.setattr(ocr_to_txt.subprocess, "run", _no_subprocess)
+
+    assert ocr_to_txt._should_nudge_gpu_install() is False
+
+
 def test_nudge_result_cached_across_calls(monkeypatch: pytest.MonkeyPatch) -> None:
     """The probe runs at most once per process — second call uses the cache."""
     _install_fake_torch(monkeypatch, cuda=False)

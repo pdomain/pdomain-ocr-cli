@@ -17,10 +17,10 @@ coverage.xml
 uv.toml
 Makefile.local
 
-# Claude Code session state — agent memory canonical home is
-# /workspaces/ocr-container/.claude/agent-memory/, not per-repo. If you
-# see a .claude/ tree here, it is leakage; clean it up.
-.claude/
+# Claude Code session state stays local. settings.json is the project hook
+# file shared by Claude and Grok, so it is the one tracked exception.
+.claude/*
+!.claude/settings.json
 
 # Local git worktrees created for repo-scoped agent work.
 .worktree/

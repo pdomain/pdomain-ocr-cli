@@ -1,0 +1,19 @@
+base = "master"
+mode = "observe"
+
+[deny]
+hook_paths = [
+  ".claude/settings.json",
+  ".codex/hooks.json",
+  "agent_verify/",
+  "agent-verify.toml",
+]
+outside_venv = true
+
+[inner]
+timeout_seconds = 90
+python = "typecheck"
+paths = ["pdomain_ocr_cli/"]
+
+[outer]
+python = "ci"

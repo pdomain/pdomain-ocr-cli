@@ -1,0 +1,39 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|write|search_replace|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"$(git rev-parse --show-toplevel)\" && python3 -c \"import subprocess,sys; src=subprocess.check_output([\\\"git\\\",\\\"show\\\",\\\"master:agent_verify/check.py\\\"]); exec(compile(src,\\\"master:agent_verify/check.py\\\",\\\"exec\\\"), {\\\"__name__\\\":\\\"__main__\\\"})\"'",
+            "timeout": 10,
+            "failClosed": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"$(git rev-parse --show-toplevel)\" && python3 -c \"import subprocess,sys; src=subprocess.check_output([\\\"git\\\",\\\"show\\\",\\\"master:agent_verify/check.py\\\"]); exec(compile(src,\\\"master:agent_verify/check.py\\\",\\\"exec\\\"), {\\\"__name__\\\":\\\"__main__\\\"})\"'",
+            "timeout": 150
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd \"$(git rev-parse --show-toplevel)\" && python3 -c \"import subprocess,sys; src=subprocess.check_output([\\\"git\\\",\\\"show\\\",\\\"master:agent_verify/check.py\\\"]); exec(compile(src,\\\"master:agent_verify/check.py\\\",\\\"exec\\\"), {\\\"__name__\\\":\\\"__main__\\\"})\"'",
+            "timeout": 150
+          }
+        ]
+      }
+    ]
+  }
+}
