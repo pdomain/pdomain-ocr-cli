@@ -180,6 +180,7 @@ def _run_install_sh(
     cuda_version: str = "12.4",
     uv_exit_logic: str = "exit 0",
     smi_line: str | None = None,
+    installer_args: tuple[str, ...] = (),
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     bin_dir = tmp_path / "bin"
     uv_log = tmp_path / "uv.log"
@@ -192,7 +193,7 @@ def _run_install_sh(
     env["PD_OCR_INSTALL_PYTHON"] = "3.12"
     env["TMPDIR"] = str(tmp_path)
     result = subprocess.run(
-        ["sh", str(REPO / "install.sh")],
+        ["sh", str(REPO / "install.sh"), *installer_args],
         cwd=tmp_path,
         env=env,
         text=True,
@@ -252,6 +253,23 @@ def test_install_sh_sets_auto_check_only_when_requested(
         assert not log.exists()
     else:
         assert log.read_text(encoding="utf-8").splitlines() == ["update", "--auto-check", expected]
+
+
+def test_install_sh_flag_overrides_auto_check_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", "0")
+    result, _ = _run_install_sh(
+        tmp_path,
+        _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'),
+        installer_args=("--auto-update-check",),
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert (tmp_path / "auto-check.log").read_text().splitlines() == [
+        "update",
+        "--auto-check",
+        "on",
+    ]
 
 
 def test_install_sh_rejects_invalid_auto_check_setting(

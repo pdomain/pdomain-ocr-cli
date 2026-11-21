@@ -11,6 +11,8 @@
 #   $env:PD_OCR_INSTALL_PYTHON = "3.12"
 #   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 
+param([switch]$AutoUpdateCheck)
+
 $ErrorActionPreference = "Stop"
 
 # Windows PowerShell 5.1 can default to TLS versions GitHub refuses. -bor keeps
@@ -524,7 +526,7 @@ if ($HelperPath -and (Test-Path $HelperPath)) {
 $Repo = "pdomain/pdomain-ocr-cli"
 $PdIndexUrl = "https://pdomain.github.io/pdomain-index-pip/simple/"
 $PythonVersion = if ($env:PD_OCR_INSTALL_PYTHON) { $env:PD_OCR_INSTALL_PYTHON } else { "3.13" }
-$AutoUpdateCheck = if ($env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK -ceq "1") {
+$AutoUpdatePreference = if ($AutoUpdateCheck -or $env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK -ceq "1") {
     "on"
 } elseif ($env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK -ceq "0") {
     "off"
@@ -678,9 +680,9 @@ try {
     Remove-Item -Recurse -Force $TempDir -ErrorAction SilentlyContinue
 }
 
-if ($AutoUpdateCheck) {
+if ($AutoUpdatePreference) {
     if ($RestartRequired) {
-        throw "pdomain-ocr was installed. After restarting Windows, run: pdomain-ocr update --auto-check $AutoUpdateCheck"
+        throw "pdomain-ocr was installed. After restarting Windows, run: pdomain-ocr update --auto-check $AutoUpdatePreference"
     }
     $ToolBin = (& uv tool dir --bin | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $ToolBin) {
@@ -689,12 +691,12 @@ if ($AutoUpdateCheck) {
     $LauncherName = if (Test-IsWindowsHost) { "pdomain-ocr.exe" } else { "pdomain-ocr" }
     $Launcher = Join-Path $ToolBin $LauncherName
     try {
-        & $Launcher update --auto-check $AutoUpdateCheck
+        & $Launcher update --auto-check $AutoUpdatePreference
         if ($LASTEXITCODE -ne 0) {
             throw "The update preference command failed with exit code $LASTEXITCODE."
         }
     } catch {
-        throw "pdomain-ocr was installed, but the update preference could not be saved. Run: pdomain-ocr update --auto-check $AutoUpdateCheck"
+        throw "pdomain-ocr was installed, but the update preference could not be saved. Run: pdomain-ocr update --auto-check $AutoUpdatePreference"
     }
 }
 

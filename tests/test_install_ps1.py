@@ -38,6 +38,7 @@ def _run_install_ps1_full(
     umask: int | None = None,
     cuda_version: str | None = "12.4",
     uv_exit_logic: str = "exit 0",
+    auto_update_flag: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """Run install.ps1 through pwsh with mocked GitHub API + uv + nvidia-smi.
 
@@ -149,7 +150,7 @@ function Start-Sleep {{
 $InstallerText = @'
 {escaped_script}
 '@
-Invoke-Expression $InstallerText
+{"& ([scriptblock]::Create($InstallerText)) -AutoUpdateCheck" if auto_update_flag else "Invoke-Expression $InstallerText"}
 """,
         encoding="utf-8",
     )
@@ -222,6 +223,21 @@ def test_install_ps1_sets_auto_check_only_when_requested(
         assert not log.exists()
     else:
         assert log.read_text(encoding="utf-8").splitlines() == ["update", "--auto-check", expected]
+
+
+def test_install_ps1_flag_overrides_auto_check_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", "0")
+    result, _, _ = _run_install_ps1_full(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', auto_update_flag=True
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert (tmp_path / "auto-check.log").read_text().splitlines() == [
+        "update",
+        "--auto-check",
+        "on",
+    ]
 
 
 def test_install_ps1_rejects_invalid_auto_check_setting(
