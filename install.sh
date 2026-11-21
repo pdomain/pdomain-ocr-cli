@@ -49,7 +49,11 @@ fi
 REPO="pdomain/pdomain-ocr-cli"
 PYTHON_VERSION="${PD_OCR_INSTALL_PYTHON:-3.13}"
 AUTO_UPDATE_CHECK=""
-case ${PD_OCR_INSTALL_AUTO_UPDATE_CHECK:-} in
+AUTO_UPDATE_SETTING=${PD_OCR_INSTALL_AUTO_UPDATE_CHECK:-}
+if [ "${1:-}" = "--auto-update-check" ]; then
+    AUTO_UPDATE_SETTING=1
+fi
+case "$AUTO_UPDATE_SETTING" in
     1) AUTO_UPDATE_CHECK=on ;;
     0) AUTO_UPDATE_CHECK=off ;;
     "") ;;

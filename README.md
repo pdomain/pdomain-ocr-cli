@@ -317,11 +317,12 @@ CLI handed off the update. Wait for installer output, then run `pdomain-ocr --ve
 the installed version. For editable or package-managed installations, update
 through the tool you originally used.
 
-Automatic checks are off by default. Opt in during installation by setting
-`PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` before running the installer. You can also save
+Automatic checks are off by default. Opt in during installation with
+`--auto-update-check` on Linux and macOS, `-AutoUpdateCheck` on Windows, or
+`PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` on either platform. You can also save
 your choice later with `pdomain-ocr update --auto-check on` or `off`. For a
 single run, set `PD_OCR_AUTO_UPDATE_CHECK=1` to enable checks or `0` to disable them.
-See the [config file and precedence rules](docs/usage/cli-usage.md#automatic-update-checks).
+See the [installer commands and config file](docs/usage/cli-usage.md#automatic-update-checks).
 
 ### The install script
 

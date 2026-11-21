@@ -347,11 +347,37 @@ treating it as fatal. The current set:
 
 ## Automatic update checks
 
-Automatic checks start off. Set `PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` before running
-the installer to opt in. Use `export PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` in a
-POSIX shell or `$env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK = '1'` in PowerShell.
-Set it to `0` to save an explicit opt-out. Leaving it unset preserves your
-saved preference.
+Automatic checks start off. To opt in during installation, run either command
+for your platform.
+
+Linux or macOS:
+
+```sh
+# Installer flag
+curl -fsSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh |
+  sh -s -- --auto-update-check
+
+# Environment variable
+curl -fsSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh |
+  PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1 sh
+```
+
+Windows PowerShell:
+
+```powershell
+$installer = 'https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1'
+
+# Installer flag
+& ([scriptblock]::Create((Invoke-RestMethod $installer))) -AutoUpdateCheck
+
+# Environment variable
+$env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK = '1'
+Invoke-RestMethod $installer | Invoke-Expression
+```
+
+The flag takes precedence over the environment variable. With the flag omitted,
+set `PD_OCR_INSTALL_AUTO_UPDATE_CHECK=0` to save an explicit opt-out.
+Leaving the variable unset preserves your saved preference.
 
 Use `pdomain-ocr update --auto-check on` or `pdomain-ocr update --auto-check off`
 to change the saved setting later. You can also edit `update.toml` and set
