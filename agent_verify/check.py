@@ -99,6 +99,9 @@ def handle(raw: str, env: Mapping[str, str], home: Path) -> int:
     event = _parse_event(raw)
     if event is None:
         return _fail("The hook event was not a JSON object.")
+    kind = _event_kind(event)
+    if kind == "other":
+        return 0
     root = _git_root(_cwd(event))
     if root is None:
         return _fail("The hook could not find the git root.")
@@ -106,12 +109,9 @@ def handle(raw: str, env: Mapping[str, str], home: Path) -> int:
         profile = _load_profile(root)
     except CheckError as exc:
         return _fail(str(exc))
-    kind = _event_kind(event)
     if kind == "pre":
         return _pre_tool(event, env, root, profile)
-    if kind == "stop":
-        return _stop(event, env, root, profile, home)
-    return 0
+    return _stop(event, env, root, profile, home)
 
 
 def _parse_event(raw: str) -> dict[str, object] | None:
