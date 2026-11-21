@@ -95,6 +95,38 @@ installer Python version; the default is `3.13`. The PowerShell script is
 self-contained for piped `irm ... | iex` installs; a checked-out helper
 script is only used as a development override.
 
+### Install with automatic update checks
+
+Automatic checks are off by default. To enable them during installation,
+choose either the flag or the environment variable for your platform.
+
+#### Linux and macOS
+
+```sh
+# Installer flag
+curl -fsSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh |
+  sh -s -- --auto-update-check
+
+# Environment variable
+curl -fsSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh |
+  PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1 sh
+```
+
+#### Windows PowerShell
+
+```powershell
+$installer = 'https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1'
+
+# Installer flag
+& ([scriptblock]::Create((Invoke-RestMethod $installer))) -AutoUpdateCheck
+
+# Environment variable
+$env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK = '1'
+Invoke-RestMethod $installer | Invoke-Expression
+```
+
+The installer saves your choice. See the [settings and precedence rules](docs/usage/cli-usage.md#automatic-update-checks).
+
 ---
 
 ## Usage
