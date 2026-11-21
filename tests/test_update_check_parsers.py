@@ -2,7 +2,7 @@
 :mod:`pdomain_ocr_cli._update_check`.
 
 These cover the network-free building blocks of the GitHub-tag check:
-``_parse_stable_tag``, ``_parse_release_prefix``, and
+``parse_stable_tag``, ``_parse_release_prefix``, and
 ``_latest_stable_tag``. The actual HTTP path in ``check_for_update`` is
 exercised end-to-end by the slow integration tests.
 """
@@ -12,7 +12,7 @@ import pytest
 from pdomain_ocr_cli._update_check import (
     _latest_stable_tag,
     _parse_release_prefix,
-    _parse_stable_tag,
+    parse_stable_tag,
 )
 
 
@@ -26,8 +26,8 @@ from pdomain_ocr_cli._update_check import (
         ("  v1.2.3  ", (1, 2, 3)),  # surrounding whitespace tolerated
     ],
 )
-def test_parse_stable_tag_accepts(tag, expected):
-    assert _parse_stable_tag(tag) == expected
+def testparse_stable_tag_accepts(tag, expected):
+    assert parse_stable_tag(tag) == expected
 
 
 @pytest.mark.parametrize(
@@ -43,8 +43,8 @@ def test_parse_stable_tag_accepts(tag, expected):
         "v1.2.3.4",  # too many components
     ],
 )
-def test_parse_stable_tag_rejects(tag):
-    assert _parse_stable_tag(tag) is None
+def testparse_stable_tag_rejects(tag):
+    assert parse_stable_tag(tag) is None
 
 
 @pytest.mark.parametrize(

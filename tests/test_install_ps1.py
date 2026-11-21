@@ -4,6 +4,10 @@ import hashlib
 import os
 import subprocess
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -167,6 +171,28 @@ def _assert_torch_backend_auto(args: str) -> None:
     assert "--torch-backend\nauto" in args
     assert "pytorch-cuda" not in args
     assert "download.pytorch.org" not in args
+
+
+def test_install_ps1_rejects_unapproved_release_before_download(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PDOMAIN_OCR_EXPECTED_RELEASE_TAG", "V9.9.9")
+    result, uv_log = _run_install_ps1(tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"')
+
+    assert result.returncode != 0
+    assert "Expected release V9.9.9 but found v9.9.9" in result.stderr
+    assert "Downloading wheel" not in result.stdout
+    assert not uv_log.exists()
+
+
+def test_install_ps1_accepts_approved_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PDOMAIN_OCR_EXPECTED_RELEASE_TAG", "v9.9.9")
+    result, uv_log = _run_install_ps1(tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"')
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert uv_log.exists()
 
 
 def test_install_ps1_piped_mode_is_self_contained_and_uses_release_wheel(

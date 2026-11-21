@@ -286,6 +286,13 @@ pdomain-ocr --help
 
 ## Installer behavior
 
+`pdomain-ocr update --check` checks the latest stable GitHub release without installing it.
+`pdomain-ocr update` asks before updating an existing `uv tool` installation.
+`pdomain-ocr update --yes` skips the prompt. On Windows, exit code 0 means the CLI
+handed off the update. Wait for installer output before checking `pdomain-ocr --version`.
+If the current directory contains an input named `update`, use another directory for
+the interactive update command. Use `./update` to explicitly select that OCR input.
+
 The `install.sh` and `install.ps1` bootstrap scripts install the wheel
 asset from the latest GitHub Release, not a git ref. Before installing, each
 script checks the wheel against the `sha256` digest GitHub reports for that

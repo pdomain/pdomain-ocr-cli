@@ -309,6 +309,17 @@ these are cache-friendly. Once models are cached and the update check
 is suppressed (`--no-update-check` or `PD_OCR_NO_UPDATE_CHECK=1`), no
 further network access is required.
 
+### Update an installed CLI
+
+`pdomain-ocr update --check` shows your installed version and the latest stable GitHub release.
+Run `pdomain-ocr update` to review the new version and confirm installation. Use
+`pdomain-ocr update --yes` for an unattended update.
+
+The updater supports `uv tool` installations. On Windows, exit code 0 means the
+CLI handed off the update. Wait for installer output, then run `pdomain-ocr --version` to confirm
+the installed version. For editable or package-managed installations, update
+through the tool you originally used.
+
 ### The install script
 
 `install.sh` / `install.ps1` are bootstrap helpers — re-run them any
