@@ -1,5 +1,5 @@
 base = "master"
-mode = "observe"
+mode = "enforce"
 
 [deny]
 hook_paths = [
