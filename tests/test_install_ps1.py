@@ -39,6 +39,7 @@ def _run_install_ps1_full(
     cuda_version: str | None = "12.4",
     uv_exit_logic: str = "exit 0",
     auto_update_flag: bool = False,
+    skip_models: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """Run install.ps1 through pwsh with mocked GitHub API + uv + nvidia-smi.
 
@@ -71,10 +72,20 @@ def _run_install_ps1_full(
     tool_bin = tmp_path / "tool bin"
     tool_bin.mkdir()
     auto_check_log = tmp_path / "auto-check.log"
+    models_log = tmp_path / "models.log"
     _write_fake_exe(
         tool_bin / "pdomain-ocr",
         f"""#!/bin/sh
-printf '%s\\n' "$@" > "{auto_check_log}"
+case "$1" in
+    --help)
+        if [ "${{FAKE_OLD_RELEASE:-}}" != 1 ]; then printf '%s\\n' download-models; fi
+        ;;
+    download-models)
+        printf '%s\\n' "$@" > "{models_log}"
+        exit "${{FAKE_MODEL_EXIT:-0}}"
+        ;;
+    *) printf '%s\\n' "$@" > "{auto_check_log}" ;;
+esac
 """,
     )
 
@@ -115,6 +126,14 @@ exit 0
     script = (REPO / "install.ps1").read_text(encoding="utf-8")
     escaped_script = script.replace("'@", "' + \"@\" + '")
     harness = tmp_path / "run.ps1"
+    flags = (" -AutoUpdateCheck" if auto_update_flag else "") + (
+        " -SkipModels" if skip_models else ""
+    )
+    invoke = (
+        f"& ([scriptblock]::Create($InstallerText)){flags}"
+        if flags
+        else "Invoke-Expression $InstallerText"
+    )
     _ = harness.write_text(
         f"""
 $ErrorActionPreference = "Stop"
@@ -150,7 +169,7 @@ function Start-Sleep {{
 $InstallerText = @'
 {escaped_script}
 '@
-{"& ([scriptblock]::Create($InstallerText)) -AutoUpdateCheck" if auto_update_flag else "Invoke-Expression $InstallerText"}
+{invoke}
 """,
         encoding="utf-8",
     )
@@ -238,6 +257,31 @@ def test_install_ps1_flag_overrides_auto_check_env(
         "--auto-check",
         "on",
     ]
+
+
+@pytest.mark.parametrize("skip_models", [False, True])
+def test_install_ps1_prefetches_models_unless_skipped(tmp_path: Path, skip_models: bool) -> None:
+    result, _, _ = _run_install_ps1_full(
+        tmp_path,
+        f'digest = "{FAKE_WHEEL_DIGEST}"',
+        skip_models=skip_models,
+        auto_update_flag=skip_models,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert (tmp_path / "models.log").exists() is not skip_models
+    assert (tmp_path / "auto-check.log").exists() is skip_models
+
+
+@pytest.mark.parametrize("old_release", [False, True])
+def test_install_ps1_keeps_install_if_models_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, old_release: bool
+) -> None:
+    monkeypatch.setenv("FAKE_OLD_RELEASE", "1" if old_release else "0")
+    monkeypatch.setenv("FAKE_MODEL_EXIT", "1")
+    result, _ = _run_install_ps1(tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"')
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert (tmp_path / "models.log").exists() is not old_release
+    assert "first OCR run" in result.stdout
 
 
 def test_install_ps1_rejects_invalid_auto_check_setting(

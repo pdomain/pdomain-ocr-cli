@@ -50,9 +50,13 @@ REPO="pdomain/pdomain-ocr-cli"
 PYTHON_VERSION="${PD_OCR_INSTALL_PYTHON:-3.13}"
 AUTO_UPDATE_CHECK=""
 AUTO_UPDATE_SETTING=${PD_OCR_INSTALL_AUTO_UPDATE_CHECK:-}
-if [ "${1:-}" = "--auto-update-check" ]; then
-    AUTO_UPDATE_SETTING=1
-fi
+SKIP_MODELS=0
+for install_arg do
+    case "$install_arg" in
+        --auto-update-check) AUTO_UPDATE_SETTING=1 ;;
+        --skip-models) SKIP_MODELS=1 ;;
+    esac
+done
 case "$AUTO_UPDATE_SETTING" in
     1) AUTO_UPDATE_CHECK=on ;;
     0) AUTO_UPDATE_CHECK=off ;;
@@ -347,15 +351,30 @@ while :; do
     attempt=$((attempt + 1))
 done
 
-if [ -n "$AUTO_UPDATE_CHECK" ]; then
+LAUNCHER=""
+if [ -n "$AUTO_UPDATE_CHECK" ] || [ "$SKIP_MODELS" -eq 0 ]; then
     if ! TOOL_BIN=$(uv tool dir --bin) || [ -z "$TOOL_BIN" ]; then
-        echo "pdomain-ocr was installed, but uv could not locate its launcher." >&2
-        exit 1
+        if [ -n "$AUTO_UPDATE_CHECK" ]; then
+            echo "pdomain-ocr was installed, but uv could not locate its launcher." >&2
+            exit 1
+        fi
+    else
+        LAUNCHER="$TOOL_BIN/pdomain-ocr"
     fi
-    if ! "$TOOL_BIN/pdomain-ocr" update --auto-check "$AUTO_UPDATE_CHECK"; then
+fi
+if [ -n "$AUTO_UPDATE_CHECK" ]; then
+    if ! "$LAUNCHER" update --auto-check "$AUTO_UPDATE_CHECK"; then
         printf 'pdomain-ocr was installed, but the update preference could not be saved. Run: pdomain-ocr update --auto-check %s\n' \
             "$AUTO_UPDATE_CHECK" >&2
         exit 1
+    fi
+fi
+if [ "$SKIP_MODELS" -eq 0 ]; then
+    if [ -z "$LAUNCHER" ] || ! HELP=$("$LAUNCHER" --help 2>/dev/null) \
+        || ! printf '%s\n' "$HELP" | grep -Fq download-models; then
+        echo "Model prefetch is unavailable. Models will download on the first OCR run." >&2
+    elif ! "$LAUNCHER" download-models; then
+        echo "Model prefetch failed. Models will download on the first OCR run, or retry with: pdomain-ocr download-models" >&2
     fi
 fi
 

@@ -116,6 +116,7 @@ from pdomain_ocr_cli._hf_models import (
     DEFAULT_HF_REPO,
     DEFAULT_RECO_FILENAME,
     det_source_descriptor,
+    prefetch_default_models,
     prefetch_layout_files,
     reco_source_descriptor,
     resolve_layout_source,
@@ -615,13 +616,17 @@ def _positive_batch_pages(s: str) -> int:
 
 # The commit behind the Hugging Face tag v0.7. A tag can be moved; a commit cannot.
 DEFAULT_MODEL_REVISION = "8b7f9b31d55015d16febaa99ae1d42960904028c"
+DEFAULT_LAYOUT_MODEL = "pp-doclayout-plus-l"
 
 
 def parse_args() -> argparse.Namespace:
     """Parse and return the CLI arguments for ``pdomain-ocr``."""
     p = argparse.ArgumentParser(
         description="OCR images to .txt using fine-tuned detection + recognition models.",
-        epilog="To check for a CLI release, run pdomain-ocr update --check.",
+        epilog=(
+            "Run pdomain-ocr download-models to cache the default models, "
+            "or pdomain-ocr update --check to check for a CLI release."
+        ),
     )
     _ = p.add_argument("--version", action="version", version=f"%(prog)s {_VERSION}")
 
@@ -783,8 +788,8 @@ def parse_args() -> argparse.Namespace:
     )
     _ = p.add_argument(
         "--layout-model",
-        default="pp-doclayout-plus-l",
-        choices=["none", "contour", "pp-doclayout-plus-l"],
+        default=DEFAULT_LAYOUT_MODEL,
+        choices=["none", "contour", DEFAULT_LAYOUT_MODEL],
         help=(
             "Layout-detector backend. Layout detection always runs (its "
             "output is fed into Page.reorganize_page() as a hint so captions "
@@ -880,8 +885,26 @@ def _format_error_detail(exc: BaseException) -> str:
     return str(exc)
 
 
+def _download_models(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="pdomain-ocr download-models",
+        description="Cache the default detection, recognition, and layout files.",
+    )
+    _ = parser.parse_args(argv)
+    print("Downloading default model files...", flush=True)  # noqa: T201
+    try:
+        prefetch_default_models(revision=DEFAULT_MODEL_REVISION, layout_model=DEFAULT_LAYOUT_MODEL)
+    except Exception as exc:  # noqa: BLE001  # Report download failures at the CLI boundary.
+        print(f"Could not download default models: {exc}", file=sys.stderr)  # noqa: T201
+        return 1
+    print("Default OCR and layout models are cached.")  # noqa: T201
+    return 0
+
+
 def main() -> None:
     """Entry point for the ``pdomain-ocr`` CLI command."""
+    if sys.argv[1:2] == ["download-models"]:
+        raise SystemExit(_download_models(sys.argv[2:]))
     if sys.argv[1:2] == ["update"] and (
         not Path("update").exists()
         or sys.argv[2:3] in (["--check"], ["--yes"], ["--auto-check"], ["--help"], ["-h"])

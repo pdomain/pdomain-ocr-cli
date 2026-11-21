@@ -33,10 +33,9 @@ plain OCR:
   `pdomain-ocr` re-runs the OCR at 90° / 180° / 270° and keeps the
   orientation that reads best.
 
-The first time you run it, it downloads the models it needs
-(roughly 150 MB total). After that it works offline — no account or
-sign-up. For specifics on what the tool downloads and from where, see
-[Technical details](#technical-details) at the bottom.
+The installers cache the default models. A first OCR run fetches any missing
+files. Once the files are cached, OCR can run offline without an account.
+See the [network requests and model sources](#network-calls-the-tool-makes).
 
 Supported Python versions for the package are `>=3.11,<3.14`. The
 installer defaults to Python 3.13 for the managed `uv tool`
@@ -94,6 +93,26 @@ NVIDIA CUDA automatically and select the matching PyTorch build. Set
 installer Python version; the default is `3.13`. The PowerShell script is
 self-contained for piped `irm ... | iex` installs; a checked-out helper
 script is only used as a development override.
+
+### Skip model downloads during installation
+
+The installer caches the default detection, recognition, and layout files.
+If you want to download them later, use the skip flag for your platform.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh |
+  sh -s -- --skip-models
+```
+
+```powershell
+$installer = 'https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1'
+& ([scriptblock]::Create((Invoke-RestMethod $installer))) -SkipModels
+```
+
+The skip flag also works with the update-check flag below. Run
+`pdomain-ocr download-models` later to fill the cache, or let the first OCR run
+fetch any missing files. If the installer cannot download a model, it warns
+you and keeps the CLI installed.
 
 ### Install with automatic update checks
 
@@ -237,8 +256,8 @@ not supported, because PyTorch publishes no wheels for it.
 
 ### Why is the first run so slow?
 
-That's the one-time model download (~150 MB) and initialization.
-Later runs reuse the cache.
+The first run initializes the OCR models. If the installer skipped a model or
+could not fetch it, the first run downloads it. Later runs reuse the cache.
 
 ### Windows: OCR fails with "WinError 126" loading `c10.dll`
 
@@ -315,7 +334,7 @@ rm -rf ~/.cache/huggingface/hub/models--pdomain--pdomain-ocr-models
 `pdomain-ocr` does not collect telemetry or call home with usage data. It
 makes exactly these outbound requests:
 
-1. **Model downloads** (first run only, then cached):
+1. **Model downloads** (during installation or when files are missing):
    - OCR weights from
      [`pdomain/pdomain-ocr-models`](https://huggingface.co/pdomain/pdomain-ocr-models)
      on `huggingface.co`.
@@ -461,8 +480,8 @@ How the pieces fit together when you opt in:
   on CPU, compiled to call into CUDA. The install script passes
   `--torch-backend auto`, and uv picks the build that matches your
   NVIDIA driver.
-- **OCR / layout model weights** — downloaded on first run; not
-  GPU-specific.
+- **OCR and layout model weights** — cached by the installer or downloaded
+  on demand. CPU and GPU runs use the same weights.
 
 To pick a build yourself, pass an explicit value such as
 `--torch-backend cu128` instead of `auto`; `uv tool install --help` lists
