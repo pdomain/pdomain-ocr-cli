@@ -23,8 +23,11 @@ detected regions feed `Page.reorganize_page()` as a hint, which:
 
 By default, `pdomain-ocr` uses
 [`PaddlePaddle/PP-DocLayout_plus-L`](https://huggingface.co/CT2534/PP-DocLayout_plus-L)
-via `pdomain-book-tools`. It is Apache-2.0 licensed and downloads ~132 MB on
-the first run.
+via `pdomain-book-tools`. The Apache-2.0 model download is about 132 MB.
+The installers on `feat/ocr-cli-update` cache the default layout model along
+with the OCR models. An OCR run fetches any missing files.
+[Installation and updates](installation-and-updates.md) explains the cache
+path and prefetch behavior.
 
 Plain `--no-reorg` skips both `Page.reorganize_page()` and layout
 detection. The only exception is `--extract-illustrations`, which still

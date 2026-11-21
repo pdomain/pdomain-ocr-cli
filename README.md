@@ -144,7 +144,27 @@ $env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK = '1'
 Invoke-RestMethod $installer | Invoke-Expression
 ```
 
-The installer saves your choice. See the [settings and precedence rules](docs/usage/cli-usage.md#automatic-update-checks).
+The installer saves your choice. If Windows asks you to restart, run
+`pdomain-ocr update --auto-check on` after restarting. See the
+[settings and precedence rules](docs/usage/cli-usage.md#automatic-update-checks).
+
+---
+
+## Update an installed CLI
+
+`pdomain-ocr update --check` shows your installed version and the latest stable GitHub release.
+Run `pdomain-ocr update` to review the new version and confirm installation. Use
+`pdomain-ocr update --yes` for an unattended update.
+
+The updater supports `uv tool` installations. On Windows, exit code 0 means the
+CLI handed off the update. Wait for installer output, then run `pdomain-ocr --version` to confirm
+the installed version. For editable or package-managed installations, update
+through the tool you originally used.
+
+If your installed version lacks the update command, rerun the [installer](#install).
+
+Automatic update checks are off by default. See how to
+[save or override that setting](docs/usage/cli-usage.md#automatic-update-checks).
 
 ---
 
@@ -232,9 +252,8 @@ A few things to check:
 - **GPU still not used after that** — re-run the install script; it
   re-detects on each run.
 
-For the deep mechanics (PyTorch CUDA build selection, what the install
-script does, disk / VRAM budgets), see
-[Technical details](#technical-details).
+See [how GPU installation works](docs/architecture/installation-and-updates.md#gpu-acceleration-mechanics)
+for CUDA build selection and disk and memory estimates.
 
 ### On a server or in a container, OCR fails with "libxcb.so.1: cannot open shared object file"
 
@@ -284,12 +303,8 @@ how to remove the cache.
 
 ### Model trust boundary
 
-OCR and layout model checkpoints are trusted inputs. The default model
-source is maintained by this project, and the default `--model-version`
-is pinned to the commit behind the tag `v0.7`. Tags and branch names can
-move; a commit SHA cannot. Custom `--hf-repo`, local `--detection` / `--recognition`,
-and `--layout-checkpoint` values should only come from sources you
-trust.
+Use custom OCR and layout models only from sources you trust.
+See [default model revisions and trust checks](docs/architecture/cli-orchestration.md#trust-and-network-boundaries).
 
 ---
 
@@ -331,169 +346,15 @@ rm -rf ~/.cache/huggingface/hub/models--pdomain--pdomain-ocr-models
 
 ### Network calls the tool makes
 
-`pdomain-ocr` does not collect telemetry or call home with usage data. It
-makes exactly these outbound requests:
+The CLI uses Hugging Face for model files and GitHub for update checks.
+It sends no usage telemetry. Once the models are cached, normal OCR runs
+work offline with automatic update checks off.
 
-1. **Model downloads** (during installation or when files are missing):
-   - OCR weights from
-     [`pdomain/pdomain-ocr-models`](https://huggingface.co/pdomain/pdomain-ocr-models)
-     on `huggingface.co`.
-   - Layout weights from
-     [`CT2534/PP-DocLayout_plus-L`](https://huggingface.co/CT2534/PP-DocLayout_plus-L)
-     on `huggingface.co`.
-   - No Hugging Face account required.
-   - Cached at `~/.cache/huggingface/hub` by default; override with
-     `$HF_HOME` or `$HF_HUB_CACHE`.
-2. **Version check** (in the background when enabled):
-   - `GET https://api.github.com/repos/pdomain/pdomain-ocr-cli/tags?per_page=100`
-   - 3-second timeout; if a newer release tag exists, prints a one-line
-     upgrade notice to stderr.
-   - Best-effort: it suppresses any network or parse error, and never
-     blocks startup. With `PD_OCR_DEBUG=1` it prints a one-line
-     `update check failed: ...` message to stderr.
-   - Turn it off for a run with `--no-update-check` or
-     `PD_OCR_NO_UPDATE_CHECK=1`.
-
-Once models are cached, normal OCR runs work offline with automatic update
-checks off, which is the default.
-
-### Update an installed CLI
-
-`pdomain-ocr update --check` shows your installed version and the latest stable GitHub release.
-Run `pdomain-ocr update` to review the new version and confirm installation. Use
-`pdomain-ocr update --yes` for an unattended update.
-
-The updater supports `uv tool` installations. On Windows, exit code 0 means the
-CLI handed off the update. Wait for installer output, then run `pdomain-ocr --version` to confirm
-the installed version. For editable or package-managed installations, update
-through the tool you originally used.
-
-Automatic checks are off by default. Opt in during installation with
-`--auto-update-check` on Linux and macOS, `-AutoUpdateCheck` on Windows, or
-`PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` on either platform. You can also save
-your choice later with `pdomain-ocr update --auto-check on` or `off`. For a
-single run, set `PD_OCR_AUTO_UPDATE_CHECK=1` to enable checks or `0` to disable them.
-See the [installer commands and config file](docs/usage/cli-usage.md#automatic-update-checks).
-
-### The install script
-
-`install.sh` / `install.ps1` are bootstrap helpers — re-run them any
-time to upgrade or to switch between CPU and GPU. They:
-
-- Install [uv](https://docs.astral.sh/uv/) if it isn't already on PATH.
-- Resolve the latest non-prerelease GitHub Release via the GitHub API
-  (`install.sh` uses `gh` instead if it is authenticated) and download
-  the published `.whl` asset.
-- Check the downloaded wheel against the `sha256` digest GitHub reports
-  for it, and refuse to install if the digest is missing or does not
-  match.
-- Use Python 3.13 by default for the uv tool environment. Override with
-  `PD_OCR_INSTALL_PYTHON` if you need another supported Python version.
-- Detect NVIDIA CUDA via `nvidia-smi`. If found, pass
-  `--torch-backend auto` so uv picks the PyTorch CUDA build that matches
-  the driver. The installer does not install CuPy. OCR does not use it.
-- Run `uv tool install --reinstall <wheel>` with
-  `--index-strategy first-index` and a named `--index` for the
-  self-hosted `pdomain-index-pip` (for `pdomain-book-tools`).
-- Stop with an error, and never print `Done`, if `uv` fails. A `uv` too
-  old for `--torch-backend` gets a hint to run `uv self update`. When `uv`
-  reports a network failure after its own retries, the script tries twice
-  more, 15 and then 45 seconds later. Resolver, authentication and hash
-  errors are not retried.
-- On Windows, run the `uv` installer in a separate PowerShell process with
-  `-ExecutionPolicy Bypass`, the command uv's documentation gives. That
-  installer calls `exit` when it fails, which would otherwise close your
-  window. Your saved execution policy is not changed.
-- On Windows, check that the installed Visual C++ runtime is at least as new
-  as the newest MSVC toolset that built any installed `.dll` or `.pyd`. See
-  [WinError 126](#windows-ocr-fails-with-winerror-126-loading-c10dll).
-
-Once installed, `pdomain-ocr` itself only does the two outbound requests
-listed above.
-
-### Manual install
-
-If you'd rather not pipe `curl | sh`, you can run the install yourself
-with [uv](https://docs.astral.sh/uv/). The install script wraps
-`uv tool install` against the wheel asset on the latest GitHub Release —
-nothing here uses `pip`.
-
-Install uv first:
-
-```sh
-# Linux / macOS
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-
-```powershell
-# Windows (PowerShell): uv's documented command. Bypass applies only to
-# this one child process.
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-CPU install (uses the self-hosted `pdomain-index-pip` PEP 503 index for
-`pdomain-book-tools`):
-
-```sh
-uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
-    --index-strategy first-index \
-    --index pdomain=https://pdomain.github.io/pdomain-index-pip/simple/
-```
-
-NVIDIA GPU install. `--torch-backend auto` makes uv read your driver
-version and pick the matching PyTorch CUDA build:
-
-```sh
-uv tool install git+https://github.com/pdomain/pdomain-ocr-cli \
-    --index-strategy first-index \
-    --index pdomain=https://pdomain.github.io/pdomain-index-pip/simple/ \
-    --torch-backend auto
-```
-
-These are the flags the installers use. A named `--index` with
-`--index-strategy first-index` makes `pdomain-book-tools` resolve only from
-the pdomain index, so another index cannot supply a package with that name.
-`--torch-backend` needs a recent uv; if uv rejects it, run `uv self update`.
-
-Do not add `download.pytorch.org/whl/cuXXX` as an extra `--index`. That
-index also serves old copies of common packages such as `packaging` (24.1
-at most). Under `first-index`, uv then takes those packages from it alone,
-and the resolve fails because `pdomain-ops` needs `packaging>=26`.
-`--torch-backend` sends only PyTorch packages to the PyTorch index.
-
-Use `nvidia-smi` to read your CUDA version.
-Disk / VRAM budgets are below in
-[GPU acceleration mechanics](#gpu-acceleration-mechanics).
-
-In practice, re-running the install script is simpler — it does
-the detection and assembles these flags for you.
-
-### GPU acceleration mechanics
-
-How the pieces fit together when you opt in:
-
-- **`pdomain-ocr-cli`** — the app.
-- **CUDA Toolkit** — NVIDIA's runtime that lets programs talk to
-  your GPU. Required on Linux / Windows for the CUDA path; the
-  Apple Silicon path uses Metal via PyTorch's MPS backend instead.
-- **CUDA-enabled PyTorch wheels** — the same PyTorch you'd install
-  on CPU, compiled to call into CUDA. The install script passes
-  `--torch-backend auto`, and uv picks the build that matches your
-  NVIDIA driver.
-- **OCR and layout model weights** — cached by the installer or downloaded
-  on demand. CPU and GPU runs use the same weights.
-
-To pick a build yourself, pass an explicit value such as
-`--torch-backend cu128` instead of `auto`; `uv tool install --help` lists
-the values your uv knows.
-
-Rough disk + memory budget for the NVIDIA path:
-
-- CUDA Toolkit: ~2–4 GB download, ~5–12 GB installed (depends on
-  the components you select).
-- CUDA-enabled PyTorch wheels: ~1–3 GB on top.
-- Runtime VRAM with both OCR + layout models loaded: a few GB —
-  fits comfortably on any modern dedicated NVIDIA card.
+The default weights come from the
+[OCR model repository](https://huggingface.co/pdomain/pdomain-ocr-models)
+and the [layout model repository](https://huggingface.co/CT2534/PP-DocLayout_plus-L).
+See [installation and updates](docs/architecture/installation-and-updates.md)
+for release verification, package sources, manual installation, and GPU details.
 
 ---
 

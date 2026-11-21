@@ -17,79 +17,86 @@ Kind: context
 
 ## What matters now
 
-v0.9.4 is the published release: tag `v0.9.4` at `462c181`, on GitHub
-Releases and the pdomain pip index, wheel SHA256
-`338cc0d5c0eebddfdff5cc53ee41282d462ceb8dcaf9de1f51c4952efc2edfb5`. Its release
-preflight, `just ci-slow`, passed with 587 tests. GitHub now serves the fixed
-installers from `master`.
+GitHub lists v0.9.6 at `7deaf15` as the latest stable release.
+[Release v0.9.6](https://github.com/pdomain/pdomain-ocr-cli/releases/tag/v0.9.6)
 
-v0.9.4 carries the installer fixes. Both installers fail when `uv` fails and
-retry uv's network failures twice. The Windows command works under the default
-`Restricted` execution policy. `install.ps1` checks the Visual C++ runtime and
-installs it elevated when it is missing or old. On 2026-11-13 the installer ran
-on real Windows PowerShell 5.1 as a standard user, including real UAC prompts
-with the runtime missing and too old. Later on 2026-11-13 the README command,
-`irm .../master/install.ps1 | iex`, installed v0.9.4 from GitHub as that user
-in 28 s. Only the restart-required exit codes have not run on Windows; see the
-[Windows proof](../research/2026-11-13-windows-installer-proof.md).
+The `feat/ocr-cli-update` branch adds
+an explicit updater, opt-in background checks, and default model prefetch.
+Those features are awaiting release.
 
-Every GPU install of v0.9.4 fails to resolve; branch `fix/torch-backend`
-fixes it, unreleased as of 2026-11-14. With CUDA detected, both installers
-added `--index pytorch-cuda=https://download.pytorch.org/whl/cuXXX` under
-`--index-strategy first-index`. That index also hosts old copies of common
-packages, with `packaging` 24.1 at most; cu126, cu128, cu130 and cu134 were
-checked. uv then took `packaging` from it alone, and `pdomain-ops>=0.12.2`
-needs `packaging>=26`, so uv reported "No solution found". This was seen on
-2026-11-14 on an RTX 5070 Ti host with NVIDIA driver 615.78 and CUDA 13.4. The
-CPU path was not affected.
+The current lock selects `pdomain-book-tools` 0.31.3, `pdomain-book-contracts`
+0.3.1, and `pdomain-ops` 0.12.2 from the pdomain package index. The CLI
+accepts `pdomain-book-tools>=0.31.3,<0.32`. The resolver can use a compatible
+patch on a fresh install. Version 0.32 requires a cap change.
 
-The fix passes `--torch-backend auto` instead of the PyTorch index, in
-`install.sh`, `install.ps1` and `scripts/install-uv-tool.sh`. uv then sends
-only PyTorch packages to the PyTorch index and reads the driver version
-itself. On that host, uv 0.11.26 installed v0.9.4 with this flag and
-`--with 'pdomain-book-tools[gpu]'`: torch 2.14.1+cu130, packaging 26.3 and
-cupy-cuda13x. OCR then ran on CUDA with 100% word overlap. The installers
-no longer pass that `--with` flag. OCR uses the CUDA PyTorch build and does
-not install CuPy. When `nvidia-smi` cannot report a CUDA version, the installer
-prints the NVIDIA driver steps and links to the OCR Simple GUI
-[GPU setup guide](https://github.com/pdomain/pdomain-ocr-simple-gui/blob/master/docs/usage/nvidia-gpu-setup.md).
-uv 0.11.26 lists
-explicit backends only up to cu130, so the installers use `auto` rather than
-a computed tag. A uv too old for the flag gets a hint to run `uv self update`.
+The installers retry failures that uv identifies as network errors up to
+twice. On Windows, the installer checks and repairs the Visual C++ runtime when
+needed. The runtime repair requests elevation. The standard-user installer
+worked under the default `Restricted` policy in the
+[dated Windows proof](../research/2026-11-13-windows-installer-proof.md).
 
-The open product item on the [roadmap](../roadmap.md) is long-s normalization.
-The batch path reads `page.ocr_rotation_degrees` from `pdomain-ops` 0.12.2.
-Quote and dash cleanup calls `pdomain-book-contracts`. The current lock uses
-book-tools 0.31.0, contracts 0.3.1, and ops 0.12.2; those wheels are published
-on the pdomain pip index. Pins and lock were not changed by this docs pass.
+Use the [CLI guide](../usage/cli-usage.md) for commands, the
+[installation and update architecture](../architecture/installation-and-updates.md)
+for installer and updater internals, and the
+[OCR architecture](../architecture/layout-aware-ocr.md) for layout behavior.
+The [test architecture](../architecture/test-suite.md) and
+[development guide](../../DEVELOPMENT.md) describe verification and release.
+[Type-suppression rationale](../decisions/type-suppressions.md) and
+[lint deviations](../conventions/lint-deviations.md) cover exceptions.
 
-These docs describe current behavior:
-[`docs/architecture/layout-aware-ocr.md`](../architecture/layout-aware-ocr.md),
-[`docs/architecture/cli-orchestration.md`](../architecture/cli-orchestration.md),
-[`docs/architecture/test-suite.md`](../architecture/test-suite.md),
-[`docs/usage/cli-usage.md`](../usage/cli-usage.md), and `DEVELOPMENT.md`.
-
-[`docs/decisions/type-suppressions.md`](../decisions/type-suppressions.md)
-records suppression rationale;
-[`docs/conventions/lint-deviations.md`](../conventions/lint-deviations.md)
-lists the current inventory.
-
-GitHub Issues on this repository are enabled but the tracker is empty.
-Former issue numbers are provenance tags only; see
-[`docs/decisions/2026-07-19-github-issues-cutover.md`](../decisions/2026-07-19-github-issues-cutover.md).
+GitHub Issues are enabled and the tracker is empty. Former issue numbers
+record provenance. See the [issue cutover decision](../decisions/2026-07-19-github-issues-cutover.md).
 
 ## In-flight work
 
-The completed spec-review handoff is
-[retired](../decisions/2026-11-13-spec-followups-handoff-retirement.md).
-The architecture pass preserves the four unresolved owner choices in the
-[intent map](intent-map.md). Local master requires
-`pdomain-book-tools>=0.31.3,<0.32`. Book-tools patch releases reach users
-without a CLI release; a 0.32 minor needs a cap change here first. GitHub runs nothing
-automatically. Its only workflows are the manual macOS and Windows install
-tests, started with `just mac-test` and `just win-test`. Releases run locally through `just release-{patch,minor,major}`.
+The update branch adds `pdomain-ocr update` for confirmed upgrades of uv tool
+installs. Background checks are off by default. The installers can save an
+opt-in preference and cache the default detection, recognition, and layout
+files. The model skip flags defer downloads. See the
+[install guide](../../README.md#install) for commands.
+
+Long-s and ligature normalization remains open on the [roadmap](../roadmap.md).
+Quote and dash cleanup uses `pdomain-book-contracts`. The batch path reads
+`page.ocr_rotation_degrees` from `pdomain-ops`. The spec-review handoff is
+[retired](../decisions/2026-11-13-spec-followups-handoff-retirement.md). The
+[intent map](intent-map.md) records the four remaining owner decisions.
+
+GitHub hosts manual macOS and Windows install tests. Start them with
+`just mac-test` and `just win-test`. Run releases locally with
+`just release-{patch,minor,major}`.
 
 ## Test state
+
+The update branch passed full CI with 684 tests and 100% configured coverage.
+An isolated Linux tool install upgraded from 0.1.0 to the published 0.9.6
+release. A clean-cache model download and an offline cache reuse check also
+passed. Installer tests on Linux exercise PowerShell with fakes. The new
+Windows updater launcher replacement and restart paths remain unverified on
+Windows.
+
+### Historical installer checks
+
+The v0.9.4 release preflight passed 587 tests. Its commit is `462c181` and its
+wheel, published on GitHub and the pdomain index, has SHA256
+`338cc0d5c0eebddfdff5cc53ee41282d462ceb8dcaf9de1f51c4952efc2edfb5`.
+The 2026-11-13 standard-user Windows proof covered missing and old runtimes,
+real UAC prompts, and a 28-second published install.
+
+On 2026-11-14, v0.9.4 GPU installation failed on an RTX 5070 Ti with driver
+615.78 and CUDA 13.4. The cu126, cu128, cu130, and cu134 general PyTorch
+indexes offered `packaging` through 24.1. Under first-index resolution, uv
+selected that index for `packaging`. That failed the `pdomain-ops` requirement
+of version 26 or newer. CPU installs still resolved.
+
+On the same host, uv 0.11.26 installed v0.9.4 with `--torch-backend auto`
+and an explicit `--with 'pdomain-book-tools[gpu]'`. It resolved torch
+2.14.1+cu130, packaging 26.3, and cupy-cuda13x. OCR ran on CUDA with 100%
+word overlap. The current scripts use the automatic backend and omit the
+CuPy extra. See the
+[installer architecture](../architecture/installation-and-updates.md)
+for the current CUDA behavior.
+
+### Earlier test gates
 
 The v0.9.1 release preflight `make ci-slow` passed on 2026-11-07 with 468
 tests and 100% coverage. On branch `fix/spec-review-followups`, `make ci-slow`

@@ -70,8 +70,10 @@ it through repository setup; missing `pwsh` is a setup failure, not a reason to
 skip installer tests.
 
 `tests/test_install_ps1_cuda.py` invokes the real CUDA-detection helpers.
-`tests/test_install_ps1.py` exercises the top-level `install.ps1` contract,
-including piped invocation and package-index behavior.
+`tests/test_install_ps1.py` and `tests/test_install_sh.py` exercise the installer
+entry points with fake release responses and package installs. They cover
+piped invocation, package indexes, and installer flags. On the update branch,
+they also test prefetch, update preferences, and release selection.
 
 `tests/test_install_ps1_vc_runtime.py` loads the function definitions from
 `install.ps1`'s syntax tree without running its main body. It replaces the
@@ -88,6 +90,16 @@ On 2026-11-13 the fixed installer also ran on real Windows PowerShell 5.1 as a
 standard user, through install, retry and one-page CPU OCR. The
 [Windows proof](../research/2026-11-13-windows-installer-proof.md) lists what
 those runs did not cover, mainly the restart-required exit codes.
+
+On `feat/ocr-cli-update`, `tests/test_cli_update.py` uses test doubles to cover
+approval, install guards, saved preferences, and platform handoffs.
+`tests/test_download_models.py` checks that prefetch uses the OCR defaults
+and reports download failures.
+
+An isolated Linux tool install verified a release update. Separate Linux checks
+verified fresh model downloads and offline cache reuse. Native Windows
+updater launcher replacement and restart behavior remain unverified. See the
+[installation and update architecture](installation-and-updates.md).
 
 ## Word preservation
 

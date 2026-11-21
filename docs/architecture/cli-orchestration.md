@@ -49,9 +49,13 @@ exit as clean CLI errors (not raw stack traces for expected resolve paths).
 A backend exception becomes `BatchRuntimeError`, and a batch must return
 exactly one result per submitted image.
 
+Batch planning uses the upstream image format check. It considers the suffix
+and reads up to 16 bytes to identify the format from the header.
 Every candidate image passes an admission check before it joins a batch.
 Files over 100 MiB or 100,000,000 decoded pixels are rejected as a per-image
-error, and the rest of the batch continues. `ocr_to_txt` sets
+error, and the rest of the batch continues. The size and image-header checks
+report the observed value. Pillow and OpenCV decoder-limit messages report
+the limit. `ocr_to_txt` sets
 `OPENCV_IO_MAX_IMAGE_PIXELS` on import, before anything loads cv2, unless the
 caller already set it. A cv2 error that names `CV_IO_MAX_IMAGE_PIXELS` becomes
 `ImageLimitError`, which names the path and the limit. The byte limit is
@@ -64,6 +68,9 @@ only larger `--batch-pages` values change. An image that would overrun the
 chunk starts the next chunk instead. The first image in a chunk is always
 admitted. The CLI does not time out a page. Stopping native OCR mid-call
 would need a separate process, and this command does not do that.
+
+The CLI sets the internal `PD_OCR_LAYOUT_DEBUG` and
+`PD_OCR_LAYOUT_DEBUG_FILE` settings from its layout-debug options.
 
 `PageOutputTransaction` stages the JSON sidecar, illustration crops, and the
 final text file as exclusive temporary files, then promotes them. The text
@@ -111,8 +118,8 @@ installed package for any `torch.load` without `weights_only=True`, checks that
 a pickled object is refused at load time, and checks that the CLI passes no
 `torch_load` override.
 
-The startup-notice seam owns update and GPU notices, including the environment
-and CLI opt-outs. The update check stays silent on failure unless
+The startup notices cover updates and GPU availability. Automatic update
+checks run only when enabled through the environment or saved preference. The update check stays silent on failure unless
 `PD_OCR_DEBUG` is set. Then an exception prints
 `update check failed: {type}: {message}` to stderr, without a traceback. The
 message is the exception's own text and is not scrubbed. Three failures print
@@ -120,63 +127,9 @@ message is the exception's own text and is not scrubbed. Three failures print
 response that is not a usable tag list, such as a rate-limit reply; no stable
 tag; and an unparseable installed version.
 
-The POSIX and PowerShell installers install the wheel from the latest GitHub
-Release. They pass the pdomain index to `uv` as a named `--index` with
-`--index-strategy first-index`, so a package listed on the pdomain index, such
-as `pdomain-book-tools`, cannot resolve from another index. PyPI stays in the
-index list, so a name the pdomain index does not list can still come from PyPI. Before download, each installer requires the release asset's
-digest to be a lowercase `sha256:` plus 64 hex characters. After download, it
-refuses the wheel if the bytes do not match. If `gh` reports no digest,
-`install.sh` asks the REST API before failing closed, and it leaves the
-caller's `TMPDIR` set for `uv`. `install.ps1` enables TLS 1.2 before its first
-web request, for Windows PowerShell 5.1.
-`install.sh` reads the digest
-from the wheel's own asset record, so a CR or CRLF between assets cannot apply
-the sdist digest to the wheel. Piped PowerShell installation stays
-self-contained, and Windows PowerShell 5.1 skips the Unix file-mode step.
-The digest comes from the same GitHub API as the wheel, so it catches
-corruption in transit, not a replaced release asset. `uv` does not hash-check
-the wheel's dependencies.
-
-Both installers retry `uv tool install` the same way and fail with uv's exit
-code otherwise. `install.sh` streams uv's output through `tee` to classify it,
-and fails if the uv bootstrap leaves no `uv` on `PATH`.
-
-`install.ps1` checks every native exit code it depends on. If `uv tool install`
-fails, the script throws, so piped use leaves the window open, a `-File` run
-exits nonzero, and `Done` is never printed. It retries only failures that uv
-itself reports as "Request failed after N retries", twice, after 15 and then
-45 seconds. Output containing "No solution found", which includes 401 and 403
-index errors, fails at once. A command that cannot start is a failure too: the
-script clears `$LASTEXITCODE` before each native call. On Windows it runs the uv
-bootstrap in a child PowerShell with `-ExecutionPolicy Bypass`, because the uv
-installer calls `exit` on failure, which would close a window that ran
-`irm | iex`.
-
-After installing, `install.ps1` checks the Visual C++ runtime on Windows. It
-reads the linker version of every `.dll` and `.pyd` in the tool environment,
-skipping bundled runtime copies, and takes the newest MSVC 14.x version as the
-floor. Microsoft requires the runtime to be at least as new as the toolset that
-built a binary. The check compares the file versions of `msvcp140.dll`,
-`vcruntime140.dll` and `vcruntime140_1.dll` in the 64-bit system directory with
-that floor. If a DLL is missing or too old, it downloads
-`https://aka.ms/vc14/vc_redist.x64.exe`. It runs the file only if Authenticode
-reports `Valid`, the signer's only organization field is exactly `Microsoft
-Corporation`, and the chain ends at Microsoft Root Certificate Authority 2011,
-thumbprint `8F43288AD272F3103B6FB1428485EA3014C0BCFE`. It holds the file open
-for reading only, from the check until the installer exits, so the file cannot
-be replaced in between. It then starts `/install /passive /norestart` through `Process.Start` with
-the `runas` verb, the only elevated step. `Start-Process` is not used because
-Windows PowerShell 5.1 drops the Windows error code when the user cancels
-the prompt.
-Exit codes 0 and 1638 count as installed. 3010 and 1641 finish with a restart
-notice; the script never restarts Windows. 1602, 5, a cancelled prompt
-(Windows error 1223), a missing exit code and any other code fail with manual
-steps. If the tool environment is missing, the check falls back to requiring
-only that the three DLLs exist, and says so; unreadable files are skipped. `PD_OCR_SKIP_VC_RUNTIME=1` skips the
-install and fails with those steps. A runtime still older than the floor after
-installing only warns. The [Windows proof](../research/2026-11-13-windows-installer-proof.md)
-records the real runs.
+See [installation and updates](installation-and-updates.md) for wheel
+verification, dependency sources, retry rules, model prefetch, and the Windows
+runtime check.
 
 ## Dependency bounds
 
