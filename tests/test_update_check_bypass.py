@@ -52,47 +52,6 @@ def test_no_update_check_flag_set():
     assert args.no_update_check is True
 
 
-# --- Gate behavior -----------------------------------------------------------
-# The actual gate lives inside main() as:
-#     update_check_disabled = args.no_update_check or _env_truthy("PD_OCR_NO_UPDATE_CHECK")  # noqa: ERA001  # reference copy of the gate under test
-# These tests exercise the equivalent compound condition end-to-end.
-
-
-def _gate_disabled(args, monkeypatch_env):
-    """Mirror of the main() gate, for direct testing without mocking the
-    full predictor / model load path."""
-    return args.no_update_check or _env_truthy("PD_OCR_NO_UPDATE_CHECK")
-
-
-def test_gate_off_by_default(monkeypatch):
-    monkeypatch.delenv("PD_OCR_NO_UPDATE_CHECK", raising=False)
-    with patch("sys.argv", ["pdomain-ocr", "page.png"]):
-        args = parse_args()
-    assert _gate_disabled(args, monkeypatch) is False
-
-
-def test_gate_on_via_flag(monkeypatch):
-    monkeypatch.delenv("PD_OCR_NO_UPDATE_CHECK", raising=False)
-    with patch("sys.argv", ["pdomain-ocr", "--no-update-check", "page.png"]):
-        args = parse_args()
-    assert _gate_disabled(args, monkeypatch) is True
-
-
-def test_gate_on_via_env_var(monkeypatch):
-    monkeypatch.setenv("PD_OCR_NO_UPDATE_CHECK", "1")
-    with patch("sys.argv", ["pdomain-ocr", "page.png"]):
-        args = parse_args()
-    assert _gate_disabled(args, monkeypatch) is True
-
-
-def test_gate_on_via_either(monkeypatch):
-    """Flag set + env unset still disables; flag unset + env truthy still disables."""
-    monkeypatch.setenv("PD_OCR_NO_UPDATE_CHECK", "yes")
-    with patch("sys.argv", ["pdomain-ocr", "--no-update-check", "page.png"]):
-        args = parse_args()
-    assert _gate_disabled(args, monkeypatch) is True
-
-
 def test_main_env_var_disables_update_check(mock_heavy_deps, monkeypatch, run_main, single_image):
     mock_heavy_deps()
     img, out = single_image

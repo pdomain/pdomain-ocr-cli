@@ -4,7 +4,10 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
+import tomllib
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
@@ -21,7 +24,40 @@ def env_truthy(name: str) -> bool:
 
 
 def update_check_disabled(args: UpdateArgs) -> bool:
-    return args.no_update_check or env_truthy("PD_OCR_NO_UPDATE_CHECK")
+    if args.no_update_check or env_truthy("PD_OCR_NO_UPDATE_CHECK"):
+        return True
+
+    override = os.environ.get("PD_OCR_AUTO_UPDATE_CHECK", "").strip().lower()
+    if override in ("1", "true", "yes", "on"):
+        return False
+    if override in ("0", "false", "no", "off"):
+        return True
+
+    try:
+        with _update_settings_path().open("rb") as settings:
+            return tomllib.load(settings).get("auto_check") is not True
+    except (OSError, ValueError):
+        return True
+
+
+def _update_settings_path() -> Path:
+    base = os.environ.get("APPDATA" if sys.platform == "win32" else "XDG_CONFIG_HOME")
+    if base:
+        return Path(base) / "pdomain-ocr" / "update.toml"
+    home = Path.home()
+    config_dir = home / "AppData" / "Roaming" if sys.platform == "win32" else home / ".config"
+    return config_dir / "pdomain-ocr" / "update.toml"
+
+
+def save_auto_update_check(*, enabled: bool) -> Path:
+    """Persist the automatic update check preference."""
+    path = _update_settings_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=path.parent) as directory:
+        temporary = Path(directory) / path.name
+        _ = temporary.write_text(f"auto_check = {str(enabled).lower()}\n", encoding="utf-8")
+        _ = temporary.replace(path)
+    return path
 
 
 def start_update_check_thread(

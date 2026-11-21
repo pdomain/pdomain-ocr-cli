@@ -883,7 +883,8 @@ def _format_error_detail(exc: BaseException) -> str:
 def main() -> None:
     """Entry point for the ``pdomain-ocr`` CLI command."""
     if sys.argv[1:2] == ["update"] and (
-        not Path("update").exists() or sys.argv[2:3] in (["--check"], ["--yes"], ["--help"], ["-h"])
+        not Path("update").exists()
+        or sys.argv[2:3] in (["--check"], ["--yes"], ["--auto-check"], ["--help"], ["-h"])
     ):
         from pdomain_ocr_cli._self_update import run_update
 
@@ -918,7 +919,7 @@ def main() -> None:
         sys.exit(1)
 
     # Fire version check in background — result printed before first blocking work.
-    # Suppressed by --no-update-check or PD_OCR_NO_UPDATE_CHECK=1 (offline runs).
+    # Automatic checks require an opt-in unless explicitly requested.
     _update_thread = _start_update_check_thread(
         disabled=_startup_notices.update_check_disabled(args)
     )

@@ -15,6 +15,7 @@ from typing import cast
 
 from pdomain_ops.suite.update import compare_versions, is_editable_install
 
+from pdomain_ocr_cli._startup_notices import save_auto_update_check
 from pdomain_ocr_cli._update_check import VERSION, UrlopenResponse, parse_stable_tag
 
 _DIST = "pdomain-ocr-cli"
@@ -118,6 +119,7 @@ def _apply_windows(installer: Path, env: dict[str, str]) -> int:
 
 def _apply_release(tag: str) -> int:
     env = os.environ.copy()
+    _ = env.pop("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", None)
     env["PDOMAIN_OCR_EXPECTED_RELEASE_TAG"] = tag
     _ = env.setdefault(
         "PD_OCR_INSTALL_PYTHON", f"{sys.version_info.major}.{sys.version_info.minor}"
@@ -146,8 +148,16 @@ def run_update(argv: list[str]) -> int:
     mode = parser.add_mutually_exclusive_group()
     _ = mode.add_argument("--check", action="store_true", help="Check without installing.")
     _ = mode.add_argument("--yes", action="store_true", help="Install without prompting.")
+    _ = mode.add_argument(
+        "--auto-check", choices=("on", "off"), help="Save a preference for automatic checks."
+    )
     args = parser.parse_args(argv)
     try:
+        preference = cast("str | None", args.auto_check)
+        if preference is not None:
+            path = save_auto_update_check(enabled=preference == "on")
+            print(f"Automatic update checks: {preference}. Preference saved in {path}.")  # noqa: T201
+            return 0
         tag = _latest_release_tag()
         latest = tag.removeprefix("v")
         available = compare_versions(current=VERSION, latest=latest)

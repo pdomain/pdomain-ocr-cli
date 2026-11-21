@@ -476,9 +476,9 @@ def test_main_directory_input_recursive_mirrors_to_output(
 def test_main_update_check_thread_started_when_enabled(
     mock_heavy_deps, monkeypatch, run_main, single_image
 ):
-    """When --no-update-check is omitted, the helper is invoked with disabled=False
-    and main() joins the returned thread before exiting.
-    """
+    """An opted-in OCR run joins the background update check before exiting."""
+    monkeypatch.delenv("PD_OCR_NO_UPDATE_CHECK", raising=False)
+    monkeypatch.setenv("PD_OCR_AUTO_UPDATE_CHECK", "1")
     mock_heavy_deps()
     img, out = single_image
 

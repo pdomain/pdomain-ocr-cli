@@ -60,6 +60,24 @@ def test_cli_update_check_dispatches_without_ocr(
     installer.assert_not_called()
 
 
+@pytest.mark.parametrize(("choice", "expected"), [("on", "true"), ("off", "false")])
+def test_cli_saves_auto_check_preference_without_network(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, choice: str, expected: str
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "update").mkdir()
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    lookup = Mock(side_effect=AssertionError("Saving a preference must stay offline"))
+    monkeypatch.setattr(updater, "_latest_release_tag", lookup)
+    monkeypatch.setattr(sys, "argv", ["pdomain-ocr", "update", "--auto-check", choice])
+    with pytest.raises(SystemExit) as result:
+        cli.main()
+    assert result.value.code == 0
+    assert (tmp_path / "pdomain-ocr" / "update.toml").read_text() == f"auto_check = {expected}\n"
+    lookup.assert_not_called()
+
+
 @pytest.mark.parametrize("tag", ["v1.0.0", "v0.9.9"])
 def test_updater_skips_equal_and_older_releases(
     tag: str, installer: Mock, monkeypatch: pytest.MonkeyPatch
@@ -309,15 +327,18 @@ def test_apply_runs_bundled_posix_installer_with_approved_tag(
         monkeypatch.delenv("PD_OCR_INSTALL_PYTHON", raising=False)
     else:
         monkeypatch.setenv("PD_OCR_INSTALL_PYTHON", override)
+    expected_env = {
+        **os.environ,
+        "PDOMAIN_OCR_EXPECTED_RELEASE_TAG": release,
+        "PD_OCR_INSTALL_PYTHON": expected,
+    }
+    _ = expected_env.pop("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", None)
+    monkeypatch.setenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", "1")
 
     assert updater.run_update(["--yes"]) == 7
     run.assert_called_once_with(
         ["/absolute/sh", str(script)],
-        env={
-            **os.environ,
-            "PDOMAIN_OCR_EXPECTED_RELEASE_TAG": release,
-            "PD_OCR_INSTALL_PYTHON": expected,
-        },
+        env=expected_env,
         check=False,
     )
 

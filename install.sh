@@ -48,6 +48,16 @@ fi
 
 REPO="pdomain/pdomain-ocr-cli"
 PYTHON_VERSION="${PD_OCR_INSTALL_PYTHON:-3.13}"
+AUTO_UPDATE_CHECK=""
+case ${PD_OCR_INSTALL_AUTO_UPDATE_CHECK:-} in
+    1) AUTO_UPDATE_CHECK=on ;;
+    0) AUTO_UPDATE_CHECK=off ;;
+    "") ;;
+    *)
+        echo "PD_OCR_INSTALL_AUTO_UPDATE_CHECK must be 0 or 1." >&2
+        exit 1
+        ;;
+esac
 
 # Install uv if not already present
 if ! command -v uv >/dev/null 2>&1; then
@@ -332,6 +342,18 @@ while :; do
     sleep "$delay"
     attempt=$((attempt + 1))
 done
+
+if [ -n "$AUTO_UPDATE_CHECK" ]; then
+    if ! TOOL_BIN=$(uv tool dir --bin) || [ -z "$TOOL_BIN" ]; then
+        echo "pdomain-ocr was installed, but uv could not locate its launcher." >&2
+        exit 1
+    fi
+    if ! "$TOOL_BIN/pdomain-ocr" update --auto-check "$AUTO_UPDATE_CHECK"; then
+        printf 'pdomain-ocr was installed, but the update preference could not be saved. Run: pdomain-ocr update --auto-check %s\n' \
+            "$AUTO_UPDATE_CHECK" >&2
+        exit 1
+    fi
+fi
 
 echo ""
 echo "Done! Run: pdomain-ocr page.png"

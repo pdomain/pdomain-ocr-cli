@@ -293,21 +293,18 @@ makes exactly these outbound requests:
    - No Hugging Face account required.
    - Cached at `~/.cache/huggingface/hub` by default; override with
      `$HF_HOME` or `$HF_HUB_CACHE`.
-2. **Version check** (every run, in the background):
+2. **Version check** (in the background when enabled):
    - `GET https://api.github.com/repos/pdomain/pdomain-ocr-cli/tags?per_page=100`
    - 3-second timeout; if a newer release tag exists, prints a one-line
      upgrade notice to stderr.
    - Best-effort: it suppresses any network or parse error, and never
      blocks startup. With `PD_OCR_DEBUG=1` it prints a one-line
      `update check failed: ...` message to stderr.
-   - Bypass entirely with `--no-update-check`, or persistently via
-     the `PD_OCR_NO_UPDATE_CHECK=1` env var (e.g. offline runs or
-     locked-down networks).
+   - Turn it off for a run with `--no-update-check` or
+     `PD_OCR_NO_UPDATE_CHECK=1`.
 
-If you need to run fully offline after the first install, both of
-these are cache-friendly. Once models are cached and the update check
-is suppressed (`--no-update-check` or `PD_OCR_NO_UPDATE_CHECK=1`), no
-further network access is required.
+Once models are cached, normal OCR runs work offline with automatic update
+checks off, which is the default.
 
 ### Update an installed CLI
 
@@ -319,6 +316,12 @@ The updater supports `uv tool` installations. On Windows, exit code 0 means the
 CLI handed off the update. Wait for installer output, then run `pdomain-ocr --version` to confirm
 the installed version. For editable or package-managed installations, update
 through the tool you originally used.
+
+Automatic checks are off by default. Opt in during installation by setting
+`PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` before running the installer. You can also save
+your choice later with `pdomain-ocr update --auto-check on` or `off`. For a
+single run, set `PD_OCR_AUTO_UPDATE_CHECK=1` to enable checks or `0` to disable them.
+See the [config file and precedence rules](docs/usage/cli-usage.md#automatic-update-checks).
 
 ### The install script
 

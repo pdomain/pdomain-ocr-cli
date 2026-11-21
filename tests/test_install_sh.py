@@ -81,12 +81,29 @@ def _write_fake_bin(
     smi_line: str | None = None,
 ) -> None:
     bin_dir.mkdir()
+    tool_bin = uv_log.parent / "tool bin"
+    tool_bin.mkdir()
+    launcher = tool_bin / "pdomain-ocr"
+    auto_check_log = uv_log.parent / "auto-check.log"
+    _ = launcher.write_text(
+        f"""#!/bin/sh
+printf '%s\\n' "$@" > "{auto_check_log}"
+""",
+        encoding="utf-8",
+    )
+    launcher.chmod(0o755)
 
     # Each call appends its arguments to uv.log, after a `--call--` line
     # from the second call on; $n is the 1-based call number.
     count = uv_log.with_suffix(".count")
     _ = (bin_dir / "uv").write_text(
-        f'#!/bin/sh\nn=$(cat {count} 2>/dev/null || echo 0)\nn=$((n + 1))\necho "$n" > {count}\n'
+        f"""#!/bin/sh
+if [ "$*" = "tool dir --bin" ]; then
+  printf '%s\\n' "{tool_bin}"
+  exit 0
+fi
+"""
+        f'n=$(cat {count} 2>/dev/null || echo 0)\nn=$((n + 1))\necho "$n" > {count}\n'
         f"if [ \"$n\" -gt 1 ]; then echo '--call--' >> {uv_log}; fi\n"
         f"printf '%s\\n' \"$@\" >> {uv_log}\n"
         f"printf '%s' \"$TMPDIR\" > {uv_log}.tmpdir\n{uv_exit_logic}\n",
@@ -217,6 +234,35 @@ def test_install_sh_accepts_approved_release(
 
     assert result.returncode == 0, result.stderr + result.stdout
     assert uv_log.exists()
+
+
+@pytest.mark.parametrize(("setting", "expected"), [("1", "on"), ("0", "off"), (None, None)])
+def test_install_sh_sets_auto_check_only_when_requested(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, setting: str | None, expected: str | None
+) -> None:
+    if setting is None:
+        monkeypatch.delenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", raising=False)
+    else:
+        monkeypatch.setenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", setting)
+    result, _ = _run_install_sh(tmp_path, _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    log = tmp_path / "auto-check.log"
+    if expected is None:
+        assert not log.exists()
+    else:
+        assert log.read_text(encoding="utf-8").splitlines() == ["update", "--auto-check", expected]
+
+
+def test_install_sh_rejects_invalid_auto_check_setting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", "yes")
+    result, uv_log = _run_install_sh(tmp_path, _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'))
+
+    assert result.returncode != 0
+    assert "PD_OCR_INSTALL_AUTO_UPDATE_CHECK must be 0 or 1" in result.stderr
+    assert not uv_log.exists()
 
 
 def test_install_sh_uses_release_wheel_and_pdomain_index(tmp_path: Path) -> None:
