@@ -61,7 +61,9 @@ The command wraps `pdomain-book-tools` for OCR and layout.
 The batch path calls `pdomain_ops.gpu.doctr_batch.run_doctr_batch`.
 
 [CLI orchestration](architecture/cli-orchestration.md) documents the
-boundary, the image limits, the installers, and the release flow.
+repository boundary, image limits, and release flow. See
+[installation and updates](architecture/installation-and-updates.md) for
+the bootstrap scripts, model cache, and updater.
 
 ## Tech Stack
 
@@ -69,7 +71,7 @@ Python 3.11 through 3.13.
 
 Hatchling `1.33.0` and hatch-vcs `0.5.0` build the package.
 
-Runtime dependencies are `pdomain-book-tools==0.31.0`,
+Runtime dependencies are `pdomain-book-tools>=0.31.3,<0.32`,
 `pdomain-book-contracts`, `pdomain-ops`, `huggingface_hub`, and `pillow`.
 
 Development uses `uv`, pytest, Ruff, and basedpyright.
@@ -147,10 +149,9 @@ One shared installer is worth a separate repository.
 `pdomain-ocr-labeler-spa`, `pdomain-ocr-trainer-spa`,
 `pdomain-prep-for-pgdp`, and `pdomain-ocr-simple-gui`.
 
-The trust policy hardened here will drift across those copies.
-
-That policy covers first-index resolution, the wheel digest, TLS 1.2, and
-leaving `TMPDIR` alone.
+The [installer trust policy](architecture/installation-and-updates.md)
+can drift across those copies. It covers first-index resolution, the wheel
+digest, TLS 1.2, and preserving the caller's `TMPDIR`.
 
 A small script repository should own that policy.
 

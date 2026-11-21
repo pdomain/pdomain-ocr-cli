@@ -8,11 +8,9 @@ Kind: usage
 
 # Full usage options
 
-This page lists every `pdomain-ocr` flag, grouped by purpose.
-For the friendly walkthrough, see the [README](../../README.md). For
-layout-detector specifics (the bulk of the layout flags below), see
-[layout-aware-ocr.md](../architecture/layout-aware-ocr.md). `pdomain-ocr --help` is always
-authoritative.
+Use this guide to choose OCR options, prepare model files, and manage updates.
+See the [install guide](../../README.md#install) to get started.
+Run `pdomain-ocr --help` for the options available in your installed version.
 
 ## Inputs and outputs
 
@@ -41,39 +39,17 @@ pdomain-ocr -r images/ -o output/      # output/ mirrors images/'s tree
 pdomain-ocr --save-json page.png
 ```
 
-Recognized image suffixes come from `pdomain-book-tools`
-`SUPPORTED_IMAGE_SUFFIXES` (currently): `.avif`, `.bmp`, `.gif`, `.heic`,
-`.heif`, `.j2k`, `.jp2`, `.jpeg`, `.jpf`, `.jpg`, `.jpx`, `.pbm`, `.pgm`,
-`.png`, `.pnm`, `.ppm`, `.tif`, `.tiff`, `.webp` — including the JPEG 2000
-family (`.jp2`, `.j2k`, `.jpf`, `.jpx`). Matching is case-insensitive. Other
-files in a directory are skipped with a warning.
+Supported file extensions include `.avif`, `.bmp`, `.gif`, `.heic`, `.heif`,
+`.j2k`, `.jp2`, `.jpeg`, `.jpf`, `.jpg`, `.jpx`, `.pbm`, `.pgm`, `.png`,
+`.pnm`, `.ppm`, `.tif`, `.tiff`, and `.webp`. Extensions are case-insensitive.
+The CLI warns when it skips other files.
 
 ### Image resource limits
 
-Every candidate image is checked before it joins an OCR batch:
-
-- **Compressed size** — files over 100 MiB (104,857,600 bytes) are rejected
-  before decoding (collection still opens each candidate for a 16-byte
-  magic-number sniff; decoding is what's skipped).
-- **Decoded pixel count** — images whose width × height exceeds
-  100,000,000 pixels are rejected before they enter a batch. This guards
-  against decompression-bomb-style inputs whose small compressed size hides
-  a huge decoded footprint.
-
-The file size is checked again after the file is read. One OCR batch holds at
-most 400,000,000 decoded pixels. A larger `--batch-pages` value can therefore
-produce smaller batches than you asked for on very large pages.
-
-A rejected image is reported through the same per-image error channel as
-any other OCR failure: the CLI prints `ERROR processing <path>: ...` naming
-the path and the limit, counts it as an error, and continues with the rest of
-the batch. The size check and the header pixel check also name the observed
-value. When Pillow or OpenCV hits the cap during decoding, the message names
-only the limit.
-
-These limits are fixed and not configurable. There is no processing
-timeout — a pathologically slow (but appropriately sized) image can still
-run for as long as OCR takes.
+Images over 100 MiB or 100 million pixels fail with a message naming the
+file and limit. OCR continues with the other images. Large pages can make
+batches smaller than `--batch-pages` requests. These limits are fixed, and
+there is no per-image timeout. See [how the CLI limits image sizes and batches](../architecture/cli-orchestration.md#execution-invariants).
 
 ## Text normalization
 
@@ -91,54 +67,16 @@ alone — they're meaningful in measurements and citations.
 
 ### Future proposal: output normalization (not implemented)
 
-This proposal is not implemented yet. It is tracked here so users and
-contributors know it's on the roadmap.
-
-**Motivation.** OCR on old-typesetting books (Cló Gaelach, Fraktur,
-early-modern English with long-s) may emit Unicode glyphs that faithfully
-reflect the page. These include `ſ` (long s), `ﬁ`/`ﬂ`/`ﬀ`/`ﬃ`/`ﬄ`
-(f-ligatures), `ſt` (long-s+t ligature), and similar glyphs. Faithful Unicode
-is the right default for archival OCR fidelity. However, downstream consumers,
-most notably PGDP-style proofreading flows, want ASCII-equivalent text (`s`,
-`fi`, `fl`, `st`, …). This lets volunteers see the same characters they'd
-type. The user picks per run.
-
-**Proposed flag.**
-
-```sh
-# Default — preserve OCR glyphs exactly as recognized.
-pdomain-ocr page.png
-
-# Map the standard glyph set (long-s, f-ligatures, st-ligature, …) to
-# their ASCII equivalents before the .txt is written.
-pdomain-ocr --normalize-output ascii page.png
-```
-
-Flag shape: `--normalize-output {none|ascii|...}`, default `none`.
-Mode names are an open extension point for future locale-specific
-profiles (e.g. a `gaelic` profile that also handles dotted consonants).
-
-**Dependency.** No long-s or ligature map exists yet. Curly-quote and em-dash
-cleanup already live in `pdomain-book-contracts`, and this command delegates
-to those helpers. It no longer keeps a private copy. The roadmap recommends
-placing a glyph map beside them,
-not in a new repository and not as a private table in this CLI. Decision
-D-025 in `pdomain-ocr-labeler-spa` (`specs/17-decisions.md`, 2026-05-06)
-named `pdomain_book_tools.text.normalize`. That module was never added. On
-2026-09-18 the labeler removed its probe and does not offer the feature.
-The open contract, including the mode name, is on the
-[roadmap](../roadmap.md).
-
-**Cross-refs.** [Roadmap](../roadmap.md),
-[spec](../specs/2026-07-21-normalize-output-design.md), and
+ASCII output normalization is deferred. See the [roadmap](../roadmap.md),
+[design](../specs/2026-07-21-normalize-output-design.md), and
 [deferred issue](../issues/2026-07-19-normalize-output-flag-deferred.md).
 
 ## Model selection
 
-By default, `pdomain-ocr` downloads fine-tuned weights from
-`pdomain/pdomain-ocr-models` on Hugging Face the first time it runs, pinned
-to the commit behind the tag `v0.7`. Pass `--model-version <tag>` to
-use a different release.
+The installer caches the default models. OCR fetches missing files when
+needed. The default OCR revision is the commit behind `v0.7` in
+`pdomain/pdomain-ocr-models` on Hugging Face. Use `--model-version` to select a
+different revision.
 
 ```sh
 # Pin to a specific model version (HF Hub revision / tag)
@@ -161,21 +99,16 @@ files exist next to them, they're picked up automatically.
 
 ### Model trust boundary
 
-Treat OCR and layout model checkpoints as trusted inputs. This project
-maintains the default model source and pins the default `--model-version` to
-commit `8b7f9b31d55015d16febaa99ae1d42960904028c`, the commit behind the tag
-`v0.7`. A Hugging Face tag can be moved by the repository owner, so a commit
-SHA is the only immutable pin. Branch names such as `main` move, and they print
-a warning.
-Use custom `--hf-repo`, local `--detection` / `--recognition`, and
-`--layout-checkpoint` values only from sources you trust.
+Use custom OCR weights and layout checkpoints only from sources you trust.
+The CLI warns about unpinned model revisions and custom checkpoint sources.
+See [model sources and trust checks](../architecture/cli-orchestration.md#trust-and-network-boundaries).
 
 ## Layout detection
 
-Layout detection runs by default with reorganize and feeds that step. Plain
-`--no-reorg` also skips layout. If you also pass `--extract-illustrations`,
-layout still runs so it can find the crops.
-See [layout-aware-ocr.md](../architecture/layout-aware-ocr.md) for the full picture.
+Layout detection helps place captions, marginal notes, and page numbers in
+reading order. `--no-reorg` skips layout unless you request
+`--extract-illustrations` for crops.
+See [how layout-aware OCR works](../architecture/layout-aware-ocr.md).
 
 ```sh
 # Skip layout detection entirely (faster, lower-quality reorg on
@@ -209,65 +142,36 @@ pdomain-ocr --layout-debug --layout-debug-dir debug/ page.png
 
 ## Reorganize controls
 
-`Page.reorganize_page()` from `pdomain-book-tools` turns the raw OCR block
-tree into reading-order text. These flags let you skip it, snapshot
-it, or audit it.
+Reorganization puts OCR text in reading order. Use `--no-reorg` for raw OCR.
+Use `--validate-reorg` to warn about missing words after reorganization.
 
 ```sh
-# Skip reorganize entirely — emit raw OCR
 pdomain-ocr --no-reorg page.png
-
-# With --save-json: also write the full diagnostic bundle alongside
-# the regular .txt/.json — six files per page in total:
-#   <image>.txt + <image>.json                   (post-reorganize)
-#   <image>.pure-ocr.txt + <image>.pure-ocr.json (literal OCR output)
-#   <image>.post-noise.txt + <image>.post-noise.json
-#                                                (after figure-noise
-#                                                 removal, before reorg)
-# Useful for auditing what reorganize preserved, dropped, or rearranged.
-# The old name --save-pre-reorg-json is still accepted as a back-compat alias.
-pdomain-ocr --save-json --save-reorganize-diagnostics page.png
-
-# Warn (don't fail) if reorganize drops any words
 pdomain-ocr --validate-reorg page.png
-
-# [experimental] Enable drop of figure-internal OCR words during
-# reorganize. Two steps are gated by this flag:
-#   * Step Layout-2b — lines fully inside detected figure regions
-#     with no body-text overlap.
-#   * Step B2 — figure-internal heuristic noise.
-# Default keeps all words. Footnote / header / footer / abandoned
-# regions are NEVER dropped, regardless of this flag.
-pdomain-ocr --experimental-drop-layout-words page.png   # also: --edl
+pdomain-ocr --save-json --save-reorganize-diagnostics page.png
+pdomain-ocr --experimental-drop-layout-words page.png
 ```
 
-Plain `--no-reorg` emits raw OCR and skips layout detection. Combine it
-with `--extract-illustrations` only when you want raw text plus illustration
-crops; in that case layout detection still runs for crop discovery.
+With `--save-json`, diagnostics save three text and JSON pairs for each page.
+The regular pair contains the final text and document. The `.pure-ocr` pair
+shows raw OCR, and the `.post-noise` pair shows the text after noise removal
+and before reorganization. The old `--save-pre-reorg-json` alias still works.
+
+`--experimental-drop-layout-words` (also `--edl`) allows removal of OCR words
+inside figures. The default keeps every word. This flag keeps footnotes, headers,
+footers, and abandoned regions. See the [layout behavior and related flags](../architecture/layout-aware-ocr.md#related-flags).
 
 ### Always-on noise-drop warning
 
-When reorganize removes words it considered figure-internal noise, the CLI
-always emits a warning to stderr. Removal happens via Step Layout-2b or Step B2
-inside `pdomain-book-tools`. The warning includes:
-
-- the page filename and the count of dropped words;
-- a quoted sample of the first few dropped tokens;
-- a hint pointing at `--save-json --save-reorganize-diagnostics` so you
-  can re-run and inspect the full pure-OCR / post-noise / post-reorg
-  bundle.
-
-This warning is intentionally always on so figure-noise drops don't pass
-unnoticed. There is no quiet flag. File an issue if you need one.
+When figure-noise removal drops words, the CLI always prints the page name,
+the count, and a sample of dropped words to stderr. Rerun with
+`--save-json --save-reorganize-diagnostics` to compare the three snapshots.
 
 ## JSON Contract
 
-When `--save-json` is enabled, each sidecar uses the same document
-envelope shape as `pdomain-book-tools`. Downstream tools can rely on the
-top-level keys `source_lib`, `source_identifier`, `source_path`, and
-`pages`. `source_identifier` is the input filename, `source_path` is the
-input path seen by the CLI, and `pages` contains exactly one page for
-each image sidecar.
+Each `--save-json` sidecar contains one page in `pages`. It also includes
+`source_lib`, `source_identifier` (the input filename), and `source_path`
+(the input path the CLI received).
 
 ## Misc
 
@@ -286,115 +190,69 @@ pdomain-ocr --help
 
 ## Installer behavior
 
-The installers cache the default detection, recognition, and layout files.
-Pass `--skip-models` to `install.sh` or `-SkipModels` to `install.ps1` to defer
-those downloads. See the [install commands](../../README.md#skip-model-downloads-during-installation).
-Run `pdomain-ocr download-models` later to fill the cache without running OCR.
+See the [install guide](../../README.md#install) for each platform. The
+installer caches the default detection, recognition, and layout models.
+Use the [skip flag](../../README.md#skip-model-downloads-during-installation)
+to defer downloads. Run `pdomain-ocr download-models` to fill the cache later.
 
-`pdomain-ocr update --check` checks the latest stable GitHub release without installing it.
-`pdomain-ocr update` asks before updating an existing `uv tool` installation.
-`pdomain-ocr update --yes` skips the prompt. On Windows, exit code 0 means the CLI
-handed off the update. Wait for installer output before checking `pdomain-ocr --version`.
-If the current directory contains an input named `update`, use another directory for
-the interactive update command. Use `./update` to explicitly select that OCR input.
+| Command | What it does |
+| --- | --- |
+| `pdomain-ocr update --check` | Show the latest stable release. |
+| `pdomain-ocr update` | Ask before updating a `uv tool` installation. |
+| `pdomain-ocr update --yes` | Update without asking. |
 
-The `install.sh` and `install.ps1` bootstrap scripts install the wheel
-asset from the latest GitHub Release, not a git ref. Before installing, each
-script checks the wheel against the `sha256` digest GitHub reports for that
-asset. A missing, malformed, or mismatched digest stops the install. Both
-scripts pass `https://pdomain.github.io/pdomain-index-pip/simple/` to `uv` as a
-named `--index` with `--index-strategy first-index`, so `pdomain-book-tools`
-resolves only from the pdomain package index. They
-default the uv tool environment to Python 3.13; set
-`PD_OCR_INSTALL_PYTHON` before running either script to use another
-supported Python version.
+On Windows, exit code 0 means the CLI handed off the update. Wait for the
+installer output, then run `pdomain-ocr --version` to confirm the version.
+If an input named `update` is in the current directory, run the updater from
+another directory. Use `./update` to select the OCR input explicitly.
+
+See [how installation and updates work](../architecture/installation-and-updates.md).
 
 ### Environment variables
 
 | Variable | Effect |
 | --- | --- |
-| `PD_OCR_NO_UPDATE_CHECK=1` | Skip the background GitHub-tag upgrade-notice request (same as `--no-update-check`). |
+| `PD_OCR_NO_UPDATE_CHECK=1` | Turn off automatic update checks. |
 | `PD_OCR_AUTO_UPDATE_CHECK=1` or `0` | Override the saved background-check preference for this run. |
 | `PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` or `0` | Save the background-check preference during installation. |
-| `PD_OCR_NO_GPU_NUDGE=1` | Silence the one-line message printed on startup when `nvidia-smi` is on `PATH` but PyTorch cannot see CUDA. See the FAQ in [README.md](../../README.md#faq) for details. |
-| `PD_OCR_INSTALL_PYTHON` | Installer-only override for the Python version passed to `uv tool install --python`; defaults to `3.13`. |
-| `PD_OCR_DEBUG=1` | On per-image processing errors, also print the full traceback to stderr. If the background update check fails, print `update check failed: {type}: {message}` or `update check failed: {reason}`. |
-| `PD_OCR_REORGANIZE_STRICT=1` | Read by `pdomain-book-tools`'s `reorganize_page()`. When set, words dropped during reorganize raise `ReorganizeDroppedWordsError` instead of being re-added with a warning. Useful in CI to fail loudly on pipeline regressions. |
-| `HF_HOME`, `HF_HUB_CACHE` | Override the Hugging Face model cache location (default `~/.cache/huggingface/hub`). Honored by the upstream `huggingface_hub` library — pdomain-ocr-cli does not read these directly. |
+| `PD_OCR_NO_GPU_NUDGE=1` | Hide the [CUDA startup notice](../../README.md#faq). |
+| `PD_OCR_INSTALL_PYTHON` | Choose the installer Python version. The default is `3.13`. |
+| `PD_OCR_DEBUG=1` | Show a traceback for image errors and a message for failed automatic update checks. |
+| `PD_OCR_REORGANIZE_STRICT=1` | Raise an error if reorganization drops words. By default, unexpected drops are restored with a warning. |
+| `HF_HOME`, `HF_HUB_CACHE` | Change the model cache location. The default is `~/.cache/huggingface/hub`. |
 
-The CLI sets `PD_OCR_LAYOUT_DEBUG` and `PD_OCR_LAYOUT_DEBUG_FILE`
-automatically as an internal IPC channel to the layout backend. Control them
-through `--layout-debug` / `--layout-debug-dir`; do not override them manually.
+Use `--layout-debug` and `--layout-debug-dir` to control layout reports.
 
 ### Conflicting flags / no-op combinations
 
-When you pass a flag combination that can't take effect, `pdomain-ocr` emits a
-`warning:` to stderr and proceeds. It ignores the redundant flag rather than
-treating it as fatal. The current set:
+The CLI warns and continues when an option has no effect.
 
-- `--no-reorg` + `--save-reorganize-diagnostics` — diagnostics are produced
-  only when reorganize runs.
-- `--no-reorg` + `--validate-reorg` — validation compares pre/post
-  reorganize word lists.
-- `--layout-model none` + `--layout-debug` — no layout model runs, so no
-  debug artifact is written.
-- `--no-reorg` + `--layout-debug` — the debug report is written from
-  inside `reorganize_page`, which is skipped.
-- `--layout-debug-dir` without `--layout-debug` — the directory is only
-  used when the debug artifact is enabled.
-- `--save-reorganize-diagnostics` without `--save-json` — the diagnostic
-  bundle is written alongside the regular `.json` output, which requires
-  `--save-json`.
-- `--no-reorg` + `--experimental-drop-layout-words` — the drop is applied
-  inside `reorganize_page`, which is skipped.
-- `--no-reorg` + `--no-illustration-placeholders` — placeholder emission
-  happens inside `reorganize_page`, which is skipped.
+| Option | When it has no effect |
+| --- | --- |
+| `--save-reorganize-diagnostics` | With `--no-reorg` or without `--save-json`. |
+| `--validate-reorg`, `--experimental-drop-layout-words`, `--no-illustration-placeholders` | With `--no-reorg`. |
+| `--layout-debug` | With `--layout-model none` or `--no-reorg`. |
+| `--layout-debug-dir` | Without `--layout-debug`. |
 
 ## Automatic update checks
 
-Automatic checks start off. To opt in during installation, run either command
-for your platform.
+Automatic checks are off by default. The [install guide](../../README.md#install-with-automatic-update-checks)
+shows both ways to turn them on during installation. The installer flag takes
+precedence over the environment variable. With the flag omitted, set
+`PD_OCR_INSTALL_AUTO_UPDATE_CHECK=0` to turn checks off. Leave both unset to
+keep your saved preference.
 
-Linux or macOS:
+Change your preference later with `pdomain-ocr update --auto-check on` or
+`pdomain-ocr update --auto-check off`. You can also set `auto_check = true`
+or `auto_check = false` in `update.toml`.
 
-```sh
-# Installer flag
-curl -fsSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh |
-  sh -s -- --auto-update-check
-
-# Environment variable
-curl -fsSL https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.sh |
-  PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1 sh
-```
-
-Windows PowerShell:
-
-```powershell
-$installer = 'https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1'
-
-# Installer flag
-& ([scriptblock]::Create((Invoke-RestMethod $installer))) -AutoUpdateCheck
-
-# Environment variable
-$env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK = '1'
-Invoke-RestMethod $installer | Invoke-Expression
-```
-
-The flag takes precedence over the environment variable. With the flag omitted,
-set `PD_OCR_INSTALL_AUTO_UPDATE_CHECK=0` to save an explicit opt-out.
-Leaving the variable unset preserves your saved preference.
-
-Use `pdomain-ocr update --auto-check on` or `pdomain-ocr update --auto-check off`
-to change the saved setting later. You can also edit `update.toml` and set
-`auto_check = true` or `auto_check = false`.
-
-- On Linux and macOS, the file is in `$XDG_CONFIG_HOME/pdomain-ocr/` or
+- Linux and macOS use `$XDG_CONFIG_HOME/pdomain-ocr/` or
   `~/.config/pdomain-ocr/` when `XDG_CONFIG_HOME` is unset.
-- On Windows, it is in `%APPDATA%\pdomain-ocr\`.
+- Windows uses `%APPDATA%\pdomain-ocr\`.
 
-`PD_OCR_AUTO_UPDATE_CHECK=1` or `0` takes precedence over the file.
-`--no-update-check` and `PD_OCR_NO_UPDATE_CHECK=1` always suppress automatic
-checks. Explicit `pdomain-ocr update --check` still checks on demand.
+`PD_OCR_AUTO_UPDATE_CHECK=1` or `0` takes precedence over the saved setting.
+`--no-update-check` and `PD_OCR_NO_UPDATE_CHECK=1` always turn off automatic
+checks. Run `pdomain-ocr update --check` to check on demand.
 
 ## Full flag table
 
@@ -413,10 +271,10 @@ checks. Explicit `pdomain-ocr update --check` still checks on demand.
 | `--no-reorg` | | off | Skip `reorganize_page()` and, unless `--extract-illustrations` is set, layout detection; emit raw OCR. |
 | `--save-reorganize-diagnostics` | | off | With `--save-json`: also write the pure-OCR + post-noise diagnostic snapshots as JSON+TXT siblings. Old alias: `--save-pre-reorg-json`. |
 | `--validate-reorg` | | off | Warn if reorganize drops any OCR words. |
-| `--experimental-drop-layout-words` | `--edl` | off | [experimental] Enable drop of figure-internal OCR words during reorganize: Step Layout-2b (lines fully inside figure regions with no body-text overlap) and Step B2 (figure-internal heuristic noise). Footnote / header / footer / abandoned regions are NEVER dropped, regardless of this flag. |
+| `--experimental-drop-layout-words` | `--edl` | off | Allow reorganization to remove OCR words inside figures. |
 | `--straight-quotes` | `-sq` | off | Curly → straight ASCII quotes. |
 | `--em-dash-to-double-hyphen` | `-ed` | off | Em dash → `--`. |
-| `--no-update-check` | | off | Skip the background GitHub-tag upgrade-notice request. Also via `PD_OCR_NO_UPDATE_CHECK=1`. |
+| `--no-update-check` | | off | Turn off automatic update checks for this run. |
 | `--layout-model {none,contour,pp-doclayout-plus-l}` | | `pp-doclayout-plus-l` | Layout backend. |
 | `--layout-checkpoint PATH_OR_REPO` | | — | Fine-tuned PP-DocLayout checkpoint. |
 | `--layout-confidence THRESHOLD` | | `0.5` | Region-confidence threshold (0..1). |

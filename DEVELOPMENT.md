@@ -154,11 +154,12 @@ pdomain_ocr_cli/
 ├── _runtime.py           # predictor/session setup and batch runtime errors
 ├── _artifacts.py         # atomic page artifact writes and transactions
 ├── _model_security.py    # model trust-boundary warnings
-├── _startup_notices.py   # update-check and GPU-nudge startup behavior
-├── _hf_models.py         # argparse adapters around pdomain_book_tools.hf model resolution
+├── _startup_notices.py   # update-check preferences and GPU notices
+├── _hf_models.py         # model resolution and prefetch via pdomain-book-tools
 ├── _image_limits.py      # size and pixel-count admission checks for input images
 ├── _pipeline.py          # pure pipeline helpers, including quote and dash cleanup
-└── _update_check.py      # background GitHub-tag upgrade-notice check
+├── _self_update.py       # explicit release checks and updater handoff
+└── _update_check.py      # background GitHub-tag update notices
 ```
 
 Files prefixed with `_` are package-internal. The single public entry
@@ -178,9 +179,10 @@ so the script is the whole path.
 `pdomain-ops` and `pdomain-book-tools` resolve from the self-hosted pdomain pip index
 for release builds. Do not commit path-based sibling sources for release.
 
-`install.sh` / `install.ps1` resolve the latest non-prerelease GitHub Release
-and download that wheel, so end users get the new release on their next
-`curl | sh`.
+`install.sh` and `install.ps1` install the latest stable GitHub release. The
+`feat/ocr-cli-update` branch adds `pdomain-ocr update` for supported installs.
+The [installation and update architecture](docs/architecture/installation-and-updates.md)
+describes the release wheel, installer checks, and update handoff.
 
 Publishing to the pip index is a separate, manual step, with no scheduled
 fallback:

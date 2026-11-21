@@ -10,6 +10,10 @@ Kind: process
 
 This repo organizes documentation by its purpose and when contributors use it.
 
+- Install and update from the [README](../README.md#install).
+- Find OCR options in the [CLI usage guide](usage/cli-usage.md).
+- Read how the installers work in [Installation and updates](architecture/installation-and-updates.md).
+
 | Folder | Purpose | Use when |
 | --- | --- | --- |
 | `architecture/` | Durable reference — how the system works today. | Capturing current shape (modules, data flow, contracts, current-state diagrams). |
