@@ -4,10 +4,8 @@ import hashlib
 import os
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import pytest
+import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -69,10 +67,23 @@ def _run_install_ps1_full(
     bin_dir.mkdir()
     uv_log = tmp_path / "uv.log"
     perm_log = tmp_path / "perm.log"
+    tool_bin = tmp_path / "tool bin"
+    tool_bin.mkdir()
+    auto_check_log = tmp_path / "auto-check.log"
+    _write_fake_exe(
+        tool_bin / "pdomain-ocr",
+        f"""#!/bin/sh
+printf '%s\\n' "$@" > "{auto_check_log}"
+""",
+    )
 
     _write_fake_exe(
         bin_dir / "uv",
         f"""#!/bin/sh
+if [ "$*" = "tool dir --bin" ]; then
+  printf '%s\\n' "{tool_bin}"
+  exit 0
+fi
 n=$(cat {tmp_path / "uv.count"} 2>/dev/null || echo 0)
 n=$((n + 1))
 echo "$n" > {tmp_path / "uv.count"}
@@ -193,6 +204,35 @@ def test_install_ps1_accepts_approved_release(
 
     assert result.returncode == 0, result.stderr + result.stdout
     assert uv_log.exists()
+
+
+@pytest.mark.parametrize(("setting", "expected"), [("1", "on"), ("0", "off"), (None, None)])
+def test_install_ps1_sets_auto_check_only_when_requested(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, setting: str | None, expected: str | None
+) -> None:
+    if setting is None:
+        monkeypatch.delenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", raising=False)
+    else:
+        monkeypatch.setenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", setting)
+    result, _ = _run_install_ps1(tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"')
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    log = tmp_path / "auto-check.log"
+    if expected is None:
+        assert not log.exists()
+    else:
+        assert log.read_text(encoding="utf-8").splitlines() == ["update", "--auto-check", expected]
+
+
+def test_install_ps1_rejects_invalid_auto_check_setting(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", "yes")
+    result, uv_log = _run_install_ps1(tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"')
+
+    assert result.returncode != 0
+    assert "PD_OCR_INSTALL_AUTO_UPDATE_CHECK must be 0 or 1" in result.stderr
+    assert not uv_log.exists()
 
 
 def test_install_ps1_piped_mode_is_self_contained_and_uses_release_wheel(

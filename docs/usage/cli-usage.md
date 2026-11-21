@@ -309,6 +309,8 @@ supported Python version.
 | Variable | Effect |
 | --- | --- |
 | `PD_OCR_NO_UPDATE_CHECK=1` | Skip the background GitHub-tag upgrade-notice request (same as `--no-update-check`). |
+| `PD_OCR_AUTO_UPDATE_CHECK=1` or `0` | Override the saved background-check preference for this run. |
+| `PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` or `0` | Save the background-check preference during installation. |
 | `PD_OCR_NO_GPU_NUDGE=1` | Silence the one-line message printed on startup when `nvidia-smi` is on `PATH` but PyTorch cannot see CUDA. See the FAQ in [README.md](../../README.md#faq) for details. |
 | `PD_OCR_INSTALL_PYTHON` | Installer-only override for the Python version passed to `uv tool install --python`; defaults to `3.13`. |
 | `PD_OCR_DEBUG=1` | On per-image processing errors, also print the full traceback to stderr. If the background update check fails, print `update check failed: {type}: {message}` or `update check failed: {reason}`. |
@@ -342,6 +344,26 @@ treating it as fatal. The current set:
   inside `reorganize_page`, which is skipped.
 - `--no-reorg` + `--no-illustration-placeholders` — placeholder emission
   happens inside `reorganize_page`, which is skipped.
+
+## Automatic update checks
+
+Automatic checks start off. Set `PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` before running
+the installer to opt in. Use `export PD_OCR_INSTALL_AUTO_UPDATE_CHECK=1` in a
+POSIX shell or `$env:PD_OCR_INSTALL_AUTO_UPDATE_CHECK = '1'` in PowerShell.
+Set it to `0` to save an explicit opt-out. Leaving it unset preserves your
+saved preference.
+
+Use `pdomain-ocr update --auto-check on` or `pdomain-ocr update --auto-check off`
+to change the saved setting later. You can also edit `update.toml` and set
+`auto_check = true` or `auto_check = false`.
+
+- On Linux and macOS, the file is in `$XDG_CONFIG_HOME/pdomain-ocr/` or
+  `~/.config/pdomain-ocr/` when `XDG_CONFIG_HOME` is unset.
+- On Windows, it is in `%APPDATA%\pdomain-ocr\`.
+
+`PD_OCR_AUTO_UPDATE_CHECK=1` or `0` takes precedence over the file.
+`--no-update-check` and `PD_OCR_NO_UPDATE_CHECK=1` always suppress automatic
+checks. Explicit `pdomain-ocr update --check` still checks on demand.
 
 ## Full flag table
 
