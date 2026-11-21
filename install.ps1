@@ -576,6 +576,11 @@ $ReleaseUrl = "https://api.github.com/repos/$Repo/releases/latest"
 Write-Host "Resolving latest release via GitHub API..."
 $Release = Invoke-RestMethod -Uri $ReleaseUrl
 $ReleaseTag = $Release.tag_name
+$ExpectedReleaseTag = $env:PDOMAIN_OCR_EXPECTED_RELEASE_TAG
+if ($ExpectedReleaseTag -and $ReleaseTag -cne $ExpectedReleaseTag) {
+    $FoundReleaseTag = if ($ReleaseTag) { $ReleaseTag } else { "<unknown>" }
+    throw "Expected release $ExpectedReleaseTag but found $FoundReleaseTag. Check for updates again."
+}
 $WheelAsset = $Release.assets |
     Where-Object { $_.name -like "*.whl" -or $_.browser_download_url -like "*.whl" } |
     Select-Object -First 1

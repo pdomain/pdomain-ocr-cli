@@ -27,8 +27,8 @@ class _TagRecord(TypedDict):
     name: str
 
 
-class _UrlopenResponse(Protocol):
-    def __enter__(self) -> "_UrlopenResponse": ...
+class UrlopenResponse(Protocol):
+    def __enter__(self) -> "UrlopenResponse": ...
 
     def __exit__(
         self,
@@ -61,7 +61,7 @@ def _report_diagnostic(reason: str) -> None:
         print(f"update check failed: {reason}", file=sys.stderr)  # noqa: T201  # CLI output
 
 
-def _parse_stable_tag(version: str) -> tuple[int, int, int] | None:
+def parse_stable_tag(version: str) -> tuple[int, int, int] | None:
     """Parse strict stable tags like v1.2.3 or 1.2.3."""
     match = _STABLE_TAG_RE.match(version.strip())
     if not match:
@@ -84,7 +84,7 @@ def _latest_stable_tag(tags: list[_TagRecord]) -> tuple[str, tuple[int, int, int
     best: tuple[str, tuple[int, int, int]] | None = None
     for tag in tags:
         name = tag["name"]
-        parsed = _parse_stable_tag(name)
+        parsed = parse_stable_tag(name)
         if parsed is None:
             continue
         if best is None or parsed > best[1]:
@@ -136,7 +136,7 @@ def check_for_update() -> None:
                 "User-Agent": f"pdomain-ocr-cli/{VERSION}",
             },
         )
-        response = cast("_UrlopenResponse", urllib.request.urlopen(req, timeout=3))  # noqa: S310  # https:// URL only; no file:// risk
+        response = cast("UrlopenResponse", urllib.request.urlopen(req, timeout=3))  # noqa: S310  # https:// URL only; no file:// risk
         with response as resp:
             payload = cast("object", json.loads(resp.read()))
         # GitHub error responses (rate-limit, auth required, repo unavailable)
@@ -169,7 +169,7 @@ def check_for_update() -> None:
         # naive ``latest > current`` comparison treats them as equal,
         # silently denying pre-release users the upgrade notice for the
         # very stable they were tracking toward.
-        is_pre_release = _parse_stable_tag(VERSION) is None
+        is_pre_release = parse_stable_tag(VERSION) is None
         if latest > current or (is_pre_release and latest == current):
             notice = (
                 f"\nNOTICE: A newer version of pdomain-ocr is available "

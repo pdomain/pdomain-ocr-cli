@@ -6,6 +6,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[1]
 
 # The fake `curl` below writes exactly these bytes to the wheel file it is
@@ -187,6 +189,34 @@ def test_install_sh_switches_apple_silicon_out_of_rosetta() -> None:
     script = (REPO / "install.sh").read_text(encoding="utf-8")
     assert "sysctl.proc_translated" in script
     assert "/usr/bin/arch -arm64 /bin/sh" in script
+
+
+@pytest.mark.parametrize("via_gh", [False, True])
+def test_install_sh_rejects_unapproved_release_before_download(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, via_gh: bool
+) -> None:
+    monkeypatch.setenv("PDOMAIN_OCR_EXPECTED_RELEASE_TAG", "v9.9.8")
+    digest = f'"digest":"{FAKE_WHEEL_DIGEST}",'
+    result, uv_log = _run_install_sh(
+        tmp_path,
+        _release_json(digest),
+        gh_release_json=_gh_release_json("", digest) if via_gh else None,
+    )
+
+    assert result.returncode != 0
+    assert "Expected release v9.9.8 but found v9.9.9" in result.stderr
+    assert "Downloading wheel" not in result.stdout
+    assert not uv_log.exists()
+
+
+def test_install_sh_accepts_approved_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("PDOMAIN_OCR_EXPECTED_RELEASE_TAG", "v9.9.9")
+    result, uv_log = _run_install_sh(tmp_path, _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'))
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert uv_log.exists()
 
 
 def test_install_sh_uses_release_wheel_and_pdomain_index(tmp_path: Path) -> None:

@@ -188,6 +188,13 @@ if [ -z "$WHEEL_URL" ] || [ -z "$WHEEL_DIGEST" ]; then
     WHEEL_URL=$(printf '%s\n' "$SELECTED" | sed -n '2p')
 fi
 
+EXPECTED_RELEASE_TAG=${PDOMAIN_OCR_EXPECTED_RELEASE_TAG:-}
+if [ -n "$EXPECTED_RELEASE_TAG" ] && [ "$RELEASE_TAG" != "$EXPECTED_RELEASE_TAG" ]; then
+    printf 'Expected release %s but found %s. Check for updates again.\n' \
+        "$EXPECTED_RELEASE_TAG" "${RELEASE_TAG:-<unknown>}" >&2
+    exit 1
+fi
+
 if [ -z "$WHEEL_URL" ]; then
     echo "❌ Latest release ${RELEASE_TAG:-?} has no wheel asset attached." >&2
     echo "   Cannot install. Please check https://github.com/${REPO}/releases" >&2

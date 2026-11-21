@@ -620,7 +620,8 @@ DEFAULT_MODEL_REVISION = "8b7f9b31d55015d16febaa99ae1d42960904028c"
 def parse_args() -> argparse.Namespace:
     """Parse and return the CLI arguments for ``pdomain-ocr``."""
     p = argparse.ArgumentParser(
-        description="OCR images to .txt using fine-tuned detection + recognition models."
+        description="OCR images to .txt using fine-tuned detection + recognition models.",
+        epilog="To check for a CLI release, run pdomain-ocr update --check.",
     )
     _ = p.add_argument("--version", action="version", version=f"%(prog)s {_VERSION}")
 
@@ -881,6 +882,12 @@ def _format_error_detail(exc: BaseException) -> str:
 
 def main() -> None:
     """Entry point for the ``pdomain-ocr`` CLI command."""
+    if sys.argv[1:2] == ["update"] and (
+        not Path("update").exists() or sys.argv[2:3] in (["--check"], ["--yes"], ["--help"], ["-h"])
+    ):
+        from pdomain_ocr_cli._self_update import run_update
+
+        raise SystemExit(run_update(sys.argv[2:]))
     raw_args = parse_args()
     args = _coerce_cli_args(raw_args)
 
