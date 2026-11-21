@@ -82,6 +82,7 @@ __all__ = [
     "OCR_MODEL_SIDECARS",
     "det_source_descriptor",
     "hf_download",
+    "prefetch_default_models",
     "prefetch_layout_files",
     "reco_source_descriptor",
     "resolve_layout_source",
@@ -151,3 +152,16 @@ def reco_source_descriptor(args: _HfArgs, reco_path: Path) -> str:
 def resolve_layout_source(args: _HfArgs) -> tuple[str | None, str | None, str]:
     """Return ``(repo, revision, descriptor)`` from argparse-shaped args."""
     return _resolve_layout_source_kwargs(args.layout_model, args.layout_checkpoint)
+
+
+def prefetch_default_models(*, revision: str, layout_model: str) -> None:
+    """Cache the default OCR and layout files without loading the models."""
+    _ = _resolve_ocr_models_kwargs(
+        repo=DEFAULT_HF_REPO,
+        revision=revision,
+        det_filename=DEFAULT_DET_FILENAME,
+        reco_filename=DEFAULT_RECO_FILENAME,
+    )
+    layout_repo, layout_revision, _descriptor = _resolve_layout_source_kwargs(layout_model)
+    if layout_repo is not None:
+        _ = prefetch_layout_files(layout_repo, layout_revision)

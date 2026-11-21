@@ -286,6 +286,11 @@ pdomain-ocr --help
 
 ## Installer behavior
 
+The installers cache the default detection, recognition, and layout files.
+Pass `--skip-models` to `install.sh` or `-SkipModels` to `install.ps1` to defer
+those downloads. See the [install commands](../../README.md#skip-model-downloads-during-installation).
+Run `pdomain-ocr download-models` later to fill the cache without running OCR.
+
 `pdomain-ocr update --check` checks the latest stable GitHub release without installing it.
 `pdomain-ocr update` asks before updating an existing `uv tool` installation.
 `pdomain-ocr update --yes` skips the prompt. On Windows, exit code 0 means the CLI

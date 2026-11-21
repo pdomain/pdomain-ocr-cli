@@ -11,7 +11,7 @@
 #   $env:PD_OCR_INSTALL_PYTHON = "3.12"
 #   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 
-param([switch]$AutoUpdateCheck)
+param([switch]$AutoUpdateCheck, [switch]$SkipModels)
 
 $ErrorActionPreference = "Stop"
 
@@ -501,6 +501,35 @@ function Complete-WindowsInstall {
     return Confirm-VcRuntime -EnvironmentPath (Join-Path $ToolDir "pdomain-ocr-cli") -WorkDir $WorkDir
 }
 
+function Get-InstalledLauncher {
+    $ToolBin = (& uv tool dir --bin | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $ToolBin) {
+        throw "pdomain-ocr was installed, but uv could not locate its launcher."
+    }
+    $LauncherName = if (Test-IsWindowsHost) { "pdomain-ocr.exe" } else { "pdomain-ocr" }
+    return Join-Path $ToolBin $LauncherName
+}
+
+function Invoke-ModelPrefetch {
+    param([string]$Launcher)
+    try {
+        if (-not $Launcher) {
+            $Launcher = Get-InstalledLauncher
+        }
+        $HelpText = & $Launcher --help | Out-String
+        if ($LASTEXITCODE -ne 0 -or -not $HelpText.Contains("download-models")) {
+            Write-Warning "Model prefetch is unavailable. Models will download on the first OCR run."
+            return
+        }
+        & $Launcher download-models
+        if ($LASTEXITCODE -ne 0) {
+            throw "The model download command failed with exit code $LASTEXITCODE."
+        }
+    } catch {
+        Write-Warning "Model prefetch failed. Models will download on the first OCR run, or retry with: pdomain-ocr download-models"
+    }
+}
+
 function Write-InstallSummary {
     param([bool]$RestartRequired)
     Write-Host ""
@@ -680,16 +709,16 @@ try {
     Remove-Item -Recurse -Force $TempDir -ErrorAction SilentlyContinue
 }
 
-if ($AutoUpdatePreference) {
-    if ($RestartRequired) {
+$Launcher = $null
+if ($RestartRequired) {
+    if (-not $SkipModels) {
+        Write-Warning "After restarting Windows, run: pdomain-ocr download-models. Models can also download on the first OCR run."
+    }
+    if ($AutoUpdatePreference) {
         throw "pdomain-ocr was installed. After restarting Windows, run: pdomain-ocr update --auto-check $AutoUpdatePreference"
     }
-    $ToolBin = (& uv tool dir --bin | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or -not $ToolBin) {
-        throw "pdomain-ocr was installed, but uv could not locate its launcher."
-    }
-    $LauncherName = if (Test-IsWindowsHost) { "pdomain-ocr.exe" } else { "pdomain-ocr" }
-    $Launcher = Join-Path $ToolBin $LauncherName
+} elseif ($AutoUpdatePreference) {
+    $Launcher = Get-InstalledLauncher
     try {
         & $Launcher update --auto-check $AutoUpdatePreference
         if ($LASTEXITCODE -ne 0) {
@@ -698,6 +727,10 @@ if ($AutoUpdatePreference) {
     } catch {
         throw "pdomain-ocr was installed, but the update preference could not be saved. Run: pdomain-ocr update --auto-check $AutoUpdatePreference"
     }
+}
+
+if (-not $RestartRequired -and -not $SkipModels) {
+    Invoke-ModelPrefetch -Launcher $Launcher
 }
 
 Write-InstallSummary -RestartRequired $RestartRequired

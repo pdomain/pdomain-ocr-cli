@@ -85,9 +85,19 @@ def _write_fake_bin(
     tool_bin.mkdir()
     launcher = tool_bin / "pdomain-ocr"
     auto_check_log = uv_log.parent / "auto-check.log"
+    models_log = uv_log.parent / "models.log"
     _ = launcher.write_text(
         f"""#!/bin/sh
-printf '%s\\n' "$@" > "{auto_check_log}"
+case "$1" in
+    --help)
+        if [ "${{FAKE_OLD_RELEASE:-}}" != 1 ]; then printf '%s\\n' download-models; fi
+        ;;
+    download-models)
+        printf '%s\\n' "$@" > "{models_log}"
+        exit "${{FAKE_MODEL_EXIT:-0}}"
+        ;;
+    *) printf '%s\\n' "$@" > "{auto_check_log}" ;;
+esac
 """,
         encoding="utf-8",
     )
@@ -270,6 +280,35 @@ def test_install_sh_flag_overrides_auto_check_env(
         "--auto-check",
         "on",
     ]
+
+
+@pytest.mark.parametrize(
+    ("installer_args", "downloaded", "opted_in"),
+    [((), True, False), (("--auto-update-check", "--skip-models"), False, True)],
+)
+def test_install_sh_prefetches_models_unless_skipped(
+    tmp_path: Path, installer_args: tuple[str, ...], downloaded: bool, opted_in: bool
+) -> None:
+    result, _ = _run_install_sh(
+        tmp_path,
+        _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'),
+        installer_args=installer_args,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert (tmp_path / "models.log").exists() is downloaded
+    assert (tmp_path / "auto-check.log").exists() is opted_in
+
+
+@pytest.mark.parametrize("old_release", [False, True])
+def test_install_sh_keeps_install_if_models_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, old_release: bool
+) -> None:
+    monkeypatch.setenv("FAKE_OLD_RELEASE", "1" if old_release else "0")
+    monkeypatch.setenv("FAKE_MODEL_EXIT", "1")
+    result, _ = _run_install_sh(tmp_path, _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'))
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert (tmp_path / "models.log").exists() is not old_release
+    assert "first OCR run" in result.stderr
 
 
 def test_install_sh_rejects_invalid_auto_check_setting(
