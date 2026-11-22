@@ -158,10 +158,11 @@ Run `pdomain-ocr update` to review the new version and confirm installation. Use
 
 The updater supports `uv tool` installations. It verifies the new CLI and
 tries to restore the previous version if verification fails. On Windows,
-exit code 0 acknowledges the handoff. Wait for the worker to report the
-result. If the update stops before reporting a result, run the recovery
-command printed before activation. For editable or package-managed
-installations, use the tool you originally installed with.
+exit code 0 acknowledges the handoff. Wait for the worker to report an
+update, a rollback, or the need for recovery. If the update stops before
+reporting a result, run the recovery command printed before activation.
+For editable or package-managed installations, use the tool you originally
+installed with.
 
 If your installed version lacks the update command, rerun the [installer](#install).
 
