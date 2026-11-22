@@ -1,10 +1,11 @@
 base = "master"
-mode = "observe"
+mode = "enforce"
 
 [deny]
 hook_paths = [
   ".claude/settings.json",
   ".codex/hooks.json",
+  ".grok/hooks/",
   "agent_verify/",
   "agent-verify.toml",
 ]

@@ -58,6 +58,11 @@ class CheckTests(unittest.TestCase):
         """Remove the scratch directory."""
         shutil.rmtree(self.scratch, ignore_errors=True)
 
+    def test_unhandled_event_does_not_need_an_installed_profile(self) -> None:
+        """An event outside the tool and finish gates exits silently."""
+        code, out, err = self._run({"hook_event_name": "SessionStart", "cwd": str(self.repo)}, {})
+        assert (code, out, err) == (0, "", "")
+
     def test_claude_denies_uv_when_the_venv_is_outside_the_repo(self) -> None:
         """A Claude Bash event with the engine venv exits 2 and names the variable."""
         self._commit_profile()
