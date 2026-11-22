@@ -10,12 +10,15 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let status = NSTextField(wrappingLabelWithString: "Checking this Mac…")
     private let models = NSButton(checkboxWithTitle: "Download OCR models during setup", target: nil, action: nil)
     private let updates = NSButton(checkboxWithTitle: "Automatically check for updates", target: nil, action: nil)
+    private let mode = NSButton(title: "Uninstall…", target: nil, action: nil)
     private let progress = NSProgressIndicator()
     private let log = NSTextView()
     private let install = NSButton(title: "Install", target: nil, action: nil)
     private let reveal = NSButton(title: "Show in Finder", target: nil, action: nil)
     private let close = NSButton(title: "Cancel", target: nil, action: nil)
     private var running = false
+    private var removing = ProcessInfo.processInfo.arguments.contains("--remove")
+    private var removalComplete = false
     private var cached = false
     private var installedLauncher: URL?
 
@@ -24,16 +27,14 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        window.title = "Install OCR CLI"
         window.minSize = NSSize(width: 520, height: 390)
         window.delegate = self
         let title = NSTextField(labelWithString: "OCR CLI Setup")
         title.font = .systemFont(ofSize: 22, weight: .semibold)
-        models.state = .on
-        for button in [models, updates] { button.isEnabled = false }
+        mode.target = self
+        mode.action = #selector(switchMode)
         install.target = self
         install.action = #selector(begin)
-        install.keyEquivalent = "\r"
         install.isEnabled = false
         reveal.target = self
         reveal.action = #selector(showLauncher)
@@ -62,7 +63,7 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let buttons = NSStackView(views: [close, reveal, install])
         buttons.orientation = .horizontal
         buttons.spacing = 10
-        let stack = NSStackView(views: [title, status, models, updates, progress, scroll, buttons])
+        let stack = NSStackView(views: [title, mode, status, models, updates, progress, scroll, buttons])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
@@ -83,18 +84,56 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        run(["probe"]) { [weak self] result in
+        checkMode()
+    }
+
+    @objc private func switchMode() {
+        removing.toggle()
+        checkMode()
+    }
+
+    private func checkMode() {
+        window.title = removing ? "Uninstall OCR CLI" : "Install OCR CLI"
+        mode.title = removing ? "Back to Install" : "Uninstall…"
+        install.title = removing ? "Uninstall OCR CLI" : "Install"
+        install.keyEquivalent = removing ? "" : "\r"
+        close.title = "Cancel"
+        close.isHidden = false
+        models.isHidden = removing
+        models.title = "Download OCR models during setup"
+        models.state = .on
+        updates.title = removing ? "Also clear OCR CLI update settings" : "Automatically check for updates"
+        updates.state = .off
+        reveal.isHidden = true
+        installedLauncher = nil
+        cached = false
+        removalComplete = false
+        log.string = ""
+        status.stringValue = removing ? "Checking what can be removed…" : "Checking this Mac…"
+        for button in [mode, models, updates, install] { button.isEnabled = false }
+        run([removing ? "remove-preview" : "probe"]) { [weak self] result in
             guard let self else { return }
-            self.status.stringValue = result == 0
-                ? "Review the checks below, then choose what to include."
-                : "Setup could not check this Mac. You can still try installing."
-            self.models.isEnabled = !self.cached
-            self.updates.isEnabled = true
-            self.install.isEnabled = true
+            self.mode.isEnabled = true
+            if self.removing {
+                self.status.stringValue = result == 0
+                    ? "Review the paths below before uninstalling."
+                    : "Setup could not verify the CLI storage. See the details below."
+            } else {
+                self.status.stringValue = result == 0
+                    ? "Review the checks below, then choose what to include."
+                    : "Setup could not check this Mac. You can still try installing."
+            }
+            self.models.isEnabled = !self.removing && !self.cached
+            self.updates.isEnabled = !self.removing || result == 0
+            self.install.isEnabled = self.updates.isEnabled
         }
     }
 
     @objc private func begin() {
+        if removalComplete {
+            quit()
+            return
+        }
         if let installedLauncher {
             let path = installedLauncher.path.replacingOccurrences(of: "'", with: "'\"'\"'")
             let clipboard = NSPasteboard.general
@@ -105,22 +144,34 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return
         }
         running = true
-        for button in [models, updates, install, close] { button.isEnabled = false }
-        status.stringValue = "Starting setup…"
+        for button in [mode, models, updates, install, close] { button.isEnabled = false }
+        status.stringValue = removing ? "Starting removal…" : "Starting setup…"
         progress.isHidden = false
         progress.isIndeterminate = true
         progress.startAnimation(nil)
         log.string = ""
         let modelChoice = models.state == .on ? "download" : "skip"
         let updateChoice = updates.state == .on ? "enabled" : "disabled"
-        run(["install", modelChoice, updateChoice]) { [weak self] result in
+        let arguments = removing
+            ? ["remove", updates.state == .on ? "remove-settings" : "keep-settings"]
+            : ["install", modelChoice, updateChoice]
+        run(arguments) { [weak self] result in
             guard let self else { return }
             self.running = false
             self.progress.stopAnimation(nil)
             self.progress.isHidden = true
             self.install.isEnabled = true
             self.close.isEnabled = true
-            if result == 0, let launcher = self.installedLauncher,
+            self.mode.isEnabled = true
+            if self.removing {
+                self.removalComplete = result == 0
+                self.status.stringValue = result == 0
+                    ? "OCR CLI is absent from the selected uv tool directory."
+                    : "Removal did not finish. See the log below, then retry."
+                self.install.title = result == 0 ? "Done" : "Retry"
+                self.close.isHidden = result == 0
+                self.updates.isEnabled = result != 0
+            } else if result == 0, let launcher = self.installedLauncher,
                FileManager.default.isExecutableFile(atPath: launcher.path) {
                 self.status.stringValue = "OCR CLI is ready. Copy the command and paste it into Terminal to get started."
                 self.install.title = "Copy Terminal Command"
