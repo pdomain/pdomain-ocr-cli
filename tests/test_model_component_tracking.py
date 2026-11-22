@@ -8,10 +8,62 @@ from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
 
+import huggingface_hub
 import pytest
+from _fakes import hf_args
 from huggingface_hub import constants
 
 from pdomain_ocr_cli import _hf_models
+
+
+@pytest.mark.parametrize("stage", ["OCR", "layout"])
+@pytest.mark.parametrize("cache_state", ["ready", "missing", "unreadable"])
+def test_model_preparation_announces_only_a_cache_miss(
+    stage: str,
+    cache_state: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    revision = "a" * 40
+    cache = tmp_path / "cache"
+    repo = _hf_models.DEFAULT_HF_REPO if stage == "OCR" else "pdomain/layout"
+    filenames = (
+        (_hf_models.DEFAULT_DET_FILENAME, _hf_models.DEFAULT_RECO_FILENAME)
+        if stage == "OCR"
+        else _hf_models.LAYOUT_MODEL_FILES
+    )
+    snapshot = cache / f"models--{repo.replace('/', '--')}" / "snapshots" / revision
+    for filename in filenames if cache_state == "ready" else filenames[:-1]:
+        path = snapshot / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(cache))
+    monkeypatch.setenv("PD_SUITE_DATA_DIR", str(tmp_path / "suite"))
+    if cache_state == "unreadable":
+
+        def unreadable(*_args: object, **_kwargs: object) -> None:
+            raise OSError("cache read failed")
+
+        monkeypatch.setattr(huggingface_hub, "try_to_load_from_cache", unreadable)
+
+    def check_notice() -> None:
+        message = capsys.readouterr().out
+        assert (f"Downloading missing {stage} model files" in message) == (cache_state == "missing")
+
+    def resolve(**_kwargs: object) -> tuple[Path, Path]:
+        check_notice()
+        return snapshot / filenames[0], snapshot / filenames[1]
+
+    def prefetch(_repo: str, _revision: str) -> None:
+        check_notice()
+
+    if stage == "OCR":
+        monkeypatch.setattr(_hf_models, "_resolve_ocr_models_kwargs", resolve)
+        _ = _hf_models.resolve_ocr_models(hf_args(model_version=revision))
+    else:
+        monkeypatch.setattr(_hf_models._HF, "prefetch_layout_files", prefetch)
+        _ = _hf_models.prefetch_layout_files(repo, revision)
 
 
 @pytest.mark.parametrize("missing", ["pdomain_ops.suite.model_components", "filelock"])

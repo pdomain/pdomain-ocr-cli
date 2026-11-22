@@ -61,17 +61,41 @@ def _track_download(
     return module.track_model_download("pdomain-ocr-cli", source, entries, download)
 
 
-def _ocr_files(detection: str, recognition: str) -> tuple[str, ...]:
+def _prepare_remote_files(
+    label: str,
+    repo: str,
+    revision: str | None,
+    required: tuple[str, ...],
+    download: Callable[[], _Result],
+    *,
+    sidecars: tuple[str, ...] = (),
+) -> _Result:
+    """Announce missing required files immediately before the tracked fetch."""
+    from huggingface_hub import try_to_load_from_cache
+
+    def prepare() -> _Result:
+        try:
+            missing = any(
+                not isinstance(try_to_load_from_cache(repo, name, revision=revision), str)
+                for name in required
+            )
+        except (OSError, ValueError):
+            # The resolver still handles unreadable caches and invalid source arguments.
+            missing = False
+        if missing:
+            print(f"Downloading missing {label} model files...", flush=True)  # noqa: T201
+        return download()
+
+    return _track_download(repo, revision, required + sidecars, prepare)
+
+
+def _ocr_sidecars(detection: str, recognition: str) -> tuple[str, ...]:
     from pathlib import PurePosixPath
 
-    return (
-        detection,
-        recognition,
-        *(
-            str(PurePosixPath(name).with_suffix(ext))
-            for name in (detection, recognition)
-            for ext in OCR_MODEL_SIDECARS
-        ),
+    return tuple(
+        str(PurePosixPath(name).with_suffix(ext))
+        for name in (detection, recognition)
+        for ext in OCR_MODEL_SIDECARS
     )
 
 
@@ -136,8 +160,12 @@ _resolve_ocr_models_kwargs = _HF.resolve_ocr_models
 
 def prefetch_layout_files(repo: str, revision: str | None) -> object:
     """Prefetch layout models and track the exact pinned files."""
-    return _track_download(
-        repo, revision, LAYOUT_MODEL_FILES, lambda: _HF.prefetch_layout_files(repo, revision)
+    return _prepare_remote_files(
+        "layout",
+        repo,
+        revision,
+        LAYOUT_MODEL_FILES,
+        lambda: _HF.prefetch_layout_files(repo, revision),
     )
 
 
@@ -197,11 +225,13 @@ def resolve_ocr_models(args: _HfArgs) -> tuple[Path, Path]:
 
         if det is not None:
             return resolve()
-        return _track_download(
+        return _prepare_remote_files(
+            "OCR",
             args.hf_repo,
             args.model_version,
-            _ocr_files(args.det_filename, args.reco_filename),
+            (args.det_filename, args.reco_filename),
             resolve,
+            sidecars=_ocr_sidecars(args.det_filename, args.reco_filename),
         )
     except FileNotFoundError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
@@ -234,16 +264,18 @@ def resolve_layout_source(args: _HfArgs) -> tuple[str | None, str | None, str]:
 
 def prefetch_default_models(*, revision: str, layout_model: str) -> None:
     """Cache the default OCR and layout files without loading the models."""
-    _ = _track_download(
+    _ = _prepare_remote_files(
+        "OCR",
         DEFAULT_HF_REPO,
         revision,
-        _ocr_files(DEFAULT_DET_FILENAME, DEFAULT_RECO_FILENAME),
+        (DEFAULT_DET_FILENAME, DEFAULT_RECO_FILENAME),
         lambda: _resolve_ocr_models_kwargs(
             repo=DEFAULT_HF_REPO,
             revision=revision,
             det_filename=DEFAULT_DET_FILENAME,
             reco_filename=DEFAULT_RECO_FILENAME,
         ),
+        sidecars=_ocr_sidecars(DEFAULT_DET_FILENAME, DEFAULT_RECO_FILENAME),
     )
     layout_repo, layout_revision, _descriptor = _resolve_layout_source_kwargs(layout_model)
     if layout_repo is not None:

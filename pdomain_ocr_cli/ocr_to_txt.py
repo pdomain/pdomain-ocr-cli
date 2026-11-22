@@ -892,7 +892,6 @@ def _download_models(argv: list[str]) -> int:
         description="Cache the default detection, recognition, and layout files.",
     )
     _ = parser.parse_args(argv)
-    print("Downloading default model files...", flush=True)  # noqa: T201
     try:
         prefetch_default_models(revision=DEFAULT_MODEL_REVISION, layout_model=DEFAULT_LAYOUT_MODEL)
     except Exception as exc:  # noqa: BLE001  # Report download failures at the CLI boundary.
@@ -992,13 +991,13 @@ def _run_ocr() -> None:
     # so the nudge never breaks the OCR run.
     _maybe_print_gpu_nudge()
 
-    print("Resolving model files...", flush=True)  # noqa: T201  # CLI output
     try:
         det_path, reco_path = resolve_ocr_models(args)
     except SystemExit:
         raise
     except Exception as exc:  # noqa: BLE001  # normalize all resolver failures to CLI stderr
         print(f"ERROR resolving OCR model files: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
+        print("Check the local model paths or remote model source, then retry.", file=sys.stderr)  # noqa: T201
         sys.exit(1)
 
     layout_repo: str | None = None
@@ -1013,6 +1012,7 @@ def _run_ocr() -> None:
             raise
         except Exception as exc:  # noqa: BLE001  # normalize all resolver failures to CLI stderr
             print(f"ERROR resolving layout model files: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
+            print("Check the layout model source and your connection, then retry.", file=sys.stderr)  # noqa: T201
             sys.exit(1)
 
     print("Importing deep-learning runtime (PyTorch + DocTR)...", flush=True)  # noqa: T201  # CLI output
