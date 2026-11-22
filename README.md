@@ -156,10 +156,12 @@ The installer saves your choice. If Windows asks you to restart, run
 Run `pdomain-ocr update` to review the new version and confirm installation. Use
 `pdomain-ocr update --yes` for an unattended update.
 
-The updater supports `uv tool` installations. On Windows, exit code 0 means the
-CLI handed off the update. Wait for installer output, then run `pdomain-ocr --version` to confirm
-the installed version. For editable or package-managed installations, update
-through the tool you originally used.
+The updater supports `uv tool` installations. It verifies the new CLI and
+tries to restore the previous version if verification fails. On Windows,
+exit code 0 acknowledges the handoff. Wait for the worker to report the
+result. If the update stops before reporting a result, run the recovery
+command printed before activation. For editable or package-managed
+installations, use the tool you originally installed with.
 
 If your installed version lacks the update command, rerun the [installer](#install).
 

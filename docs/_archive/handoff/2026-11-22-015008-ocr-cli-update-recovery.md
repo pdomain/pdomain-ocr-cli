@@ -1,7 +1,8 @@
 ---
-kind: handoff
-status: "active"
+kind: archive
+status: retired
 created: "2026-11-22"
+last_verified: "2026-11-22"
 created_at: "2026-11-22T01:50:08Z"
 owner: agent:codex
 branch: feat/ocr-cli-update
@@ -14,6 +15,11 @@ host: codex
 ---
 
 # Handoff: OCR CLI activation and rollback
+
+> **Retired.** Commit `afd7eb6` completed the updater. See
+> [installation and updates](../../architecture/installation-and-updates.md)
+> for the current behavior and test limits. This handoff records the state
+> before activation was implemented.
 
 ## Goal
 
@@ -76,7 +82,7 @@ model-cache path. Set up isolated uv tool and bin directories for every test.
 
 ## Pointers
 
-- `docs/plans/2026-11-21-cli-update-recovery.md`
+- [Installation and updates](../../architecture/installation-and-updates.md), which replaces the retired recovery plan.
 - `docs/architecture/installation-and-updates.md`
 - `pdomain_ocr_cli/_self_update.py`
 - `install.sh`

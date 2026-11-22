@@ -120,24 +120,30 @@ stops before downloading if the resolved tag changed. The updater preserves
 the current Python minor version unless the installer Python setting overrides
 it. It leaves the saved automatic-check preference in place.
 
-The bundled installer stages the verified wheel without replacing the live
-tool. The updater installs it into a private relocatable uv environment
-and checks its prerequisites. On Windows, PowerShell waits for the CLI
-and its launcher to exit before starting the activation worker.
+The bundled installer stages the verified wheel before taking the live uv
+lock. The updater creates a private environment with `uv venv --relocatable`
+on the live installation filesystem. It installs the staged wheel there so
+dependency installation cannot compete for the live lock. The updater maps
+the staged receipt to the existing launcher and checks runtime prerequisites.
+On Windows, PowerShell waits for the CLI and its launcher to exit before
+starting the activation worker.
 
 The worker runs outside the tool environment and takes uv's live directory
-lock. It also waits for running OCR commands to release their shared lock.
-It records each move in a journal, parks the old environment, and moves
-the candidate into the original path. The public launcher stays in place.
+lock and waits for running OCR commands to release their shared lock.
+It parks the old environment on the same filesystem, outside the directory
+where uv discovers installed tools. It moves the candidate into the original
+path. The existing launcher still targets that path, so it stays in place.
 The worker checks the exact approved version and imports the OCR runtime
 without loading models. If either check fails, the worker attempts to restore
 the old environment offline. A failed restore leaves the journal and any
 parked environment available for recovery.
 
-The CLI prints a recovery command before activation. Recovery takes the same
-lock and checks the recorded identities. It leaves the backup in place if an
-external command changed the installation. See the
-[recovery plan](../plans/2026-11-21-cli-update-recovery.md) for the relocation proof.
+The CLI prints a recovery command before activation. It calls the worker
+through a Python interpreter outside the replaceable environment. The worker
+flushes the phase record before each move and flushes the affected directories
+afterward. On Windows, it also requests a write-through directory move.
+Recovery takes the same locks and checks the recorded identities.
+It leaves the backup in place if an external command changed the installation.
 
 The opt-in background check reads `/repos/pdomain/pdomain-ocr-cli/tags?per_page=100`
 from GitHub with a three-second timeout. It prints a notice to stderr when a
@@ -145,6 +151,22 @@ newer stable tag exists. The explicit update command reads
 `/repos/pdomain/pdomain-ocr-cli/releases/latest`. Model files come from Hugging Face.
 See [CLI orchestration](cli-orchestration.md#trust-and-network-boundaries)
 for checkpoint trust and background-check diagnostics.
+
+### Update verification
+
+The Linux and native Windows installed-wheel tests covered activation after
+a running command released its shared lock. On Windows, prefetch reused
+cached models in the offline test. The Windows tests
+also covered wrong-version rollback and recovery after interrupting the
+worker following either directory move. The public launcher stayed in
+place. Sudden power loss remains untested.
+
+- Implementation: [update command](../../pdomain_ocr_cli/_self_update.py),
+  [candidate staging](../../pdomain_ocr_cli/_update_stage.py), and
+  [activation worker](../../pdomain_ocr_cli/_update_worker.py).
+- Regression coverage: [CLI update](../../tests/test_cli_update.py),
+  [staging](../../tests/test_update_stage.py), and
+  [worker recovery](../../tests/test_update_worker_validation.py).
 
 ## Manual installation from source
 
