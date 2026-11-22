@@ -44,6 +44,30 @@ Supported file extensions include `.avif`, `.bmp`, `.gif`, `.heic`, `.heif`,
 `.pnm`, `.ppm`, `.tif`, `.tiff`, and `.webp`. Extensions are case-insensitive.
 The CLI warns when it skips other files.
 
+### See where a single image and a folder write their text
+
+Pass `--output-dir` to choose where the CLI writes the text files.
+These commands use paths relative to the current directory.
+
+```sh
+pdomain-ocr "input.png" --output-dir "out-single"
+pdomain-ocr "ten-pages/" --output-dir "out-folder"
+```
+
+The first command writes `out-single/input.txt`. The second writes one
+`.txt` file per image in `out-folder/`.
+
+The screenshots replay a verified macOS run. The absolute paths belong
+to that test. The text versions show the same commands and filenames.
+
+![Terminal showing a single input image and its output path](assets/ocr-single-file.png)
+
+[Single-image terminal text](assets/ocr-single-file.txt)
+
+![Terminal showing an input folder and its ten output files](assets/ocr-folder.png)
+
+[Ten-image folder terminal text](assets/ocr-folder.txt)
+
 ### Image resource limits
 
 Images over 100 MiB or 100 million pixels fail with a message naming the

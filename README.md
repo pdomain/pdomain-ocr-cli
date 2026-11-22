@@ -193,6 +193,9 @@ pdomain-ocr --save-json page.png
 pdomain-ocr --version
 ```
 
+See the [single-image and folder walkthrough](docs/usage/cli-usage.md#see-where-a-single-image-and-a-folder-write-their-text)
+for terminal screenshots, copyable commands, and where the text files go.
+
 The full flag reference (quote and em-dash normalization, model pinning,
 layout-detector options, illustration extraction, debug output) lives in
 [docs/usage/cli-usage.md](docs/usage/cli-usage.md). `pdomain-ocr --help` lists everything

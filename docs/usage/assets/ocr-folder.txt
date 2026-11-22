@@ -1,0 +1,22 @@
+pdomain-ocr 0.10.1 | Verified macOS run | folder
+
+$ ROOT="/private/tmp/ocr-cli-native-retest.j1dudk"
+$ "$ROOT/bin/pdomain-ocr" "$ROOT/external/ten-pages" \
+    --output-dir "$ROOT/external/out-folder"
+
+Input:   /private/tmp/ocr-cli-native-retest.j1dudk/external/ten-pages
+Output:  /private/tmp/ocr-cli-native-retest.j1dudk/external/out-folder/
+
+Output files from the run
+  01-body-running-header-page-number.txt
+  02-body-italic-header-left-pageno.txt
+  03-body-header-includes-pageno.txt
+  04-chapter-head-with-synopsis.txt
+  05-chapter-head-filial-duty.txt
+  06-chapter-head-credulities.txt
+  07-chapter-head-american-people.txt
+  08-preface-with-drop-cap.txt
+  09-sidenote-right-with-footnotes.txt
+  10-footnotes-stacked-with-anchor.txt
+
+Done. 10 nonempty text files verified.

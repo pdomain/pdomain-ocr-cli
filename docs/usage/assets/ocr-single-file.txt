@@ -1,0 +1,13 @@
+pdomain-ocr 0.10.1 | Verified macOS run | single
+
+$ ROOT="/private/tmp/ocr-cli-native-retest.j1dudk"
+$ "$ROOT/bin/pdomain-ocr" "$ROOT/external/input.png" \
+    --output-dir "$ROOT/external/out-single"
+
+Input:   /private/tmp/ocr-cli-native-retest.j1dudk/external/input.png
+Output:  /private/tmp/ocr-cli-native-retest.j1dudk/external/out-single/
+
+Output files from the run
+  input.txt
+
+Done. 1 nonempty text file verified.
