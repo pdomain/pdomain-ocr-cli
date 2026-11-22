@@ -40,6 +40,7 @@ def _run_install_ps1_full(
     uv_exit_logic: str = "exit 0",
     auto_update_flag: bool = False,
     skip_models: bool = False,
+    prepare_dir: Path | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path]:
     """Run install.ps1 through pwsh with mocked GitHub API + uv + nvidia-smi.
 
@@ -129,6 +130,8 @@ exit 0
     flags = (" -AutoUpdateCheck" if auto_update_flag else "") + (
         " -SkipModels" if skip_models else ""
     )
+    if prepare_dir is not None:
+        flags += f' -PrepareUpdate "{prepare_dir}"'
     invoke = (
         f"& ([scriptblock]::Create($InstallerText)){flags}"
         if flags
@@ -530,3 +533,36 @@ def test_install_ps1_hints_uv_self_update_when_uv_lacks_torch_backend(tmp_path: 
     assert _sleeps(tmp_path) == []
     assert "uv self update" in result.stdout + result.stderr
     assert "Done" not in result.stdout
+
+
+def test_prepare_update_stages_verified_wheel_without_installing(tmp_path: Path) -> None:
+    staging = tmp_path / "private staging"
+    result, uv_log, _ = _run_install_ps1_full(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', prepare_dir=staging
+    )
+
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert not uv_log.exists()
+    wheel = staging / "pdomain_ocr_cli-9.9.9-py3-none-any.whl"
+    assert wheel.read_bytes() == FAKE_WHEEL_BYTES
+    assert (staging / "candidate").read_text().splitlines() == [
+        wheel.name,
+        "3.12",
+        "auto",
+        FAKE_WHEEL_DIGEST.removeprefix("sha256:"),
+    ]
+
+
+def test_prepare_update_refuses_existing_staging_directory(tmp_path: Path) -> None:
+    staging = tmp_path / "private staging"
+    staging.mkdir()
+    candidate = staging / "candidate"
+    _ = candidate.write_text("existing", encoding="utf-8")
+    result, uv_log, _ = _run_install_ps1_full(
+        tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"', prepare_dir=staging
+    )
+
+    assert result.returncode != 0
+    assert not uv_log.exists()
+    assert list(staging.iterdir()) == [candidate]
+    assert candidate.read_text(encoding="utf-8") == "existing"

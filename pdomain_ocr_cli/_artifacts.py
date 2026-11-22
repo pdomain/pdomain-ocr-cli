@@ -78,7 +78,8 @@ def _stage_via_writer(path: Path, writer: Callable[[Path], None], *, suffix: str
     os.close(fd)
     try:
         writer(tmp)
-        with tmp.open("rb") as fh:
+        # Windows requires write access to flush a file descriptor.
+        with tmp.open("r+b") as fh:
             os.fsync(fh.fileno())
     except BaseException:
         with contextlib.suppress(FileNotFoundError):
@@ -116,13 +117,8 @@ class JsonDocumentLike(Protocol):
 
 
 def atomic_write_json_document(path: Path, doc: JsonDocumentLike) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = _open_staged(path)
-    os.close(fd)
+    tmp = _stage_via_writer(path, doc.to_json_file, suffix=".tmp")
     try:
-        doc.to_json_file(tmp)
-        with tmp.open("rb") as fh:
-            os.fsync(fh.fileno())
         _ = tmp.replace(path)
         _fsync_parent_dir(path)
     except BaseException:

@@ -32,14 +32,12 @@ class _RecordingDetector:
 
 
 class _Cv2:
-    def __init__(self, image: object | None) -> None:
-        self.image = image
+    def __init__(self) -> None:
         self.imread_paths: list[str] = []
         self.encoded: list[object] = []
 
-    def imread(self, path: str) -> object | None:
+    def imread(self, path: str) -> None:
         self.imread_paths.append(path)
-        return self.image
 
     def imencode(self, ext: str, image: object) -> tuple[bool, bytes]:
         del ext
@@ -172,7 +170,7 @@ def test_rotated_page_layout_and_crops_use_upright_image(
     _install_page(monkeypatch, page_for_image)
     detector = _RecordingDetector(_figure_layout())
     monkeypatch.setattr(ocr_to_txt, "_load_layout_detector", lambda _args, _device: detector)
-    cv2_fake = _Cv2(image=FakeArray(100))
+    cv2_fake = _Cv2()
     monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", lambda: (cv2_fake, {"figure"}))
 
     run_main(
@@ -191,17 +189,19 @@ def test_rotated_page_layout_and_crops_use_upright_image(
     assert (out / "i_rotated_page_01.jpg").exists()
 
 
-def test_unrotated_page_keeps_on_disk_layout_and_crops(
+def test_unrotated_unicode_page_preserves_layout_path_and_crop_pixels(
     mock_heavy_deps: object,
     monkeypatch: pytest.MonkeyPatch,
     run_main: object,
-    single_image: tuple[Path, Path],
+    tmp_path: Path,
 ) -> None:
-    """Rotation 0 still detects and crops from the on-disk path."""
     assert callable(mock_heavy_deps)
     assert callable(run_main)
     mock_heavy_deps()
-    image, out = single_image
+    image = tmp_path / "page_日本.png"
+    out = tmp_path / "out"
+    pixels = np.full((20, 30, 3), (11, 22, 33), dtype=np.uint8)
+    Image.fromarray(pixels).save(image)
 
     def page_for_image(source: object) -> FakePage:
         page = FakePage(text="FLAT TEXT")
@@ -212,7 +212,7 @@ def test_unrotated_page_keeps_on_disk_layout_and_crops(
     _install_page(monkeypatch, page_for_image)
     detector = _RecordingDetector(_figure_layout())
     monkeypatch.setattr(ocr_to_txt, "_load_layout_detector", lambda _args, _device: detector)
-    cv2_fake = _Cv2(image=FakeArray(100))
+    cv2_fake = _Cv2()
     monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", lambda: (cv2_fake, {"figure"}))
 
     run_main(
@@ -226,8 +226,12 @@ def test_unrotated_page_keeps_on_disk_layout_and_crops(
     )
 
     assert detector.sources == [image]
-    assert cv2_fake.imread_paths == [str(image)]
-    assert (out / "i_page_01.jpg").exists()
+    assert (out / "i_page_日本_01.jpg").is_file()
+    assert cv2_fake.imread_paths == []
+    crop = cv2_fake.encoded[0]
+    assert isinstance(crop, np.ndarray)
+    expected = np.full((10, 10, 3), (33, 22, 11), dtype=np.uint8)
+    np.testing.assert_array_equal(crop, expected)
 
 
 def test_kept_angle_orients_layout_when_no_buffer_is_stashed(
@@ -330,7 +334,7 @@ def test_angle_only_crop_takes_the_marked_corner_from_real_pixels(
     region = SimpleNamespace(type="figure", confidence=0.9, T=top, B=top + 2, L=left, R=left + 2)
     detector = _RecordingDetector(SimpleNamespace(regions=[region], inference_ms=1))
     monkeypatch.setattr(ocr_to_txt, "_load_layout_detector", lambda _args, _device: detector)
-    cv2_fake = _Cv2(image=None)
+    cv2_fake = _Cv2()
     monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", lambda: (cv2_fake, {"figure"}))
 
     run_main(

@@ -51,11 +51,21 @@ PYTHON_VERSION="${PD_OCR_INSTALL_PYTHON:-3.13}"
 AUTO_UPDATE_CHECK=""
 AUTO_UPDATE_SETTING=${PD_OCR_INSTALL_AUTO_UPDATE_CHECK:-}
 SKIP_MODELS=0
-for install_arg do
-    case "$install_arg" in
+PREPARE_UPDATE=""
+while [ "$#" -gt 0 ]; do
+    case "$1" in
         --auto-update-check) AUTO_UPDATE_SETTING=1 ;;
         --skip-models) SKIP_MODELS=1 ;;
+        --prepare-update)
+            if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+                echo "--prepare-update requires a new staging directory." >&2
+                exit 1
+            fi
+            PREPARE_UPDATE=$2
+            shift
+            ;;
     esac
+    shift
 done
 case "$AUTO_UPDATE_SETTING" in
     1) AUTO_UPDATE_CHECK=on ;;
@@ -294,6 +304,16 @@ if [ "$WHEEL_ACTUAL_HEX" != "$WHEEL_DIGEST_HEX" ]; then
     exit 1
 fi
 echo "Digest verified: sha256:${WHEEL_ACTUAL_HEX}"
+
+if [ -n "$PREPARE_UPDATE" ]; then
+    mkdir -m 700 -- "$PREPARE_UPDATE"
+    wheel_name=$(basename "$WHEEL_FILE")
+    cp "$WHEEL_FILE" "$PREPARE_UPDATE/$wheel_name"
+    printf '%s\n' "$wheel_name" "$PYTHON_VERSION" "$TORCH_BACKEND" "$WHEEL_ACTUAL_HEX" \
+        > "$PREPARE_UPDATE/candidate.tmp"
+    mv "$PREPARE_UPDATE/candidate.tmp" "$PREPARE_UPDATE/candidate"
+    exit 0
+fi
 
 echo "Installing pdomain-ocr ${RELEASE_TAG:-} from $(basename "$WHEEL_FILE")..."
 # Build the install command incrementally so we only emit flags when relevant.

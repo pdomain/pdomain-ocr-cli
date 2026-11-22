@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import os
 import shutil
@@ -140,6 +141,22 @@ def _apply_release(tag: str) -> int:
 def _fail(message: object) -> int:
     print(f"Update failed: {message}", file=sys.stderr)  # noqa: T201
     return 1
+
+
+def check_runtime() -> int:
+    """Verify installed OCR imports without loading models or selecting a device."""
+    try:
+        for module in (
+            "pdomain_book_tools.ocr.doctr_support",
+            "pdomain_ops.gpu.device",
+            "pdomain_ops.gpu.doctr_batch",
+        ):
+            _ = importlib.import_module(module)
+    except ImportError as exc:
+        print(f"ERROR: could not import OCR runtime: {exc}", file=sys.stderr)  # noqa: T201
+        return 1
+    print(f"pdomain-ocr runtime OK {VERSION}")  # noqa: T201
+    return 0
 
 
 def run_update(argv: list[str]) -> int:

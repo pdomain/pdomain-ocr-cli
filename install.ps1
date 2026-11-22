@@ -11,7 +11,7 @@
 #   $env:PD_OCR_INSTALL_PYTHON = "3.12"
 #   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 
-param([switch]$AutoUpdateCheck, [switch]$SkipModels)
+param([switch]$AutoUpdateCheck, [switch]$SkipModels, [string]$PrepareUpdate)
 
 $ErrorActionPreference = "Stop"
 
@@ -633,6 +633,9 @@ $WheelName = if ($WheelAsset.name) {
 } else {
     Split-Path -Leaf ([Uri]$WheelUrl).AbsolutePath
 }
+if ([IO.Path]::GetFileName($WheelName) -cne $WheelName -or $WheelName -notlike "*.whl") {
+    throw "Invalid wheel filename: $WheelName"
+}
 
 # Fail closed on any missing or malformed digest, before downloading. A
 # digest that is absent or not a well-formed sha256 means we cannot verify
@@ -681,6 +684,20 @@ try {
         throw "Wheel digest mismatch for $WheelFile.`n  expected: sha256:$WheelDigestHex`n  actual:   sha256:$WheelActualHex"
     }
     Write-Host "Digest verified: sha256:$WheelActualHex"
+
+    if ($PrepareUpdate) {
+        $StagingDir = New-Item -ItemType Directory -Path $PrepareUpdate
+        if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) {
+            $StagingDir.UnixFileMode = $TempDirItem.UnixFileMode
+        }
+        Copy-Item -LiteralPath $WheelFile -Destination (Join-Path $PrepareUpdate $WheelName)
+        $CandidateTemp = Join-Path $PrepareUpdate "candidate.tmp"
+        Set-Content -LiteralPath $CandidateTemp -Encoding ASCII -Value @(
+            $WheelName, $PythonVersion, $TorchBackend, $WheelActualHex
+        )
+        Move-Item -LiteralPath $CandidateTemp -Destination (Join-Path $PrepareUpdate "candidate")
+        return
+    }
 
     Write-Host "Installing pdomain-ocr $ReleaseTag from $WheelName..."
     # "first-index" makes uv stop looking once a package name resolves on an

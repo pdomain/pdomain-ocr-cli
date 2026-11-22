@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import stat
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -101,6 +102,58 @@ def test_atomic_write_json_document_mode_follows_the_umask(tmp_path: Path) -> No
         _ = os.umask(previous)
 
     assert target.stat().st_mode & 0o777 == 0o644
+
+
+def test_atomic_write_json_document_preserves_destination_on_failed_replace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Doc:
+        def to_json_file(self, file_path: str | Path) -> None:
+            _ = Path(file_path).write_text('{"content": "new"}', encoding="utf-8")
+
+    def reject_replace(_source: Path, _destination: Path) -> Path:
+        raise PermissionError("destination locked")
+
+    target = tmp_path / "page.json"
+    _ = target.write_text('{"content": "old"}', encoding="utf-8")
+    monkeypatch.setattr(Path, "replace", reject_replace)
+
+    with pytest.raises(PermissionError, match="destination locked"):
+        atomic_write_json_document(target, Doc())
+
+    assert target.read_text(encoding="utf-8") == '{"content": "old"}'
+    assert list(tmp_path.iterdir()) == [target]
+
+
+@pytest.mark.parametrize("transactional", [False, True])
+def test_json_output_syncs_with_write_access(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, transactional: bool
+) -> None:
+    real_fsync = os.fsync
+
+    def windows_fsync(fd: int) -> None:
+        if stat.S_ISREG(os.fstat(fd).st_mode):
+            _ = os.write(fd, b"")
+        real_fsync(fd)
+
+    class Doc:
+        def to_json_file(self, file_path: str | Path) -> None:
+            _ = Path(file_path).write_text('{"content": "new"}', encoding="utf-8")
+
+    monkeypatch.setattr("pdomain_ocr_cli._artifacts.os.fsync", windows_fsync)
+    target = tmp_path / "page.json"
+    _ = target.write_text('{"content": "old"}', encoding="utf-8")
+    doc = Doc()
+
+    if transactional:
+        transaction = PageOutputTransaction()
+        transaction.add_via_writer(target, doc.to_json_file)
+        transaction.commit()
+    else:
+        atomic_write_json_document(target, doc)
+
+    assert target.read_text(encoding="utf-8") == '{"content": "new"}'
+    assert list(tmp_path.iterdir()) == [target]
 
 
 def _fail_for(
