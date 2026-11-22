@@ -315,7 +315,14 @@ def test_install_sh_keeps_install_if_models_unavailable(
     result, _ = _run_install_sh(tmp_path, _release_json(f'"digest":"{FAKE_WHEEL_DIGEST}",'))
     assert result.returncode == 0, result.stderr + result.stdout
     assert (tmp_path / "models.log").exists() is not old_release
-    assert "first OCR run" in result.stderr
+    assert "DocTR is the included OCR engine" in result.stdout
+    assert "Separate machine-learning layout files" in result.stdout
+    expected = (
+        "does not support downloading the model files during setup"
+        if old_release
+        else "Retry with: pdomain-ocr download-models"
+    )
+    assert expected in result.stderr
 
 
 def test_install_sh_rejects_invalid_auto_check_setting(

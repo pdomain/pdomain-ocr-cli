@@ -1423,13 +1423,16 @@ function Invoke-CliUninstall {
 function Invoke-ModelPrefetch {
     param([string]$Launcher)
     $ModelSource = $env:PDOMAIN_OCR_MODEL_SOURCE
+    Write-Host "DocTR is the included OCR engine. Its models find and read text on scanned pages."
+    Write-Host "Separate machine-learning layout files help identify page regions and their reading order."
+    Write-Host "Checking the DocTR OCR and page layout model files."
     try {
         if (-not $Launcher) {
             $Launcher = Get-InstalledLauncher
         }
         $HelpText = & $Launcher --help | Out-String
         if ($LASTEXITCODE -ne 0 -or -not $HelpText.Contains("download-models")) {
-            Write-Warning "Model prefetch is unavailable. Models will download on the first OCR run."
+            Write-Warning "This CLI version does not support downloading the model files during setup."
             return
         }
         $env:PDOMAIN_OCR_MODEL_SOURCE = "installer"
@@ -1438,7 +1441,7 @@ function Invoke-ModelPrefetch {
             throw "The model download command failed with exit code $LASTEXITCODE."
         }
     } catch {
-        Write-Warning "Model prefetch failed. Models will download on the first OCR run, or retry with: pdomain-ocr download-models"
+        Write-Warning "Setup could not download the model files. Retry with: pdomain-ocr download-models"
     } finally {
         $env:PDOMAIN_OCR_MODEL_SOURCE = $ModelSource
     }
@@ -1683,7 +1686,7 @@ try {
 $Launcher = $null
 if ($RestartRequired) {
     if (-not $SkipModels) {
-        Write-Warning "After restarting Windows, run: pdomain-ocr download-models. Models can also download on the first OCR run."
+        Write-Warning "After restarting Windows, download the DocTR OCR and page layout model files with: pdomain-ocr download-models"
     }
     if ($AutoUpdatePreference) {
         throw "pdomain-ocr was installed. After restarting Windows, run: pdomain-ocr update --auto-check $AutoUpdatePreference"

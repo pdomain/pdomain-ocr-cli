@@ -534,11 +534,14 @@ if [ -n "$AUTO_UPDATE_CHECK" ]; then
     fi
 fi
 if [ "$SKIP_MODELS" -eq 0 ]; then
+    echo "DocTR is the included OCR engine. Its models find and read text on scanned pages."
+    echo "Separate machine-learning layout files help identify page regions and their reading order."
+    echo "Checking the DocTR OCR and page layout model files."
     if [ -z "$LAUNCHER" ] || ! HELP=$("$LAUNCHER" --help 2>/dev/null) \
         || ! printf '%s\n' "$HELP" | grep -Fq download-models; then
-        echo "Model prefetch is unavailable. Models will download on the first OCR run." >&2
+        echo "This CLI version does not support downloading the model files during setup." >&2
     elif ! PDOMAIN_OCR_MODEL_SOURCE=installer "$LAUNCHER" download-models; then
-        echo "Model prefetch failed. Models will download on the first OCR run, or retry with: pdomain-ocr download-models" >&2
+        echo "Setup could not download the model files. Retry with: pdomain-ocr download-models" >&2
     fi
 fi
 

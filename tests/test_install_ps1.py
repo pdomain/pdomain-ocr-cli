@@ -284,7 +284,14 @@ def test_install_ps1_keeps_install_if_models_unavailable(
     result, _ = _run_install_ps1(tmp_path, f'digest = "{FAKE_WHEEL_DIGEST}"')
     assert result.returncode == 0, result.stderr + result.stdout
     assert (tmp_path / "models.log").exists() is not old_release
-    assert "first OCR run" in result.stdout
+    assert "DocTR is the included OCR engine" in result.stdout
+    assert "Separate machine-learning layout files" in result.stdout
+    expected = (
+        "does not support downloading the model files during setup"
+        if old_release
+        else "Retry with: pdomain-ocr download-models"
+    )
+    assert expected in result.stdout
 
 
 def test_install_ps1_rejects_invalid_auto_check_setting(

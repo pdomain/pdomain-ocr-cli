@@ -8,7 +8,11 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         backing: .buffered, defer: false
     )
     private let status = NSTextField(wrappingLabelWithString: "Checking this Mac…")
-    private let models = NSButton(checkboxWithTitle: "Download OCR models during setup", target: nil, action: nil)
+    private let modelExplanation = NSTextField(wrappingLabelWithString:
+        "DocTR is the included OCR engine. Its models find and read text on scanned pages. " +
+        "Separate machine-learning layout files help identify page regions and their reading order."
+    )
+    private let models = NSButton(checkboxWithTitle: "Download DocTR OCR and page layout model files during setup", target: nil, action: nil)
     private let updates = NSButton(checkboxWithTitle: "Automatically check for updates", target: nil, action: nil)
     private let uvCleanup = NSButton(checkboxWithTitle: "Also remove the listed uv files", target: nil, action: nil)
     private let pythonCleanup = NSButton(checkboxWithTitle: "Also remove the listed managed Python", target: nil, action: nil)
@@ -68,7 +72,7 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let buttons = NSStackView(views: [close, reveal, install])
         buttons.orientation = .horizontal
         buttons.spacing = 10
-        let stack = NSStackView(views: [title, mode, status, models, updates, uvCleanup, pythonCleanup, progress, scroll, buttons])
+        let stack = NSStackView(views: [title, mode, status, modelExplanation, models, updates, uvCleanup, pythonCleanup, progress, scroll, buttons])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
@@ -81,6 +85,7 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
             stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 18),
             stack.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -18),
             status.widthAnchor.constraint(equalTo: stack.widthAnchor),
+            modelExplanation.widthAnchor.constraint(equalTo: stack.widthAnchor),
             progress.widthAnchor.constraint(equalTo: stack.widthAnchor),
             scroll.widthAnchor.constraint(equalTo: stack.widthAnchor),
             scroll.heightAnchor.constraint(greaterThanOrEqualToConstant: 130),
@@ -104,8 +109,9 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         install.keyEquivalent = removing ? "" : "\r"
         close.title = "Cancel"
         close.isHidden = false
+        modelExplanation.isHidden = removing
         models.isHidden = removing
-        models.title = removing ? "Also remove the listed OCR model entries" : "Download OCR models during setup"
+        models.title = removing ? "Also remove the listed OCR and page layout model entries" : "Download DocTR OCR and page layout model files during setup"
         models.state = removing ? .off : .on
         modelCleanupToken = nil
         uvCleanupToken = nil
@@ -256,7 +262,7 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if line == "OCR_SETUP_MODELS cached" {
             cached = true
             models.state = .off
-            models.title = "OCR models already downloaded"
+            models.title = "DocTR OCR and page layout model files already downloaded"
             return
         }
         log.textStorage?.append(NSAttributedString(string: line + "\n", attributes: [
