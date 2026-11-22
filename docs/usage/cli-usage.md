@@ -201,8 +201,15 @@ to defer downloads. Run `pdomain-ocr download-models` to fill the cache later.
 | `pdomain-ocr update` | Ask before updating a `uv tool` installation. |
 | `pdomain-ocr update --yes` | Update without asking. |
 
-On Windows, exit code 0 means the CLI handed off the update. Wait for the
-installer output, then run `pdomain-ocr --version` to confirm the version.
+The updater checks the approved version and loads the OCR runtime through
+the installed launcher. If the check fails, the worker tries to restore the
+previous installation. On Windows, exit code 0 acknowledges the handoff.
+Wait for the worker to report an update, a rollback, or the need for recovery.
+
+If the update stops before it reports a result, run the recovery command
+printed before activation. It works even if the launcher cannot start. If
+recovery reports a conflict, keep the journal and parked environment.
+
 If an input named `update` is in the current directory, run the updater from
 another directory. Use `./update` to select the OCR input explicitly.
 

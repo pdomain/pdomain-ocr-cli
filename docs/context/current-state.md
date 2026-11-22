@@ -50,7 +50,8 @@ record provenance. See the [issue cutover decision](../decisions/2026-07-19-gith
 ## In-flight work
 
 The update branch adds `pdomain-ocr update` for confirmed upgrades of uv tool
-installs. Background checks are off by default. The installers can save an
+installs. The worker verifies the installed candidate and can restore the old
+environment offline. Background checks are off by default. The installers can save an
 opt-in preference and cache the default detection, recognition, and layout
 files. The model skip flags defer downloads. See the
 [install guide](../../README.md#install) for commands.
@@ -67,12 +68,15 @@ GitHub hosts manual macOS and Windows install tests. Start them with
 
 ## Test state
 
-The update branch passed full CI with 684 tests and 100% configured coverage.
+The first updater passed full CI with 684 tests and 100% configured coverage.
 An isolated Linux tool install upgraded from 0.1.0 to the published 0.9.6
 release. A clean-cache model download and an offline cache reuse check also
-passed. Installer tests on Linux exercise PowerShell with fakes. The new
-Windows updater launcher replacement and restart paths remain unverified on
-Windows.
+passed. Installer tests on Linux also exercise PowerShell with fakes.
+
+The recovery worker passed installed-wheel updates on Linux and Windows.
+Native Windows tests also covered wrong-version rollback and interruption
+after either directory move. The launcher stayed in place. Power-loss
+recovery and the restart-required update path remain unverified on Windows.
 
 ### Historical installer checks
 

@@ -78,7 +78,10 @@ import threading
 import warnings
 from collections import deque
 from collections.abc import Callable, Sequence
+from contextlib import ExitStack
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _installed_version
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
@@ -905,8 +908,6 @@ def main() -> None:
         from pdomain_ocr_cli._self_update import check_runtime
 
         raise SystemExit(check_runtime())
-    if sys.argv[1:2] == ["download-models"]:
-        raise SystemExit(_download_models(sys.argv[2:]))
     if sys.argv[1:2] == ["update"] and (
         not Path("update").exists()
         or sys.argv[2:3] in (["--check"], ["--yes"], ["--auto-check"], ["--help"], ["-h"])
@@ -914,6 +915,38 @@ def main() -> None:
         from pdomain_ocr_cli._self_update import run_update
 
         raise SystemExit(run_update(sys.argv[2:]))
+    with ExitStack() as installation:
+        live = Path(sys.prefix).resolve()
+        if (
+            not (
+                sys.argv[1:] == ["--version"] and os.environ.get("PDOMAIN_OCR_UPDATE_PROBE") == "1"
+            )
+            and live.name == "pdomain-ocr-cli"
+            and (
+                (live / "uv-receipt.toml").is_file()
+                or (live.parent / ".pdomain-ocr-cli.in-use.lock").exists()
+            )
+        ):
+            from pdomain_ocr_cli._update_worker import hold_installation
+
+            try:
+                _ = installation.enter_context(hold_installation(live))
+                installed_version = _installed_version("pdomain-ocr-cli")
+            except (OSError, PackageNotFoundError, ValueError) as error:
+                print(f"ERROR: {error}", file=sys.stderr)  # noqa: T201  # CLI output
+                raise SystemExit(1) from error
+            if installed_version != _VERSION:
+                print(  # noqa: T201  # CLI output
+                    "ERROR: pdomain-ocr changed during startup. Run the command again.",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
+        if sys.argv[1:2] == ["download-models"]:
+            raise SystemExit(_download_models(sys.argv[2:]))
+        _run_ocr()
+
+
+def _run_ocr() -> None:
     raw_args = parse_args()
     args = _coerce_cli_args(raw_args)
 
