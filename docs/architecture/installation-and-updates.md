@@ -112,6 +112,9 @@ For config paths and runtime precedence, see the
 
 ## Update check and installation
 
+The [update recovery implementation plan](../plans/2026-11-21-cli-update-recovery.md)
+describes the proposed verification and rollback flow.
+
 The explicit update command reads GitHub's latest stable release and compares
 it with the installed version. `--check` stops after the comparison. Apply
 requires a uv-managed tool installation and confirmation or `--yes`.
