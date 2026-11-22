@@ -1,19 +1,21 @@
 ---
-kind: handoff
-status: "active"
-created: "2026-11-22"
+kind: archive
+status: retired
 created_at: "2026-11-22T00:11:14Z"
-owner: agent:codex
-branch: feat/ocr-cli-update
-scope: ocr-cli-update-recovery
-worktree: /mnt/work/projects/pdomain/.worktrees/ocr-cli-update
+owner: "agent:codex"
+branch: "feat/ocr-cli-update"
+scope: "ocr-cli-update-recovery"
+worktree: "/mnt/work/projects/pdomain/.worktrees/ocr-cli-update"
 base_commit: "083f68e16f529767c09449845eb1fd0dbc709d70"
-supersedes: ""
-handoff_reason: user_requested
-host: codex
+handoff_reason: "user_requested"
+host: "codex"
+created: "2026-11-22"
+last_verified: "2026-11-22"
 ---
 
 # Handoff: OCR CLI update recovery
+
+> **Retired — superseded by `docs/handoff/2026-11-22-012950-ocr-cli-update-recovery.md`.**
 
 ## Goal
 
