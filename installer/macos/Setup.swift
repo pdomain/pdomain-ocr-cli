@@ -10,6 +10,8 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let status = NSTextField(wrappingLabelWithString: "Checking this Mac…")
     private let models = NSButton(checkboxWithTitle: "Download OCR models during setup", target: nil, action: nil)
     private let updates = NSButton(checkboxWithTitle: "Automatically check for updates", target: nil, action: nil)
+    private let uvCleanup = NSButton(checkboxWithTitle: "Also remove the listed uv files", target: nil, action: nil)
+    private let pythonCleanup = NSButton(checkboxWithTitle: "Also remove the listed managed Python", target: nil, action: nil)
     private let mode = NSButton(title: "Uninstall…", target: nil, action: nil)
     private let progress = NSProgressIndicator()
     private let log = NSTextView()
@@ -19,6 +21,9 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var running = false
     private var removing = ProcessInfo.processInfo.arguments.contains("--remove")
     private var removalComplete = false
+    private var modelCleanupToken: String?
+    private var uvCleanupToken: String?
+    private var pythonCleanupToken: String?
     private var cached = false
     private var installedLauncher: URL?
 
@@ -63,7 +68,7 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let buttons = NSStackView(views: [close, reveal, install])
         buttons.orientation = .horizontal
         buttons.spacing = 10
-        let stack = NSStackView(views: [title, mode, status, models, updates, progress, scroll, buttons])
+        let stack = NSStackView(views: [title, mode, status, models, updates, uvCleanup, pythonCleanup, progress, scroll, buttons])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 10
@@ -100,8 +105,15 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         close.title = "Cancel"
         close.isHidden = false
         models.isHidden = removing
-        models.title = "Download OCR models during setup"
-        models.state = .on
+        models.title = removing ? "Also remove the listed OCR model entries" : "Download OCR models during setup"
+        models.state = removing ? .off : .on
+        modelCleanupToken = nil
+        uvCleanupToken = nil
+        uvCleanup.isHidden = true
+        uvCleanup.state = .off
+        pythonCleanupToken = nil
+        pythonCleanup.isHidden = true
+        pythonCleanup.state = .off
         updates.title = removing ? "Also clear OCR CLI update settings" : "Automatically check for updates"
         updates.state = .off
         reveal.isHidden = true
@@ -123,7 +135,12 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     ? "Review the checks below, then choose what to include."
                     : "Setup could not check this Mac. You can still try installing."
             }
-            self.models.isEnabled = !self.removing && !self.cached
+            self.models.isHidden = self.removing && self.modelCleanupToken == nil
+            self.models.isEnabled = self.removing ? result == 0 && self.modelCleanupToken != nil : !self.cached
+            self.uvCleanup.isHidden = !self.removing || self.uvCleanupToken == nil
+            self.uvCleanup.isEnabled = self.removing && result == 0 && self.uvCleanupToken != nil
+            self.pythonCleanup.isHidden = !self.removing || self.pythonCleanupToken == nil
+            self.pythonCleanup.isEnabled = self.removing && result == 0 && self.pythonCleanupToken != nil
             self.updates.isEnabled = !self.removing || result == 0
             self.install.isEnabled = self.updates.isEnabled
         }
@@ -144,7 +161,7 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return
         }
         running = true
-        for button in [mode, models, updates, install, close] { button.isEnabled = false }
+        for button in [mode, models, updates, uvCleanup, pythonCleanup, install, close] { button.isEnabled = false }
         status.stringValue = removing ? "Starting removal…" : "Starting setup…"
         progress.isHidden = false
         progress.isIndeterminate = true
@@ -152,9 +169,14 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
         log.string = ""
         let modelChoice = models.state == .on ? "download" : "skip"
         let updateChoice = updates.state == .on ? "enabled" : "disabled"
-        let arguments = removing
+        var arguments = removing
             ? ["remove", updates.state == .on ? "remove-settings" : "keep-settings"]
             : ["install", modelChoice, updateChoice]
+        if removing {
+            arguments.append(models.state == .on ? modelCleanupToken ?? "" : "")
+            arguments.append(uvCleanup.state == .on ? uvCleanupToken ?? "" : "")
+            arguments.append(pythonCleanup.state == .on ? pythonCleanupToken ?? "" : "")
+        }
         run(arguments) { [weak self] result in
             guard let self else { return }
             self.running = false
@@ -171,6 +193,9 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 self.install.title = result == 0 ? "Done" : "Retry"
                 self.close.isHidden = result == 0
                 self.updates.isEnabled = result != 0
+                self.models.isEnabled = result != 0 && self.modelCleanupToken != nil
+                self.uvCleanup.isEnabled = result != 0 && self.uvCleanupToken != nil
+                self.pythonCleanup.isEnabled = result != 0 && self.pythonCleanupToken != nil
             } else if result == 0, let launcher = self.installedLauncher,
                FileManager.default.isExecutableFile(atPath: launcher.path) {
                 self.status.stringValue = "OCR CLI is ready. Copy the command and paste it into Terminal to get started."
@@ -202,6 +227,18 @@ final class Setup: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     private func receive(_ line: String) {
+        if line.hasPrefix("OCR_SETUP_PYTHON_TOKEN ") {
+            pythonCleanupToken = String(line.dropFirst("OCR_SETUP_PYTHON_TOKEN ".count))
+            return
+        }
+        if line.hasPrefix("OCR_SETUP_UV_TOKEN ") {
+            uvCleanupToken = String(line.dropFirst("OCR_SETUP_UV_TOKEN ".count))
+            return
+        }
+        if line.hasPrefix("OCR_SETUP_MODEL_TOKEN ") {
+            modelCleanupToken = String(line.dropFirst("OCR_SETUP_MODEL_TOKEN ".count))
+            return
+        }
         if line.hasPrefix("OCR_SETUP_STAGE ") {
             status.stringValue = String(line.dropFirst("OCR_SETUP_STAGE ".count))
             progress.isIndeterminate = true

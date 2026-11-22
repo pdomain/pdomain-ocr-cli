@@ -904,6 +904,10 @@ def _download_models(argv: list[str]) -> int:
 
 def main() -> None:
     """Entry point for the ``pdomain-ocr`` CLI command."""
+    if sys.argv[1:2] == ["uninstall"] and not Path("uninstall").exists():
+        from pdomain_ocr_cli._terminal_uninstall import run_terminal_uninstall
+
+        raise SystemExit(run_terminal_uninstall(sys.argv[2:]))
     if sys.argv[1:] == ["--check-runtime"]:
         from pdomain_ocr_cli._self_update import check_runtime
 

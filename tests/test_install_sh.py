@@ -112,6 +112,13 @@ if [ "$*" = "tool dir --bin" ]; then
   printf '%s\\n' "{tool_bin}"
   exit 0
 fi
+if [ "$*" = "tool dir" ]; then
+  printf '%s\\n' "{tool_bin.parent / "tool environments"}"
+  exit 0
+fi
+case "$*" in
+  'python find --no-project --no-python-downloads -- '*) exit 0 ;;
+esac
 """
         f'n=$(cat {count} 2>/dev/null || echo 0)\nn=$((n + 1))\necho "$n" > {count}\n'
         f"if [ \"$n\" -gt 1 ]; then echo '--call--' >> {uv_log}; fi\n"
@@ -651,11 +658,10 @@ def test_install_sh_does_not_retry_resolver_failure(tmp_path: Path) -> None:
 
 
 def test_install_sh_fails_when_uv_bootstrap_installs_nothing(tmp_path: Path) -> None:
-    """A failed `curl | sh` of the uv installer exits 0; the script must
-    notice that uv is still missing."""
+    """A failed uv bootstrap download stops the installer."""
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    for tool in ("curl", "sh", "grep", "sed", "head", "tr", "uname", "mktemp", "rm"):
+    for tool in ("curl", "sh", "grep", "sed", "head", "tr", "uname", "mkdir", "mktemp", "rm"):
         found = shutil.which(tool)
         assert found, tool
         (bin_dir / tool).symlink_to(found)

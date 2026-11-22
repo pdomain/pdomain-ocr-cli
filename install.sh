@@ -77,17 +77,30 @@ case "$AUTO_UPDATE_SETTING" in
         ;;
 esac
 
-# Install uv if not already present
+UV_STAGE=
+WHEEL_DIR=
+cleanup_install() {
+    [ -z "$UV_STAGE" ] || rm -rf "$UV_STAGE"
+    [ -z "$WHEEL_DIR" ] || rm -rf "$WHEEL_DIR"
+}
+trap cleanup_install EXIT
+trap 'exit 1' HUP INT TERM
+
+# Stage a missing uv privately. Publish it after the tool can write its receipt.
 if ! command -v uv >/dev/null 2>&1; then
     echo "uv not found — installing uv..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.local/bin:$PATH"
-    # A failed download pipes nothing into sh, which then exits 0.
-    if ! command -v uv >/dev/null 2>&1; then
+    UV_DESTINATION=${UV_UNMANAGED_INSTALL:-${UV_INSTALL_DIR:-${XDG_BIN_HOME:-${XDG_DATA_HOME:+$XDG_DATA_HOME/../bin}}}}
+    UV_DESTINATION=${UV_DESTINATION:-$HOME/.local/bin}
+    if ! mkdir -p "$UV_DESTINATION" ||
+        ! UV_STAGE=$(mktemp -d "$UV_DESTINATION/.ocr-uv.XXXXXX") ||
+        ! curl -LsSf https://astral.sh/uv/install.sh -o "$UV_STAGE/install.sh" ||
+        ! UV_UNMANAGED_INSTALL="$UV_STAGE" /bin/sh "$UV_STAGE/install.sh" ||
+        [ ! -x "$UV_STAGE/uv" ]; then
         echo "❌ uv could not be installed; see the message above." >&2
         echo "   Install it yourself: https://docs.astral.sh/uv/getting-started/installation/" >&2
         exit 1
     fi
+    export PATH="$UV_STAGE:$PATH"
 fi
 
 TORCH_BACKEND=""
@@ -264,8 +277,6 @@ echo "pdomain-index-pip:       ${PD_INDEX_URL}"
 # Download the wheel to a temp dir and install.
 # ---------------------------------------------------------------------------
 WHEEL_DIR=$(mktemp -d)
-# shellcheck disable=SC2064
-trap "rm -rf '$WHEEL_DIR'" EXIT
 
 WHEEL_FILE="$WHEEL_DIR/$(basename "$WHEEL_URL")"
 echo "Downloading wheel..."
@@ -314,6 +325,69 @@ if [ -n "$PREPARE_UPDATE" ]; then
     mv "$PREPARE_UPDATE/candidate.tmp" "$PREPARE_UPDATE/candidate"
     exit 0
 fi
+
+prepare_managed_python() {
+    python_log=
+    python_proof=
+    if uv python find --no-project --no-python-downloads -- "$PYTHON_VERSION" >/dev/null 2>&1; then
+        return 0
+    fi
+    if ! python_log=$(uv --color never python install --no-bin "$PYTHON_VERSION" 2>&1); then
+        printf '%s\n' "$python_log"
+        return 0
+    fi
+    printf '%s\n' "$python_log"
+    candidate=$(uv python find --no-project --no-python-downloads -- "$PYTHON_VERSION") || return 0
+    if [ -x "$candidate" ]; then
+        python_proof=$(
+            "$candidate" -I - <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys._base_executable).resolve()
+info = path.stat()
+print(json.dumps([str(path), info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns]))
+PY
+        ) || python_proof=
+    fi
+}
+
+record_managed_python() {
+    [ -n "$python_log" ] && [ -n "$python_proof" ] || return 0
+    tools=$(uv tool dir) || return 0
+    case "$tools" in /*) ;; *) return 0 ;; esac
+    root=$(uv python dir) || return 0
+    "$tools/pdomain-ocr-cli/bin/python" -I - "$root" "$python_log" "$python_proof" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    from pdomain_ops.suite.components import ComponentProbe, ComponentRegistry
+    from pdomain_ops.suite.python_components import ManagedPython, uv_installed_build
+except ModuleNotFoundError:
+    raise SystemExit(0)
+
+root = Path(sys.argv[1])
+key = uv_installed_build(sys.argv[2])
+if key is None or not root.is_absolute():
+    raise SystemExit(0)
+path = Path(sys._base_executable).resolve()
+info = path.stat()
+proof = [str(path), info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns]
+if proof != json.loads(sys.argv[3]) or not path.is_relative_to(root.resolve() / key):
+    raise SystemExit(0)
+item = ManagedPython(root, key, path)
+fingerprint = item.fingerprint()
+if fingerprint is not None:
+    ComponentRegistry().record_created(
+        "pdomain-ocr-cli", "installer", ComponentProbe("python", item.identity, item.fingerprint), fingerprint,
+    )
+PY
+}
+
+prepare_managed_python
 
 echo "Installing pdomain-ocr ${RELEASE_TAG:-} from $(basename "$WHEEL_FILE")..."
 # Build the install command incrementally so we only emit flags when relevant.
@@ -371,6 +445,76 @@ while :; do
     attempt=$((attempt + 1))
 done
 
+publish_staged_uv() {
+    [ -n "$UV_STAGE" ] || return 0
+    tools=$(uv tool dir) || return 1
+    case "$tools" in /*) ;; *) return 1 ;; esac
+    python="$tools/pdomain-ocr-cli/bin/python"
+    result=0
+    "$python" -I - "$UV_STAGE" "$UV_DESTINATION" <<'PY' || result=$?
+import sys
+from pathlib import Path
+try:
+    from pdomain_ops.suite.components import ComponentRegistry
+    from pdomain_ops.suite.component_files import install_staged_uv
+except ModuleNotFoundError:
+    raise SystemExit(77)
+stage, destination = map(Path, sys.argv[1:])
+registry = ComponentRegistry()
+for name in ("uv", "uvx"):
+    if (stage / name).is_file():
+        install_staged_uv(registry, "pdomain-ocr-cli", stage / name, destination / name)
+PY
+    if [ "$result" -eq 77 ]; then
+        for file in uv uvx; do
+            [ -f "$UV_STAGE/$file" ] || continue
+            if [ ! -e "$UV_DESTINATION/$file" ] && [ ! -L "$UV_DESTINATION/$file" ]; then
+                ln "$UV_STAGE/$file" "$UV_DESTINATION/$file" || [ -x "$UV_DESTINATION/$file" ] || return 1
+            fi
+        done
+    elif [ "$result" -ne 0 ]; then
+        return "$result"
+    fi
+    [ -x "$UV_DESTINATION/uv" ] || return 1
+    export PATH="$UV_DESTINATION:$PATH"
+}
+
+publish_staged_uv
+if ! record_managed_python; then
+    printf '%s\n' 'Setup could not verify ownership of the managed Python build.' >&2
+fi
+
+record_tool_claims() {
+    tools=$(uv tool dir) || return 0
+    case "$tools" in /*) ;; *) return 0 ;; esac
+    python="$tools/pdomain-ocr-cli/bin/python"
+    [ -x "$python" ] || return 0
+    uv_command=$(command -v uv) || return 0
+    python_root=$(uv python dir) || return 0
+    "$python" -I - "$uv_command" "$python_root" <<'PY'
+import sys
+from pathlib import Path
+
+try:
+    from pdomain_ops.suite.components import ComponentRegistry
+    from pdomain_ops.suite.python_components import claim_existing_tools
+except ModuleNotFoundError:
+    raise SystemExit(0)
+
+claim_existing_tools(
+    ComponentRegistry(),
+    "pdomain-ocr-cli",
+    Path(sys.argv[1]),
+    Path(sys.argv[2]),
+    Path(sys._base_executable),
+)
+PY
+}
+
+if ! record_tool_claims; then
+    printf '%s\n' 'Setup could not verify shared uv and Python ownership. Keep both tools installed.' >&2
+fi
+
 LAUNCHER=""
 if [ -n "$AUTO_UPDATE_CHECK" ] || [ "$SKIP_MODELS" -eq 0 ]; then
     if ! TOOL_BIN=$(uv tool dir --bin) || [ -z "$TOOL_BIN" ]; then
@@ -393,7 +537,7 @@ if [ "$SKIP_MODELS" -eq 0 ]; then
     if [ -z "$LAUNCHER" ] || ! HELP=$("$LAUNCHER" --help 2>/dev/null) \
         || ! printf '%s\n' "$HELP" | grep -Fq download-models; then
         echo "Model prefetch is unavailable. Models will download on the first OCR run." >&2
-    elif ! "$LAUNCHER" download-models; then
+    elif ! PDOMAIN_OCR_MODEL_SOURCE=installer "$LAUNCHER" download-models; then
         echo "Model prefetch failed. Models will download on the first OCR run, or retry with: pdomain-ocr download-models" >&2
     fi
 fi

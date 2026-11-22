@@ -69,6 +69,7 @@ exclude = [
 [tool.hatch.build.targets.wheel.force-include]
 "install.sh" = "pdomain_ocr_cli/_installers/install.sh"
 "install.ps1" = "pdomain_ocr_cli/_installers/install.ps1"
+"installer/macos/setup-worker.sh" = "pdomain_ocr_cli/_installers/setup-worker.sh"
 
 [tool.hatch.build.targets.sdist]
 exclude = [

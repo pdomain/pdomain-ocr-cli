@@ -10,9 +10,69 @@ target for non-CLI callers.
 from __future__ import annotations
 
 import importlib
+import os
+import re
 import sys
 from pathlib import Path
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, TypeVar, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+_Result = TypeVar("_Result")
+
+
+class _ModelComponents(Protocol):
+    ModelCacheEntry: Callable[[Path, str, str, str], object]
+
+    def track_model_download(
+        self, app: str, source: str, entries: tuple[object, ...], download: Callable[[], _Result]
+    ) -> _Result: ...
+
+
+def _track_download(
+    repo: str,
+    revision: str | None,
+    filenames: tuple[str, ...],
+    download: Callable[[], _Result],
+) -> _Result:
+    if revision is None or re.fullmatch(r"[0-9a-f]{40}", revision) is None:
+        return download()
+    module_name = "pdomain_ops.suite.model_components"
+    try:
+        module = cast("_ModelComponents", cast("object", importlib.import_module(module_name)))
+    except ModuleNotFoundError as exc:
+        if exc.name != module_name:
+            raise
+        # The published dependency does not yet include the shared registry.
+        return download()
+
+    hub = importlib.import_module("huggingface_hub.constants")
+    cache_path: object = getattr(hub, "HF_HUB_CACHE", None)
+    if not isinstance(cache_path, str):
+        raise TypeError("Hugging Face did not report a model cache path")
+    cache = Path(cache_path).absolute()
+    try:
+        entries = tuple(module.ModelCacheEntry(cache, repo, revision, name) for name in filenames)
+    except ValueError:
+        # Keep support for custom names which the ownership adapter cannot verify.
+        return download()
+    source = "installer" if os.environ.get("PDOMAIN_OCR_MODEL_SOURCE") == "installer" else "runtime"
+    return module.track_model_download("pdomain-ocr-cli", source, entries, download)
+
+
+def _ocr_files(detection: str, recognition: str) -> tuple[str, ...]:
+    from pathlib import PurePosixPath
+
+    return (
+        detection,
+        recognition,
+        *(
+            str(PurePosixPath(name).with_suffix(ext))
+            for name in (detection, recognition)
+            for ext in OCR_MODEL_SIDECARS
+        ),
+    )
 
 
 class _HfArgs(Protocol):
@@ -67,12 +127,19 @@ DEFAULT_RECO_FILENAME = _HF.DEFAULT_RECO_FILENAME
 LAYOUT_MODEL_FILES = _HF.LAYOUT_MODEL_FILES
 OCR_MODEL_SIDECARS = _HF.OCR_MODEL_SIDECARS
 hf_download = _HF.hf_download
-prefetch_layout_files = _HF.prefetch_layout_files
 short_revision = _HF.short_revision
 silence_transformers_load_chatter = _HF.silence_transformers_load_chatter
 suppress_hf_unauth_warning = _HF.suppress_hf_unauth_warning
 _resolve_layout_source_kwargs = _HF.resolve_layout_source
 _resolve_ocr_models_kwargs = _HF.resolve_ocr_models
+
+
+def prefetch_layout_files(repo: str, revision: str | None) -> object:
+    """Prefetch layout models and track the exact pinned files."""
+    return _track_download(
+        repo, revision, LAYOUT_MODEL_FILES, lambda: _HF.prefetch_layout_files(repo, revision)
+    )
+
 
 __all__ = [
     "DEFAULT_DET_FILENAME",
@@ -117,13 +184,24 @@ def resolve_ocr_models(args: _HfArgs) -> tuple[Path, Path]:
     reco = Path(args.recognition) if args.recognition else None
 
     try:
-        return _resolve_ocr_models_kwargs(
-            repo=args.hf_repo,
-            revision=args.model_version,
-            det_filename=args.det_filename,
-            reco_filename=args.reco_filename,
-            detection_path=det,
-            recognition_path=reco,
+
+        def resolve() -> tuple[Path, Path]:
+            return _resolve_ocr_models_kwargs(
+                repo=args.hf_repo,
+                revision=args.model_version,
+                det_filename=args.det_filename,
+                reco_filename=args.reco_filename,
+                detection_path=det,
+                recognition_path=reco,
+            )
+
+        if det is not None:
+            return resolve()
+        return _track_download(
+            args.hf_repo,
+            args.model_version,
+            _ocr_files(args.det_filename, args.reco_filename),
+            resolve,
         )
     except FileNotFoundError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)  # noqa: T201  # CLI output
@@ -156,11 +234,16 @@ def resolve_layout_source(args: _HfArgs) -> tuple[str | None, str | None, str]:
 
 def prefetch_default_models(*, revision: str, layout_model: str) -> None:
     """Cache the default OCR and layout files without loading the models."""
-    _ = _resolve_ocr_models_kwargs(
-        repo=DEFAULT_HF_REPO,
-        revision=revision,
-        det_filename=DEFAULT_DET_FILENAME,
-        reco_filename=DEFAULT_RECO_FILENAME,
+    _ = _track_download(
+        DEFAULT_HF_REPO,
+        revision,
+        _ocr_files(DEFAULT_DET_FILENAME, DEFAULT_RECO_FILENAME),
+        lambda: _resolve_ocr_models_kwargs(
+            repo=DEFAULT_HF_REPO,
+            revision=revision,
+            det_filename=DEFAULT_DET_FILENAME,
+            reco_filename=DEFAULT_RECO_FILENAME,
+        ),
     )
     layout_repo, layout_revision, _descriptor = _resolve_layout_source_kwargs(layout_model)
     if layout_repo is not None:
