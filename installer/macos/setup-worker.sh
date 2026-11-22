@@ -31,7 +31,9 @@ show_data_paths() {
 
 remove_preview() {
     show_data_paths
-    printf '%s\n' 'Removal keeps the shared model cache, uv and its Python installations.'
+    printf '%s\n' \
+        'Setup has no ownership record for entries in this cache.' \
+        'Removal keeps the model cache, OCR input and output files, uv and its Python installations.'
     if ! command -v uv >/dev/null 2>&1 || ! tool_paths; then
         printf '%s\n' 'Could not locate uv tool storage. Open Setup with the same uv environment used to install the CLI.' >&2
         return 1

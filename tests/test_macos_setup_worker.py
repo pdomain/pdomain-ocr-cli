@@ -72,7 +72,10 @@ def _fixture_wheel(root: Path, name: str, script: str) -> Path:
 
 
 @pytest.mark.parametrize("settings", ["keep-settings", "remove-settings"])
-def test_setup_install_and_remove_use_cli_storage(tmp_path: Path, settings: str) -> None:
+@pytest.mark.parametrize("gui_installed", [True, False])
+def test_setup_install_and_remove_use_cli_storage(
+    tmp_path: Path, settings: str, gui_installed: bool
+) -> None:
     uv = shutil.which("uv")
     assert uv is not None
     worker = tmp_path / "setup-worker.sh"
@@ -92,6 +95,10 @@ def test_setup_install_and_remove_use_cli_storage(tmp_path: Path, settings: str)
     cache.mkdir()
     model = cache / "model"
     _ = model.write_text("shared\n")
+    scanned_page = tmp_path / "input scan.jpg"
+    output_text = tmp_path / "OCR output.txt"
+    _ = scanned_page.write_bytes(b"page fixture")
+    _ = output_text.write_text("recognized text\n")
     env = {
         "HOME": str(tmp_path),
         "PATH": os.environ["PATH"],
@@ -111,10 +118,22 @@ def test_setup_install_and_remove_use_cli_storage(tmp_path: Path, settings: str)
         '#!/bin/sh\nexec "$FIXTURE_UV" tool install --offline --no-config '
         '--python "$FIXTURE_PYTHON" "$FIXTURE_WHEEL"\n'
     )
-    for command in (
-        [uv, "tool", "install", "--offline", "--no-config", "--python", sys.executable, str(gui)],
-        ["sh", str(worker), "install", "skip", "disabled"],
-    ):
+    commands = [["sh", str(worker), "install", "skip", "disabled"]]
+    if gui_installed:
+        commands.insert(
+            0,
+            [
+                uv,
+                "tool",
+                "install",
+                "--offline",
+                "--no-config",
+                "--python",
+                sys.executable,
+                str(gui),
+            ],
+        )
+    for command in commands:
         result = subprocess.run(command, env=env, capture_output=True, text=True, check=False)
         assert result.returncode == 0, result.stdout + result.stderr
     launcher = bin_dir / "pdomain-ocr"
@@ -143,6 +162,7 @@ def test_setup_install_and_remove_use_cli_storage(tmp_path: Path, settings: str)
     assert preview.returncode == 0, preview.stdout + preview.stderr
     for path in (launcher, receipt, settings_file, cache):
         assert str(path) in preview.stdout
+    assert "Setup has no ownership record for entries in this cache." in preview.stdout
     assert launcher.is_file()
     assert receipt.is_file()
     for _attempt in range(2):
@@ -157,8 +177,10 @@ def test_setup_install_and_remove_use_cli_storage(tmp_path: Path, settings: str)
         assert not launcher.exists()
         assert not launcher.is_symlink()
         assert not receipt.exists()
-        assert (tools / "pdomain-ocr-gui/uv-receipt.toml").is_file()
-        assert (bin_dir / "pdomain-ocr-gui").is_file()
+        assert (tools / "pdomain-ocr-gui/uv-receipt.toml").is_file() == gui_installed
+        assert (bin_dir / "pdomain-ocr-gui").is_file() == gui_installed
         assert other_settings.is_file()
-        assert model.is_file()
+        assert model.read_text() == "shared\n"
+        assert scanned_page.read_bytes() == b"page fixture"
+        assert output_text.read_text() == "recognized text\n"
         assert settings_file.exists() == (settings == "keep-settings")
