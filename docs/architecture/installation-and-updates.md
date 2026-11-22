@@ -112,9 +112,6 @@ For config paths and runtime precedence, see the
 
 ## Update check and installation
 
-The [update recovery implementation plan](../plans/2026-11-21-cli-update-recovery.md)
-describes the proposed verification and rollback flow.
-
 The explicit update command reads GitHub's latest stable release and compares
 it with the installed version. `--check` stops after the comparison. Apply
 requires a uv-managed tool installation and confirmation or `--yes`.
@@ -123,9 +120,24 @@ stops before downloading if the resolved tag changed. The updater preserves
 the current Python minor version unless the installer Python setting overrides
 it. It leaves the saved automatic-check preference in place.
 
-On Windows, PowerShell waits for the CLI and its launcher to exit before
-installing. The CLI can report that it handed off the update. The installer
-reports its own outcome after that.
+The bundled installer stages the verified wheel without replacing the live
+tool. The updater installs it into a private relocatable uv environment
+and checks its prerequisites. On Windows, PowerShell waits for the CLI
+and its launcher to exit before starting the activation worker.
+
+The worker runs outside the tool environment and takes uv's live directory
+lock. It also waits for running OCR commands to release their shared lock.
+It records each move in a journal, parks the old environment, and moves
+the candidate into the original path. The public launcher stays in place.
+The worker checks the exact approved version and imports the OCR runtime
+without loading models. If either check fails, the worker attempts to restore
+the old environment offline. A failed restore leaves the journal and any
+parked environment available for recovery.
+
+The CLI prints a recovery command before activation. Recovery takes the same
+lock and checks the recorded identities. It leaves the backup in place if an
+external command changed the installation. See the
+[recovery plan](../plans/2026-11-21-cli-update-recovery.md) for the relocation proof.
 
 The opt-in background check reads `/repos/pdomain/pdomain-ocr-cli/tags?per_page=100`
 from GitHub with a three-second timeout. It prints a notice to stderr when a

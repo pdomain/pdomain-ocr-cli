@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
+from contextlib import contextmanager
 from io import BytesIO
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -14,9 +14,11 @@ from unittest.mock import Mock
 import pytest
 
 from pdomain_ocr_cli import _self_update as updater
+from pdomain_ocr_cli import _update_worker as worker
 from pdomain_ocr_cli import ocr_to_txt as cli
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from pathlib import Path
     from urllib.request import Request
 
@@ -306,80 +308,143 @@ def test_apply_reports_missing_bundled_installer(
 
 
 @pytest.mark.parametrize(("override", "expected"), [(None, "3.12"), ("3.11", "3.11")])
-def test_apply_runs_bundled_posix_installer_with_approved_tag(
+@pytest.mark.parametrize("stage_fails", [False, True])
+def test_apply_prepares_candidate_before_launching_worker(
     override: str | None,
     expected: str,
+    stage_fails: bool,
     release: str,
     installers: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    tools = installers / "tools"
+    live = tools / "pdomain-ocr-cli"
+    live.mkdir(parents=True)
+    public = installers / "bin" / "pdomain-ocr"
+    public.parent.mkdir()
+    public.touch()
     script = installers / "install.sh"
     script.touch()
-    run = Mock(return_value=subprocess.CompletedProcess(["sh"], 7))
-    version_info = SimpleNamespace(major=3, minor=12)
+    base_python = installers / "python"
+    base_python.touch()
     monkeypatch.setattr(
-        updater, "sys", SimpleNamespace(platform="linux", version_info=version_info)
+        updater,
+        "sys",
+        SimpleNamespace(
+            platform="linux",
+            version_info=SimpleNamespace(major=3, minor=12),
+            prefix=str(live),
+            stderr=sys.stderr,
+            _base_executable=str(base_python),
+        ),
     )
-    monkeypatch.setattr("shutil.which", Mock(return_value="/absolute/sh"))
-    monkeypatch.setattr("subprocess.run", run)
-    monkeypatch.setenv("CUDA_VERSION", "13.0")
+    monkeypatch.setattr("shutil.which", Mock(return_value="/absolute/uv"))
     if override is None:
         monkeypatch.delenv("PD_OCR_INSTALL_PYTHON", raising=False)
     else:
         monkeypatch.setenv("PD_OCR_INSTALL_PYTHON", override)
-    expected_env = {
-        **os.environ,
-        "PDOMAIN_OCR_EXPECTED_RELEASE_TAG": release,
-        "PD_OCR_INSTALL_PYTHON": expected,
-    }
-    _ = expected_env.pop("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", None)
     monkeypatch.setenv("PD_OCR_INSTALL_AUTO_UPDATE_CHECK", "1")
-
-    assert updater.run_update(["--yes"]) == 7
-    run.assert_called_once_with(
-        ["/absolute/sh", str(script)],
-        env=expected_env,
-        check=False,
+    prepare = Mock(side_effect=ValueError("bad wheel") if stage_fails else None)
+    journal = Mock()
+    launch = Mock(return_value=7)
+    monkeypatch.setattr(updater, "prepare_candidate", prepare, raising=False)
+    monkeypatch.setattr(updater, "prepare_transaction", journal, raising=False)
+    monkeypatch.setattr(updater, "_launch_worker", launch, raising=False)
+    monkeypatch.setattr(
+        "subprocess.run",
+        Mock(return_value=subprocess.CompletedProcess(["uv"], 0, stdout=str(public.parent))),
     )
 
+    assert updater.run_update(["--yes"]) == (1 if stage_fails else 7)
+    uv, installer, directory, env, launcher = prepare.call_args.args
+    assert uv == "/absolute/uv"
+    assert installer == script
+    assert directory.parent == tools.parent
+    assert launcher == public
+    assert env["PDOMAIN_OCR_EXPECTED_RELEASE_TAG"] == release
+    assert env["PD_OCR_INSTALL_PYTHON"] == expected
+    assert "PD_OCR_INSTALL_AUTO_UPDATE_CHECK" not in env
+    if stage_fails:
+        assert not directory.exists()
+        journal.assert_not_called()
+        launch.assert_not_called()
+        return
+    journal.assert_called_once_with(
+        directory, live, prepare.return_value, public, previous_version="1.0.0", version="1.1.0"
+    )
+    launch.assert_called_once()
+    assert journal.return_value in launch.call_args.args
 
-@pytest.mark.parametrize("launch_error", [False, True])
-def test_windows_apply_hands_off_bundled_installer_before_replacing_launcher(
-    launch_error: bool,
+
+def test_posix_worker_runs_with_external_python(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = tmp_path / "base python"
+    worker = tmp_path / "worker.py"
+    journal = tmp_path / "transaction.json"
+    run = Mock(return_value=subprocess.CompletedProcess([], 1))
+    monkeypatch.setattr("subprocess.run", run)
+
+    assert updater._launch_worker(base, worker, journal, windows=False) == 1
+    run.assert_called_once_with([str(base), "-I", str(worker), str(journal)], check=False)
+
+
+@pytest.mark.parametrize("problem", ["unknown", "absent", "inside", "bin"])
+def test_update_refuses_when_recovery_paths_are_unavailable(
+    problem: str,
     release: str,
     installers: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: CaptureFixture[str],
 ) -> None:
-    script = installers / "install.ps1"
-    _ = script.write_text("Write-Output 'bundled installer'", encoding="utf-8")
-    directory = installers / "private"
-    directory.mkdir()
-    popen = Mock(side_effect=OSError("launch failed") if launch_error else None)
-    version_info = SimpleNamespace(major=3, minor=13)
+    live = installers / "tools" / "pdomain-ocr-cli"
+    live.mkdir(parents=True)
+    base = (live if problem == "inside" else installers) / "python"
+    if problem != "absent":
+        base.touch()
+    (installers / "install.sh").touch()
     monkeypatch.setattr(
         updater,
         "sys",
-        SimpleNamespace(platform="win32", stderr=sys.stderr, version_info=version_info),
+        SimpleNamespace(
+            platform="linux",
+            version_info=SimpleNamespace(major=3, minor=13),
+            prefix=str(live),
+            stderr=sys.stderr,
+            _base_executable=None if problem == "unknown" else str(base),
+        ),
     )
-    monkeypatch.delenv("PD_OCR_INSTALL_PYTHON", raising=False)
+    monkeypatch.setattr("shutil.which", Mock(return_value="/absolute/uv"))
+    monkeypatch.setattr(
+        "subprocess.run", Mock(return_value=subprocess.CompletedProcess([], 0, stdout="relative"))
+    )
+    prepare = Mock()
+    monkeypatch.setattr(updater, "prepare_candidate", prepare)
+
+    assert release
+    assert updater.run_update(["--yes"]) == 1
+    error = capsys.readouterr().err
+    assert ("absolute launcher directory" if problem == "bin" else "external Python") in error
+    prepare.assert_not_called()
+
+
+def test_windows_worker_waits_before_starting_external_python(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    base = tmp_path / "base python.exe"
+    worker = tmp_path / "worker.py"
+    journal = tmp_path / "transaction.json"
+    popen = Mock()
+    monkeypatch.setattr("subprocess.Popen", popen)
     monkeypatch.setattr("shutil.which", Mock(return_value="/absolute/powershell.exe"))
     monkeypatch.setattr("os.getpid", lambda: 34)
     monkeypatch.setattr("os.getppid", lambda: 56)
-    monkeypatch.setattr("tempfile.mkdtemp", Mock(return_value=str(directory)))
-    monkeypatch.setattr("subprocess.Popen", popen)
 
-    if launch_error:
-        assert updater.run_update(["--yes"]) == 1
-        assert "launch failed" in capsys.readouterr().err
-        assert not directory.exists()
-    else:
-        assert updater.run_update(["--yes"]) == 0
-        assert (directory / script.name).read_bytes() == script.read_bytes()
-        handoff = (directory / "handoff.ps1").read_text(encoding="utf-8")
-        assert handoff.index("WaitForExit") < handoff.index("'install.ps1'")
-        assert "Update handed off" in capsys.readouterr().out
-
+    assert updater._launch_worker(base, worker, journal, windows=True) == 0
+    handoff = tmp_path / "handoff.ps1"
+    script = handoff.read_text(encoding="utf-8")
+    assert script.index("$launcher.WaitForExit") < script.index("& $Python -I $Worker $Journal")
+    assert "Update handed off" in capsys.readouterr().out
     popen.assert_called_once_with(
         [
             "/absolute/powershell.exe",
@@ -387,16 +452,97 @@ def test_windows_apply_hands_off_bundled_installer_before_replacing_launcher(
             "-ExecutionPolicy",
             "RemoteSigned",
             "-File",
-            str(directory / "handoff.ps1"),
+            str(handoff),
             "34",
             "56",
-        ],
-        env={
-            **os.environ,
-            "PDOMAIN_OCR_EXPECTED_RELEASE_TAG": release,
-            "PD_OCR_INSTALL_PYTHON": "3.13",
-        },
+            str(base),
+            str(worker),
+            str(journal),
+        ]
     )
+
+
+@pytest.mark.parametrize("windows", [False, True])
+def test_recovery_command_quotes_all_paths(tmp_path: Path, windows: bool) -> None:
+    base = tmp_path / "base's python"
+    worker = tmp_path / "private worker.py"
+    journal = tmp_path / "transaction.json"
+
+    command = updater._recovery_command(base, worker, journal, windows=windows)
+    assert command.endswith("'--recover'" if windows else "--recover")
+    assert "base''s python" in command if windows else "base'\"'\"'s python" in command
+
+
+@pytest.mark.parametrize(
+    "mode",
+    ["ocr", "models", "version", "probe", "busy", "parked", "stale", "unmanaged", "no-receipt"],
+)
+def test_managed_ocr_holds_installation_during_work(
+    mode: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: CaptureFixture[str],
+) -> None:
+    prefix = tmp_path / ("unmanaged" if mode == "unmanaged" else "pdomain-ocr-cli")
+    prefix.mkdir()
+    if mode not in {"no-receipt", "parked"}:
+        (prefix / "uv-receipt.toml").touch()
+    if mode == "parked":
+        (prefix.parent / ".pdomain-ocr-cli.in-use.lock").touch()
+    monkeypatch.setattr(
+        cli, "_installed_version", lambda name: "old" if mode == "stale" else cli._VERSION
+    )
+    monkeypatch.setattr(sys, "prefix", str(prefix))
+    arg = {"models": "download-models", "version": "--version", "probe": "--version"}.get(
+        mode, "page.png"
+    )
+    if mode == "probe":
+        monkeypatch.setenv("PDOMAIN_OCR_UPDATE_PROBE", "1")
+    else:
+        monkeypatch.delenv("PDOMAIN_OCR_UPDATE_PROBE", raising=False)
+    monkeypatch.setattr(sys, "argv", ["pdomain-ocr", arg])
+    events: list[str] = []
+
+    @contextmanager
+    def hold(path: Path) -> Generator[None]:
+        assert path == prefix
+        if mode in {"busy", "parked"}:
+            raise TimeoutError("update in progress")
+        events.append("locked")
+        try:
+            yield
+        finally:
+            events.append("released")
+
+    def ocr() -> None:
+        events.append("ocr")
+
+    def models(args: list[str]) -> int:
+        assert not args
+        events.append("models")
+        return 0
+
+    monkeypatch.setattr(worker, "hold_installation", hold, raising=False)
+    monkeypatch.setattr(cli, "_run_ocr", ocr, raising=False)
+    monkeypatch.setattr(cli, "_download_models", models)
+    if mode in {"models", "busy", "parked", "stale"}:
+        with pytest.raises(SystemExit) as result:
+            cli.main()
+        assert result.value.code == (0 if mode == "models" else 1)
+    else:
+        cli.main()
+    if mode in {"busy", "parked"}:
+        assert "update in progress" in capsys.readouterr().err
+        assert not events
+    elif mode == "stale":
+        assert "changed during startup" in capsys.readouterr().err
+        assert events == ["locked", "released"]
+    elif mode in {"ocr", "models"}:
+        assert events == ["locked", mode, "released"]
+    elif mode == "version":
+        assert events == ["locked", "ocr", "released"]
+    else:
+        assert events == ["ocr"]
 
 
 def test_runtime_health_check_runs_offline_and_reports_exact_version(

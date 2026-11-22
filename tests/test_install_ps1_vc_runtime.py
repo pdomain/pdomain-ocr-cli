@@ -14,6 +14,8 @@ import subprocess
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -502,6 +504,43 @@ def test_confirm_skips_install_when_runtime_is_adequate(tmp_path: Path) -> None:
     assert "restart=False" in result.stdout
     assert "14.42 or newer" in result.stdout
     assert _calls(tmp_path) == []
+
+
+@pytest.mark.parametrize("restart", [False, True])
+def test_staged_runtime_check_completes_before_release_lookup(
+    tmp_path: Path, restart: bool
+) -> None:
+    environment = tmp_path / "staged environment"
+    environment.mkdir()
+    result = _pwsh(
+        f"""
+$Text = [IO.File]::ReadAllText('{INSTALLER}')
+$Text = $Text.Replace(
+    ($Definitions | Where-Object Name -eq 'Test-IsWindowsHost').Extent.Text,
+    'function Test-IsWindowsHost {{ $true }}'
+)
+$Text = $Text.Replace(
+    ($Definitions | Where-Object Name -eq 'Confirm-VcRuntime').Extent.Text,
+    'function Confirm-VcRuntime {{
+        param([string]$EnvironmentPath, [string]$WorkDir)
+        if ($EnvironmentPath -ne "{environment}" -or $WorkDir -ne "{tmp_path}") {{
+            throw "Unexpected staging paths"
+        }}
+        $' + '{str(restart).lower()}' + '
+    }}'
+)
+function Invoke-RestMethod {{ throw "Unexpected release lookup" }}
+& ([scriptblock]::Create($Text)) -CheckStagedRuntime '{environment}'
+"ready"
+""",
+        tmp_path,
+    )
+    if restart:
+        assert result.returncode != 0
+        assert "Restart Windows before retrying the OCR update." in result.stderr
+    else:
+        assert result.returncode == 0, result.stderr
+        assert "ready" in result.stdout
 
 
 def test_confirm_installs_missing_runtime_and_rechecks(tmp_path: Path) -> None:

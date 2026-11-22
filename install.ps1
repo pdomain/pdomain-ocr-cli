@@ -11,7 +11,12 @@
 #   $env:PD_OCR_INSTALL_PYTHON = "3.12"
 #   irm https://raw.githubusercontent.com/pdomain/pdomain-ocr-cli/master/install.ps1 | iex
 
-param([switch]$AutoUpdateCheck, [switch]$SkipModels, [string]$PrepareUpdate)
+param(
+    [switch]$AutoUpdateCheck,
+    [switch]$SkipModels,
+    [string]$PrepareUpdate,
+    [string]$CheckStagedRuntime
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -542,6 +547,18 @@ function Write-InstallSummary {
     }
     Write-Host "If 'pdomain-ocr' is not found, ensure uv's tool bin is on your PATH."
     Write-Host "  uv tool update-shell"
+}
+
+if ($CheckStagedRuntime) {
+    if (-not (Test-IsWindowsHost) -or
+        -not (Test-Path -LiteralPath $CheckStagedRuntime -PathType Container)) {
+        throw "CheckStagedRuntime requires a staged Windows environment."
+    }
+    $RuntimeWorkDir = Split-Path -Parent $CheckStagedRuntime
+    if (Confirm-VcRuntime -EnvironmentPath $CheckStagedRuntime -WorkDir $RuntimeWorkDir) {
+        throw "Restart Windows before retrying the OCR update."
+    }
+    return
 }
 
 $HelperPath = $null
