@@ -17,17 +17,20 @@ Kind: context
 
 ## What matters now
 
-GitHub lists v0.9.6 at `7deaf15` as the latest stable release.
-[Release v0.9.6](https://github.com/pdomain/pdomain-ocr-cli/releases/tag/v0.9.6)
+See the [latest stable release](https://github.com/pdomain/pdomain-ocr-cli/releases/latest)
+for the current version and download links.
 
-The `feat/ocr-cli-update` branch adds
-an explicit updater, opt-in background checks, and default model prefetch.
-Those features are awaiting release.
+The CLI supports confirmed upgrades of uv tool installations with
+`pdomain-ocr update`. The updater verifies the new installation and can
+restore the old one offline. Background checks are off by default.
+The installers can save an opt-in preference and cache the default
+detection, recognition, and layout models. The model skip flags defer
+downloads.
 
-The current lock selects `pdomain-book-tools` 0.31.3, `pdomain-book-contracts`
-0.3.1, and `pdomain-ops` 0.12.2 from the pdomain package index. The CLI
-accepts `pdomain-book-tools>=0.31.3,<0.32`. The resolver can use a compatible
-patch on a fresh install. Version 0.32 requires a cap change.
+The [dependency lock](../../uv.lock) records the versions used in development.
+Fresh installations may resolve newer compatible patches from the pdomain
+package index. The CLI accepts `pdomain-book-tools>=0.31.3,<0.32`.
+Version 0.32 requires a cap change.
 
 The installers retry failures that uv identifies as network errors up to
 twice. On Windows, the installer checks and repairs the Visual C++ runtime when
@@ -49,13 +52,6 @@ record provenance. See the [issue cutover decision](../decisions/2026-07-19-gith
 
 ## In-flight work
 
-The update branch adds `pdomain-ocr update` for confirmed upgrades of uv tool
-installs. The worker verifies the installed candidate and can restore the old
-environment offline. Background checks are off by default. The installers can save an
-opt-in preference and cache the default detection, recognition, and layout
-files. The model skip flags defer downloads. See the
-[install guide](../../README.md#install) for commands.
-
 Long-s and ligature normalization remains open on the [roadmap](../roadmap.md).
 Quote and dash cleanup uses `pdomain-book-contracts`. The batch path reads
 `page.ocr_rotation_degrees` from `pdomain-ops`. The spec-review handoff is
@@ -69,14 +65,20 @@ GitHub hosts manual macOS and Windows install tests. Start them with
 ## Test state
 
 The first updater passed full CI with 684 tests and 100% configured coverage.
-An isolated Linux tool install upgraded from 0.1.0 to the published 0.9.6
-release. A clean-cache model download and an offline cache reuse check also
-passed. Installer tests on Linux also exercise PowerShell with fakes.
+An isolated Linux tool install upgraded from 0.1.0 to
+[v0.9.6](https://github.com/pdomain/pdomain-ocr-cli/releases/tag/v0.9.6)
+at commit `7deaf15`. A clean-cache model download and offline cache reuse
+also passed. Linux installer tests exercise PowerShell with fakes.
 
 The recovery worker passed installed-wheel updates on Linux and Windows.
-Native Windows tests also covered wrong-version rollback and interruption
-after either directory move. The launcher stayed in place. Power-loss
-recovery and the restart-required update path remain unverified on Windows.
+The Windows tests confirmed that activation waits for a running model
+command and checks the new installation through the same launcher. Model
+prefetch reused the cache in the offline test. Windows also passed
+wrong-version rollback and recovery after either directory move.
+
+CI passed 820 tests at 100% configured coverage, with 16 slow tests skipped.
+The 16 real-model integration tests passed separately. Power-loss recovery
+and the restart-required update path remain unverified on Windows.
 
 ### Historical installer checks
 

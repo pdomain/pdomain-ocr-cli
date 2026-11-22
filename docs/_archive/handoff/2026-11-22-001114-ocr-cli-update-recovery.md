@@ -15,7 +15,7 @@ last_verified: "2026-11-22"
 
 # Handoff: OCR CLI update recovery
 
-> **Retired — superseded by `docs/handoff/2026-11-22-012950-ocr-cli-update-recovery.md`.**
+> **Retired — superseded by [the archived Windows test handoff](2026-11-22-012950-ocr-cli-update-recovery.md).**
 
 ## Goal
 
@@ -38,7 +38,7 @@ Do not assume the previous wheel remains at the path recorded by uv. The bootstr
 
 ## Pointers
 
-- `docs/plans/2026-11-21-cli-update-recovery.md`
+- [Installation and updates](../../architecture/installation-and-updates.md), which replaces the retired recovery plan.
 - `docs/architecture/installation-and-updates.md`
 - `pdomain_ocr_cli/_self_update.py`
 - `install.sh`

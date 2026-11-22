@@ -16,7 +16,7 @@ last_verified: "2026-11-22"
 
 # Handoff: OCR CLI update recovery and Windows testing
 
-> **Retired — superseded by `docs/handoff/2026-11-22-015008-ocr-cli-update-recovery.md`.**
+> **Retired — superseded by [the archived activation handoff](2026-11-22-015008-ocr-cli-update-recovery.md).**
 
 ## Goal
 
@@ -73,7 +73,7 @@ populated cache as success. Trust command exit status and offline validation.
 
 ## Pointers
 
-- `docs/plans/2026-11-21-cli-update-recovery.md`
+- [Installation and updates](../../architecture/installation-and-updates.md), which replaces the retired recovery plan.
 - `docs/architecture/installation-and-updates.md`
 - `pdomain_ocr_cli/_artifacts.py`
 - `pdomain_ocr_cli/_self_update.py`

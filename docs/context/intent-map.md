@@ -33,6 +33,11 @@ normalization, predictor batch-size benchmarking, and a later split of the
 large test modules. The batch path reads `page.ocr_rotation_degrees`. Quote
 and dash cleanup calls `pdomain-book-contracts`.
 
+The update recovery worker passed process-interruption tests on Linux and
+native Windows. Sudden power loss, the Windows restart-required update path,
+native PowerShell 7, CUDA, and long Windows model-cache paths remain
+unverified. See [update verification](../architecture/installation-and-updates.md#update-verification).
+
 ## Spec review follow-ups (2026-11-07)
 
 The listed follow-ups are on local master (`ddf6f3f` through `211708f`).

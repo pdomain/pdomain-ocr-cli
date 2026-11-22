@@ -159,7 +159,9 @@ pdomain_ocr_cli/
 ├── _image_limits.py      # size and pixel-count admission checks for input images
 ├── _pipeline.py          # pure pipeline helpers, including quote and dash cleanup
 ├── _self_update.py       # explicit release checks and updater handoff
-└── _update_check.py      # background GitHub-tag update notices
+├── _update_check.py      # background GitHub-tag update notices
+├── _update_stage.py      # verified wheel and relocatable environment
+└── _update_worker.py     # activation, runtime verification, and offline rollback
 ```
 
 Files prefixed with `_` are package-internal. The single public entry
@@ -172,15 +174,15 @@ The release script requires a clean `master` that is neither behind nor
 diverged from `origin/master`. Local commits ahead of the remote are allowed
 and will be pushed. It then runs
 `just ci-slow`, creates an annotated `vX.Y.Z` tag, and pushes `master` and the
-tag. Finally it builds the artifacts and creates the GitHub Release itself,
-attaching everything under `dist/`. The workflows were removed on 2026-09-13,
-so the script is the whole path.
+tag. It then builds the release archives and attaches them to the GitHub
+Release. The automated workflows were removed on 2026-09-13.
 
 `pdomain-ops` and `pdomain-book-tools` resolve from the self-hosted pdomain pip index
 for release builds. Do not commit path-based sibling sources for release.
 
-`install.sh` and `install.ps1` install the latest stable GitHub release. The
-`feat/ocr-cli-update` branch adds `pdomain-ocr update` for supported installs.
+`install.sh` and `install.ps1` install the
+[latest stable GitHub release](https://github.com/pdomain/pdomain-ocr-cli/releases/latest).
+Use `pdomain-ocr update` to upgrade a supported uv tool installation.
 The [installation and update architecture](docs/architecture/installation-and-updates.md)
 describes the release wheel, installer checks, and update handoff.
 

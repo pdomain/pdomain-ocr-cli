@@ -544,3 +544,18 @@ normalize-output spec, plan, and issue stay, because that flag is not built.
   have since passed on Windows; only the restart-required codes remain
   unproven. `install.sh` got the same uv retry and failure handling
   afterwards. The four owner choices and the next release remain open.
+
+### 2026-11-22 — OCR CLI update recovery plan and handoff retired
+
+- **Old path:** `docs/plans/2026-11-21-cli-update-recovery.md`.
+- **Outcome:** Implemented in `afd7eb6`. Staging uses a relocatable
+  environment. The activation worker holds the live uv lock during
+  verification and recovery. The launcher stays in its original location.
+- **Current behavior:** [Installation and updates](../architecture/installation-and-updates.md).
+- **Removal commit:** This documentation cleanup commit.
+- **Rationale kept:** The [initial recovery handoff](../_archive/handoff/2026-11-22-001114-ocr-cli-update-recovery.md),
+  [native Windows test handoff](../_archive/handoff/2026-11-22-012950-ocr-cli-update-recovery.md),
+  and [activation handoff](../_archive/handoff/2026-11-22-015008-ocr-cli-update-recovery.md)
+  preserve the sequence of experiments and earlier evidence.
+- **Remaining work:** The [intent map](intent-map.md#deferred-work) records
+  the cases that still need verification.
