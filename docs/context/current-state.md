@@ -20,7 +20,7 @@ Kind: context
 See the [latest stable release](https://github.com/pdomain/pdomain-ocr-cli/releases/latest)
 for the current version and download links.
 
-The CLI supports confirmed upgrades of uv tool installations with
+This checkout supports confirmed upgrades of uv tool installations with
 `pdomain-ocr update`. The updater verifies the new installation and can
 restore the old one offline. Background checks are off by default.
 The installers can save an opt-in preference and cache the default
@@ -31,6 +31,7 @@ The [dependency lock](../../uv.lock) records the versions used in development.
 Fresh installations may resolve newer compatible patches from the pdomain
 package index. The CLI accepts `pdomain-book-tools>=0.31.3,<0.32`.
 Version 0.32 requires a cap change.
+The CLI requires `pdomain-ops>=0.12.7,<1` for Python 3.11 import compatibility.
 
 The installers retry failures that uv identifies as network errors up to
 twice. On Windows, the installer checks and repairs the Visual C++ runtime when
