@@ -22,7 +22,44 @@ The GUI stages a candidate and verifies the restarted app before accepting it. T
 
 A disposable Linux uv install reported `99.9.1` before and after an intentional candidate-install failure. Restoring the old environment and launcher to their original paths worked offline. The uv receipt referred to an installer temporary wheel that no longer existed. An exact restore should use the old environment and launcher, since reinstalling the old wheel may require dependencies or network access. The proof covered a failure before a candidate was installed. It did not cover a partial install, interruption, or Windows locks.
 
-Stage the verified wheel and preferably resolve its dependencies without touching the live paths. Run the destructive portion in a recovery worker outside the tool environment. On Windows, wait for both the initiating CLI process and its launcher. Keep the backup of each item on its original filesystem. Park it outside uv's tool discovery paths and restore it to the same absolute path. A venv or launcher can contain absolute paths, so the backup stays parked until restoration.
+### Stage the environment before taking the live uv lock
+
+Install the verified wheel into private uv tool and bin directories on the live
+environment's filesystem. First create the candidate environment with
+`uv venv --relocatable`. In the Linux and Windows proofs, `uv tool install`
+reused that environment. In a Linux control, the launcher from a normal
+install still pointed to the original interpreter path after the move.
+
+Keep the existing public launchers when the candidate has the same entry points
+and the launchers target the live environment. The Linux launchers are symlinks.
+The existing Windows launchers also worked after the swap. The new Windows
+launchers generated in the staging bin failed when called outside the candidate
+environment. Map the candidate receipt's entry-point paths to the retained
+public launchers before activation. Verify the supported receipt and launcher
+layout before moving anything.
+
+Run activation in a recovery worker outside the tool environment. On Windows,
+wait for the initiating CLI process and its launcher. Take uv's own `.lock`
+with a bounded wait. The tested lock modes are exclusive `flock` on Linux and a
+byte-range lock starting at byte zero on Windows. A timeout aborts activation
+before any move.
+
+Recheck the installation after taking the lock. Park the old environment on
+the same filesystem, outside uv's tool discovery paths. Move the candidate to
+the original environment path. Hold the lock through the launcher health
+check and any rollback. Record the paths and identities of both environments,
+their receipts, and the retained launchers. If the worker stops and releases
+the lock, recovery takes it again and checks the recorded state. If an external
+command changed the installation, leave the backup in place and report the conflict.
+
+The disposable proof used uv 0.11.26 on Linux and uv 0.13.8 on native Windows.
+An external uv command waited while the worker held the live lock. Both original
+launchers ran version 2.0 after the swap and version 1.0 after offline rollback.
+After mapping the receipt paths, uv listed and uninstalled the candidate and
+left the unrelated tool intact. Windows accepted same-volume directory moves
+using `MoveFileExW` with `MOVEFILE_WRITE_THROUGH`. Power-loss recovery remains
+unverified. Both platforms ran the installed OCR wheel's runtime check after
+relocation. The Windows OCR proof reused the same wheel for both environments.
 
 ## Tech Stack
 
