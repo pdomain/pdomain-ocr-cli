@@ -224,6 +224,10 @@ build:
     echo "🔨 Building project..."
     uv build
 
+# Build the standalone Apple Silicon setup app for a published CLI tag.
+build-macos-setup release output="":
+    sh installer/macos/build.sh {{quote(release)}} {{quote(output)}}
+
 wheel-smoke:
     #!/usr/bin/env bash
     set -euo pipefail
