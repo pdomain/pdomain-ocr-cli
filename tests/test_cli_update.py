@@ -397,3 +397,40 @@ def test_windows_apply_hands_off_bundled_installer_before_replacing_launcher(
             "PD_OCR_INSTALL_PYTHON": "3.13",
         },
     )
+
+
+def test_runtime_health_check_runs_offline_and_reports_exact_version(
+    monkeypatch: pytest.MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    import importlib
+
+    probe = Mock()
+    monkeypatch.setattr(importlib, "import_module", probe)
+    monkeypatch.setattr(updater, "VERSION", "1.2.3")
+    monkeypatch.setattr(updater, "_latest_release_tag", Mock(side_effect=AssertionError))
+    monkeypatch.setattr(sys, "argv", ["pdomain-ocr", "--check-runtime"])
+
+    with pytest.raises(SystemExit) as result:
+        cli.main()
+
+    assert result.value.code == 0
+    assert capsys.readouterr().out.strip() == "pdomain-ocr runtime OK 1.2.3"
+    assert {call.args[0] for call in probe.call_args_list} == {
+        "pdomain_book_tools.ocr.doctr_support",
+        "pdomain_ops.gpu.device",
+        "pdomain_ops.gpu.doctr_batch",
+    }
+
+
+def test_runtime_health_check_reports_import_failure(
+    monkeypatch: pytest.MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    import importlib
+
+    monkeypatch.setattr(
+        importlib, "import_module", Mock(side_effect=ImportError("broken OCR dependency"))
+    )
+    assert updater.check_runtime() == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "broken OCR dependency" in captured.err

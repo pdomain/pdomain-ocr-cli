@@ -227,8 +227,6 @@ class _BytesConvertible(Protocol):
 
 
 class _Cv2Like(Protocol):
-    def imread(self, path: str) -> _Cv2ImageLike | None: ...
-
     def imencode(self, ext: str, image: _Cv2ImageLike) -> tuple[bool, _BytesConvertible]: ...
 
 
@@ -903,6 +901,10 @@ def _download_models(argv: list[str]) -> int:
 
 def main() -> None:
     """Entry point for the ``pdomain-ocr`` CLI command."""
+    if sys.argv[1:] == ["--check-runtime"]:
+        from pdomain_ocr_cli._self_update import check_runtime
+
+        raise SystemExit(check_runtime())
     if sys.argv[1:2] == ["download-models"]:
         raise SystemExit(_download_models(sys.argv[2:]))
     if sys.argv[1:2] == ["update"] and (
@@ -983,7 +985,7 @@ def main() -> None:
     try:
         runtime_session = _create_runtime_session(det_path, reco_path)
     except ImportError as e:
-        print(f"ERROR: pdomain_book_tools not importable: {e}", file=sys.stderr)  # noqa: T201  # CLI output
+        print(f"ERROR: could not import OCR runtime: {e}", file=sys.stderr)  # noqa: T201  # CLI output
         sys.exit(1)
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)  # noqa: T201  # CLI output
@@ -1300,40 +1302,32 @@ def main() -> None:
                     and page_layout is not None
                     and cv2_module is not None
                 ):
-                    source_img: _Cv2ImageLike | None
-                    if layout_source is img_path:
-                        source_img = cv2_module.imread(str(img_path))
-                        if source_img is None:
+                    source_img = cast(
+                        "_Cv2ImageLike", source_arr if layout_source is img_path else layout_source
+                    )
+                    for crop_pair in iter_crop_regions(
+                        page_layout.regions,
+                        args.layout_confidence,
+                        crop_types,
+                    ):
+                        crop_idx, raw_region = cast("tuple[int, object]", crop_pair)
+                        region = cast("_RegionLike", raw_region)
+                        crop = source_img[
+                            max(0, region.T) : max(0, region.B),
+                            max(0, region.L) : max(0, region.R),
+                        ]
+                        if crop.size == 0:
+                            continue
+                        crop_path = illustration_crop_path(dest_dir, img_path.stem, crop_idx)
+                        ok, encoded = cv2_module.imencode(".jpg", crop)
+                        if not ok:
                             print(  # noqa: T201  # CLI output
-                                f"WARNING: could not re-read {img_path} for illustration crops",
+                                f"WARNING: cv2.imencode failed for {crop_path}",
                                 file=sys.stderr,
                             )
-                    else:
-                        source_img = cast("_Cv2ImageLike", layout_source)
-                    if source_img is not None:
-                        for crop_pair in iter_crop_regions(
-                            page_layout.regions,
-                            args.layout_confidence,
-                            crop_types,
-                        ):
-                            crop_idx, raw_region = cast("tuple[int, object]", crop_pair)
-                            region = cast("_RegionLike", raw_region)
-                            crop = source_img[
-                                max(0, region.T) : max(0, region.B),
-                                max(0, region.L) : max(0, region.R),
-                            ]
-                            if crop.size == 0:
-                                continue
-                            crop_path = illustration_crop_path(dest_dir, img_path.stem, crop_idx)
-                            ok, encoded = cv2_module.imencode(".jpg", crop)
-                            if not ok:
-                                print(  # noqa: T201  # CLI output
-                                    f"WARNING: cv2.imencode failed for {crop_path}",
-                                    file=sys.stderr,
-                                )
-                                continue
-                            transaction.add_bytes(crop_path, bytes(encoded))
-                            extra_paths.append(str(crop_path))
+                            continue
+                        transaction.add_bytes(crop_path, bytes(encoded))
+                        extra_paths.append(str(crop_path))
 
                 # Text is staged last so it is promoted last. A failure
                 # promoting any earlier sidecar rolls the whole transaction

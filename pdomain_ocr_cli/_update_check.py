@@ -18,7 +18,6 @@ except PackageNotFoundError:  # pragma: no cover - only fires if package metadat
 VERSION: str = _detected_version
 
 _GITHUB_REPO = "pdomain/pdomain-ocr-cli"
-_INSTALL_URL = f"https://raw.githubusercontent.com/{_GITHUB_REPO}/master/install.sh"
 _STABLE_TAG_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 _RELEASE_PREFIX_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)")
 
@@ -174,8 +173,7 @@ def check_for_update() -> None:
             notice = (
                 f"\nNOTICE: A newer version of pdomain-ocr is available "
                 f"({latest_tag_name}, you have {VERSION}).\n"
-                f"  To upgrade, run:\n"
-                f"    curl -sSL {_INSTALL_URL} | sh\n"
+                "  To check the latest release, run pdomain-ocr update --check.\n"
             )
             print(notice, file=sys.stderr)  # noqa: T201  # CLI output
     except Exception as exc:  # noqa: BLE001  # update check is best-effort; any failure is safe to swallow

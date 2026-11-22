@@ -7,7 +7,7 @@ import threading
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from _fakes import FakeArray, FakePage
+from _fakes import FakePage
 
 from pdomain_ocr_cli import ocr_to_txt
 
@@ -368,10 +368,8 @@ def test_main_extract_illustrations_loads_cv2_deps(
         lambda args, device: MagicMock(detect=MagicMock(return_value=fake_layout)),
     )
 
-    fake_cv2 = MagicMock()
-    fake_cv2.imread = MagicMock(return_value=None)  # warns but doesn't crash
-    fake_crop_types: set = {"figure"}
-    monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", lambda: (fake_cv2, fake_crop_types))
+    load_illustration_deps = MagicMock(return_value=(MagicMock(), {"figure"}))
+    monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", load_illustration_deps)
 
     run_main(
         "--no-update-check",
@@ -383,19 +381,14 @@ def test_main_extract_illustrations_loads_cv2_deps(
         str(img),
     )
 
-    assert fake_cv2.imread.called
+    load_illustration_deps.assert_called_once_with()
     assert (out / "page.txt").exists()
 
 
 def test_main_extract_illustrations_writes_crops(
     mock_heavy_deps, monkeypatch, run_main, single_image
 ):
-    """When cv2.imread returns a real image array, qualifying regions get cropped.
-
-    Two figure regions are configured: the first has positive size and is
-    written; the second slices to a zero-size crop and is skipped via the
-    ``if crop.size == 0: continue`` branch.
-    """
+    """A region must have an eligible type and nonempty pixels to be cropped."""
     mock_heavy_deps()
     img, out = single_image
 
@@ -411,8 +404,6 @@ def test_main_extract_illustrations_writes_crops(
     )
 
     fake_cv2 = MagicMock()
-    fake_cv2.imread = MagicMock(return_value=FakeArray(100))
-
     fake_cv2.imencode = MagicMock(return_value=(True, b"\x00"))
     monkeypatch.setattr(
         ocr_to_txt,

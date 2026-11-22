@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import cv2
 import pytest
-from _fakes import FakeArray, FakePage
+from _fakes import FakePage
 from PIL import Image as _PILImage
 from PIL import UnidentifiedImageError as _PILUnidentifiedImageError
 
@@ -264,7 +264,6 @@ def test_main_extract_illustrations_imencode_returns_false_no_tmp_swallows_unlin
     monkeypatch.setattr(ocr_to_txt, "_load_layout_detector", lambda args, device: fake_layout)
 
     fake_cv2 = MagicMock()
-    fake_cv2.imread = MagicMock(return_value=FakeArray(100))
     fake_cv2.imencode = MagicMock(return_value=(False, b""))
     monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", lambda: (fake_cv2, {"figure"}))
 
@@ -305,7 +304,6 @@ def test_main_extract_illustrations_crop_atomic_write_failure_skips_and_cleans_t
     monkeypatch.setattr(ocr_to_txt, "_load_layout_detector", lambda args, device: fake_layout)
 
     fake_cv2 = MagicMock()
-    fake_cv2.imread = MagicMock(return_value=FakeArray(100))
     fake_cv2.imencode = MagicMock(return_value=(True, b"\x00"))
     monkeypatch.setattr(ocr_to_txt, "_load_illustration_deps", lambda: (fake_cv2, {"figure"}))
 
@@ -918,14 +916,14 @@ def test_main_does_not_disable_pillow_decompression_bomb_guard_for_other_consume
 # ---------------------------------------------------------------------------
 
 
-def test_main_pdomain_book_tools_import_error_exits_clean(
+def test_main_ocr_runtime_import_error_exits_clean(
     mock_heavy_deps, monkeypatch, run_main, single_image, capsys
 ):
     mock_heavy_deps()
     img, _ = single_image
 
     def import_boom(det, reco):
-        raise ImportError("pdomain_book_tools wheel missing")
+        raise ImportError("pdomain_ops.gpu import failed")
 
     monkeypatch.setattr(ocr_to_txt, "_create_runtime_session", import_boom)
 
@@ -938,8 +936,8 @@ def test_main_pdomain_book_tools_import_error_exits_clean(
         )
     assert exc_info.value.code == 1
     err = capsys.readouterr().err
-    assert "pdomain_book_tools not importable" in err
-    assert "wheel missing" in err
+    assert "could not import OCR runtime" in err
+    assert "pdomain_ops.gpu import failed" in err
 
 
 def test_main_predictor_returns_none_exits(

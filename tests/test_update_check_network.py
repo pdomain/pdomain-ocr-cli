@@ -102,7 +102,7 @@ def test_prints_notice_when_newer_version_available(monkeypatch, capsys):
     assert "newer version of pdomain-ocr is available" in err
     assert "v1.2.3" in err  # latest tag
     assert "0.5.0" in err  # current version
-    assert "curl -sSL" in err  # upgrade command included
+    assert "pdomain-ocr update --check" in err
 
 
 def test_no_notice_when_current_equals_latest(monkeypatch, capsys):
